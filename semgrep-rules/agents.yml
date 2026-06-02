@@ -1,0 +1,40 @@
+rules:
+  - id: agents-no-else
+    message: AGENTS.md requires early returns over else blocks.
+    severity: ERROR
+    languages: [python]
+    pattern: |
+      if $COND:
+        ...
+      else:
+        ...
+
+  - id: agents-no-typing-dict
+    message: AGENTS.md requires modern explicit types; use dict[...] instead of typing.Dict.
+    severity: ERROR
+    languages: [python]
+    pattern-either:
+      - pattern: from typing import Dict
+      - pattern: typing.Dict[$KEY, $VALUE]
+
+  - id: agents-llama-cpp-wrapper-boundary
+    message: Wrap llama_cpp behind local_llm.llama_cpp_model instead of importing it directly.
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - /local_llm/llama_cpp_model.py
+    pattern-either:
+      - pattern: import llama_cpp
+      - pattern: from llama_cpp import $NAME
+
+  - id: agents-exception-message-expected-shape
+    message: Exception messages must include the offending value and expected shape.
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: raise $ERROR($MESSAGE)
+      - metavariable-regex:
+          metavariable: $ERROR
+          regex: ^(ValueError|TypeError|AgentProtocolError)$
+      - pattern-not-regex: Expected|expected

@@ -1,0 +1,137 @@
+[project]
+name = "local-llm"
+version = "0.1.0"
+description = "Local LLM experiments with llama.cpp"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "llama-cpp-python==0.3.23",
+]
+
+[dependency-groups]
+dev = [
+    "bandit==1.9.4",
+    "deptry==0.25.1",
+    "import-linter==2.11",
+    "pre-commit==4.6.0",
+    "pyright==1.1.409",
+    "pytest==9.0.3",
+    "pytest-bdd==8.1.0",
+    "pytest-cov==7.1.0",
+    "radon==6.0.1",
+    "ruff==0.15.14",
+    "semgrep==1.163.0",
+    "vulture==2.16",
+]
+
+[tool.uv]
+exclude-newer = "7 days"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [".git", ".venv", "__pycache__", "models"]
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ANN",
+    "ARG",
+    "B",
+    "C4",
+    "C90",
+    "E",
+    "ERA",
+    "F",
+    "I",
+    "N",
+    "PL",
+    "PTH",
+    "RET",
+    "RUF",
+    "SIM",
+    "UP",
+    "W",
+]
+ignore = [
+    "ANN401",
+    "PLR0913",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.pylint]
+max-args = 6
+max-branches = 8
+max-returns = 4
+max-statements = 20
+
+[tool.pyright]
+include = ["local_llm", "main.py", "tests"]
+exclude = [".venv", "models", "__pycache__"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=local_llm --cov-report=term-missing"
+
+[tool.deptry]
+exclude = [".venv", "models", "__pycache__"]
+known_first_party = ["local_llm"]
+per_rule_ignores = { DEP004 = ["pytest"] }
+
+[tool.vulture]
+paths = ["local_llm", "main.py", "tests"]
+exclude = [".venv", "models", "__pycache__"]
+min_confidence = 80
+
+[tool.importlinter]
+root_package = "local_llm"
+
+[[tool.importlinter.contracts]]
+name = "Core protocols stay independent"
+type = "forbidden"
+source_modules = ["local_llm.chat", "local_llm.tools"]
+forbidden_modules = [
+    "local_llm.agent",
+    "local_llm.calculator",
+    "local_llm.cli",
+    "local_llm.json_policy",
+    "local_llm.llama_cpp_model",
+]
+
+[[tool.importlinter.contracts]]
+name = "Agent does not depend on implementations"
+type = "forbidden"
+source_modules = ["local_llm.agent"]
+forbidden_modules = [
+    "local_llm.calculator",
+    "local_llm.cli",
+    "local_llm.json_policy",
+    "local_llm.llama_cpp_model",
+]
+
+[[tool.importlinter.contracts]]
+name = "Policy does not depend on runtime implementations"
+type = "forbidden"
+source_modules = ["local_llm.json_policy"]
+forbidden_modules = [
+    "local_llm.calculator",
+    "local_llm.cli",
+    "local_llm.llama_cpp_model",
+]
+
+[[tool.importlinter.contracts]]
+name = "Adapters do not depend on orchestration"
+type = "forbidden"
+source_modules = ["local_llm.calculator", "local_llm.llama_cpp_model"]
+forbidden_modules = [
+    "local_llm.agent",
+    "local_llm.cli",
+    "local_llm.json_policy",
+]
