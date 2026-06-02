@@ -119,7 +119,13 @@ class AgentRuntime:
             if decision.kind == "final":
                 return self._create_result(started_at, decision.final_answer, steps)
 
-            tool_result = self._run_tool(decision)
+            try:
+                tool_result = self._run_tool(decision)
+            except AgentProtocolError as error:
+                observation = self._repair_invalid_output(messages, prompt, error)
+                steps.append(AgentStep(iteration, model_output, None, observation))
+                continue
+
             messages.append(
                 self._policy.build_tool_observation_message(prompt, tool_result)
             )
