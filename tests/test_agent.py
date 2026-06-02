@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import pytest
+
 from local_llm.agent import (
     AgentDecision,
     AgentPolicy,
     AgentProtocolError,
     AgentRuntime,
     AgentRuntimeConfig,
+    create_tool_registry,
 )
 from local_llm.chat import ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from local_llm.tools import (
@@ -107,6 +110,12 @@ def test_runtime_returns_final_answer_without_using_tools() -> None:
     assert result.steps == ()
     assert tool.requests == []
     assert len(chat_model.requests) == 1
+    expected_request = ChatCompletionRequest(
+        messages=(ChatMessage("system", "Tools: 1"), ChatMessage("user", "question")),
+        temperature=0.0,
+        max_tokens=128,
+    )
+    assert chat_model.requests[0] == expected_request
 
 
 def test_runtime_executes_registered_tool_and_returns_final_answer() -> None:
@@ -126,6 +135,14 @@ def test_runtime_executes_registered_tool_and_returns_final_answer() -> None:
     assert len(result.steps) == 1
     assert tool.requests == [ToolRunRequest("calculator", "2 + 2")]
     assert policy.tool_results == [ToolRunResult("calculator", "4", True)]
+    step = result.steps[0]
+    assert step.iteration == 1
+    assert step.model_output == "tool"
+    assert step.decision == tool_decision("calculator", "2 + 2")
+    assert step.observation == "4"
+    second_request = chat_model.requests[1]
+    assert ChatMessage("assistant", "tool") in second_request.messages
+    assert ChatMessage("user", "question: 4") in second_request.messages
 
 
 def test_runtime_reports_unknown_tool_as_failed_observation() -> None:
@@ -182,6 +199,16 @@ def test_runtime_repairs_invalid_model_output() -> None:
     assert len(result.steps) == 1
     assert len(policy.repair_errors) == 1
     assert result.steps[0].decision is None
+    step = result.steps[0]
+    assert step.iteration == 1
+    assert step.model_output == "invalid"
+    assert "question" in step.observation
+    assert "Invalid model output" in step.observation
+    assert any(
+        message.content.startswith("Repair")
+        for message in chat_model.requests[1].messages
+        if message is not None
+    )
 
 
 def test_runtime_repairs_malformed_tool_decision() -> None:
@@ -200,6 +227,11 @@ def test_runtime_repairs_malformed_tool_decision() -> None:
     assert len(result.steps) == 1
     assert len(policy.repair_errors) == 1
     assert result.steps[0].decision is None
+    step = result.steps[0]
+    assert step.iteration == 1
+    assert step.model_output == "tool"
+    assert "question" in step.observation
+    assert "tool_name is invalid" in step.observation
 
 
 def test_runtime_returns_fallback_after_max_iterations() -> None:
@@ -222,6 +254,9 @@ def test_runtime_returns_fallback_after_max_iterations() -> None:
         "final answer."
     )
     assert len(result.steps) == 1
+    upper_bound_seconds = 10.0
+    assert isinstance(result.elapsed_seconds, float)
+    assert 0.0 <= result.elapsed_seconds < upper_bound_seconds
 
 
 def create_runtime(
@@ -240,6 +275,18 @@ def create_runtime(
             max_tokens=128,
         ),
     )
+
+
+def test_create_tool_registry_rejects_empty_tool_name() -> None:
+    # Act / Assert
+    with pytest.raises(ValueError, match="non-empty tool name"):
+        create_tool_registry([RecordingAgentTool(name="")])
+
+
+def test_create_tool_registry_rejects_duplicate_tool_name() -> None:
+    # Act / Assert
+    with pytest.raises(ValueError, match="Duplicate tool name"):
+        create_tool_registry([RecordingAgentTool(), RecordingAgentTool()])
 
 
 def final_decision(answer: str) -> AgentDecision:

@@ -16,6 +16,9 @@ class TestEvaluateMathExpression:
             ("7 // 2", 3.0),
             ("7 % 2", 1.0),
             ("-5 + +2", -3.0),
+            # Boundary: base/exponent exactly at the limit must be allowed.
+            ("1000000 ** 2", 1_000_000_000_000.0),
+            ("2 ** 12", 4096.0),
         ],
     )
     def test_evaluates_safe_numeric_expression(
