@@ -100,44 +100,18 @@ min_confidence = 80
 root_package = "local_llm"
 
 [[tool.importlinter.contracts]]
-name = "Core protocols stay independent"
-type = "forbidden"
-source_modules = ["local_llm.chat", "local_llm.tools"]
-forbidden_modules = [
-    "local_llm.agent",
-    "local_llm.calculator",
-    "local_llm.cli",
-    "local_llm.json_policy",
-    "local_llm.llama_cpp_model",
-]
+name = "Domain is the innermost layer"
+type = "layers"
+layers = ["application", "domain"]
+containers = ["local_llm"]
 
 [[tool.importlinter.contracts]]
-name = "Agent does not depend on implementations"
+name = "Core stays free of outer layers"
 type = "forbidden"
-source_modules = ["local_llm.agent"]
-forbidden_modules = [
-    "local_llm.calculator",
-    "local_llm.cli",
-    "local_llm.json_policy",
-    "local_llm.llama_cpp_model",
-]
+source_modules = ["local_llm.domain", "local_llm.application"]
+forbidden_modules = ["local_llm.infrastructure", "local_llm.presentation"]
 
 [[tool.importlinter.contracts]]
-name = "Policy does not depend on runtime implementations"
-type = "forbidden"
-source_modules = ["local_llm.json_policy"]
-forbidden_modules = [
-    "local_llm.calculator",
-    "local_llm.cli",
-    "local_llm.llama_cpp_model",
-]
-
-[[tool.importlinter.contracts]]
-name = "Adapters do not depend on orchestration"
-type = "forbidden"
-source_modules = ["local_llm.calculator", "local_llm.llama_cpp_model"]
-forbidden_modules = [
-    "local_llm.agent",
-    "local_llm.cli",
-    "local_llm.json_policy",
-]
+name = "Infrastructure and presentation are independent"
+type = "independence"
+modules = ["local_llm.infrastructure", "local_llm.presentation"]
