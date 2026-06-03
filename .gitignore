@@ -208,6 +208,9 @@ tempCodeRunnerFile.py
 # Ruff stuff:
 .ruff_cache/
 
+# Mutmut
+mutants/
+
 # PyPI configuration file
 .pypirc
 

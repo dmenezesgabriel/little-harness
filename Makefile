@@ -1,4 +1,4 @@
-.PHONY: format lint typecheck complexity dead-code deps imports security semgrep test check pre-commit-install
+.PHONY: format lint typecheck complexity dead-code deps imports security semgrep test mutation check pre-commit-install
 
 format:
 	uv run ruff format .
@@ -33,6 +33,9 @@ semgrep:
 
 test:
 	uv run pytest
+
+mutation:
+	uv run mutmut run
 
 check: lint typecheck complexity dead-code deps imports security semgrep test
 
