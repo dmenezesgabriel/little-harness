@@ -9,6 +9,7 @@ from local_llm.application.agent_runtime import (
     AgentRuntimeConfig,
 )
 from local_llm.application.ports.agent_tool import AgentTool
+from local_llm.application.ports.chat_model import ChatModel
 from local_llm.application.tool_registry import ToolRegistry
 from local_llm.domain.message import ChatMessage
 from local_llm.domain.message_history import MessageHistory
@@ -28,28 +29,32 @@ from local_llm.domain.values.text_values import (
     ToolOutput,
 )
 from tests.application.fakes import (
+    ChunkedChatModel,
     DecisionQueuePolicy,
     FailingAgentTool,
     RecordingAgentTool,
     RecordingChatModel,
     RecordingObserver,
+    RecordingTokenSink,
     final_decision,
     tool_decision,
 )
 
 
 def create_runtime(
-    chat_model: RecordingChatModel,
+    chat_model: ChatModel,
     tools: Sequence[AgentTool],
     policy: DecisionQueuePolicy,
     observer: RecordingObserver | None = None,
     max_iterations: int = 3,
+    token_sink: RecordingTokenSink | None = None,
 ) -> AgentRuntime:
     dependencies = AgentDependencies(
         chat_model=chat_model,
         tool_registry=ToolRegistry(tools),
         policy=policy,
         observer=observer or RecordingObserver(),
+        token_sink=token_sink or RecordingTokenSink(),
     )
     config = AgentRuntimeConfig(
         max_iterations=MaxIterations(max_iterations),
@@ -207,6 +212,21 @@ class TestAgentRuntimeExhaustion:
         assert 0.0 <= result.elapsed.value < upper_bound_seconds
 
 
+class TestAgentRuntimeStreaming:
+    def test_joins_streamed_chunks_and_emits_each_to_the_token_sink(self) -> None:
+        # Arrange: the model streams the final answer as two chunks.
+        chat_model = ChunkedChatModel(["fi", "nal"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        token_sink = RecordingTokenSink()
+        runtime = create_runtime(chat_model, [], policy, token_sink=token_sink)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: chunks reach the sink in order; the runtime joins them for parsing.
+        assert [chunk.value for chunk in token_sink.chunks] == ["fi", "nal"]
+
+
 class TestAgentRuntimeObservability:
     def test_emits_lifecycle_events_in_order_with_payloads(self) -> None:
         # Arrange
@@ -241,3 +261,38 @@ class TestAgentRuntimeObservability:
             tool_decision("calculator", "2 + 2"),
             final_decision("4"),
         ]
+
+    def test_correlates_every_event_with_one_run_id(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("4")]
+        )
+        observer = RecordingObserver()
+        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy, observer)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: a single run shares exactly one correlation id across all events.
+        assert len(observer.run_ids) == len(observer.events)
+        assert len(set(observer.run_ids)) == 1
+
+    def test_measures_non_negative_model_and_tool_durations(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("4")]
+        )
+        observer = RecordingObserver()
+        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy, observer)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: one measurement per model/tool event, all non-negative.
+        assert len(observer.model_elapsed) == observer.events.count("model_completed")
+        assert len(observer.tool_elapsed) == observer.events.count("tool_invoked")
+        assert observer.model_elapsed and observer.tool_elapsed
+        assert all(elapsed.value >= 0.0 for elapsed in observer.model_elapsed)
+        assert all(elapsed.value >= 0.0 for elapsed in observer.tool_elapsed)

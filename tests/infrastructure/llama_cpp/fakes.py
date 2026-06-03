@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
 
-from llama_cpp.llama_types import CreateChatCompletionResponse
+from llama_cpp.llama_types import CreateChatCompletionStreamResponse
 
 from local_llm.domain.values.model_path import ModelPath
 from local_llm.domain.values.numeric_values import (
@@ -22,6 +23,10 @@ class FakeLlama:
     def __init__(self, **kwargs: Any) -> None:
         self.init_kwargs = kwargs
         self.completion_kwargs: dict[str, Any] = {}
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
 
     def create_chat_completion(
         self,
@@ -29,15 +34,26 @@ class FakeLlama:
         messages: list[dict[str, Any]],
         temperature: float,
         max_tokens: int,
-    ) -> CreateChatCompletionResponse:
+        stream: bool = False,
+    ) -> Iterator[CreateChatCompletionStreamResponse]:
         self.completion_kwargs = {
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "stream": stream,
         }
-        return cast(
-            "CreateChatCompletionResponse",
-            {"choices": [{"message": {"content": " hi there "}}]},
+        # First chunk is role-only (no content); the adapter must skip it.
+        return iter(
+            [
+                cast(
+                    "CreateChatCompletionStreamResponse",
+                    {"choices": [{"delta": {"role": "assistant"}}]},
+                ),
+                cast(
+                    "CreateChatCompletionStreamResponse",
+                    {"choices": [{"delta": {"content": " hi there "}}]},
+                ),
+            ]
         )
 
 

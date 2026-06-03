@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
 from local_llm.application.agent_dependencies import AgentDependencies
@@ -10,14 +11,20 @@ from local_llm.application.ports.agent_tool import AgentTool
 from local_llm.domain.decision import FinalAnswer, ToolCall
 from local_llm.domain.step import AgentStep
 from local_llm.domain.tool_result import ToolRunRequest, ToolRunResult
-from local_llm.domain.values.numeric_values import Iteration
-from local_llm.domain.values.text_values import MessageContent, Prompt, ToolOutput
+from local_llm.domain.values.numeric_values import ElapsedSeconds, Iteration
+from local_llm.domain.values.text_values import (
+    MessageContent,
+    Prompt,
+    RunId,
+    ToolOutput,
+)
 
 
 @dataclass(frozen=True)
 class IterationContext:
     """Everything the visitor needs about the current iteration."""
 
+    run_id: RunId
     prompt: Prompt
     iteration: Iteration
     model_output: MessageContent
@@ -43,8 +50,12 @@ class LoopDecisionVisitor:
         return decision.answer
 
     def visit_tool_call(self, decision: ToolCall) -> MessageContent | None:
+        started_at = time.perf_counter()
         result = self._execute(decision)
-        self._dependencies.observer.on_tool_invoked(self._context.iteration, result)
+        elapsed = ElapsedSeconds(time.perf_counter() - started_at)
+        self._dependencies.observer.on_tool_invoked(
+            self._context.run_id, self._context.iteration, result, elapsed
+        )
         message = self._dependencies.policy.build_tool_observation_message(
             self._context.prompt, result
         )

@@ -31,7 +31,31 @@ class TestArgumentParser:
         assert config.temperature == Temperature(0.0)
         assert config.max_tokens == MaxTokens(512)
         assert config.max_iterations == MaxIterations(5)
+        assert config.enable_logging is False
+        assert config.enable_streaming is False
+        assert config.provider == "llama_cpp"
         assert "llama.cpp" in config.prompt.value
+
+    def test_enables_logging_with_the_log_flag(self) -> None:
+        # Act
+        config = ArgumentParser().parse(["--log"])
+
+        # Assert
+        assert config.enable_logging is True
+
+    def test_enables_streaming_with_the_stream_flag(self) -> None:
+        # Act
+        config = ArgumentParser().parse(["--stream"])
+
+        # Assert
+        assert config.enable_streaming is True
+
+    def test_reads_the_provider_override(self) -> None:
+        # Act
+        config = ArgumentParser().parse(["--provider", "openai"])
+
+        # Assert
+        assert config.provider == "openai"
 
     def test_reads_overrides_from_argv(self) -> None:
         # Act

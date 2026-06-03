@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from uuid import uuid4
 
 from local_llm.application.agent_dependencies import AgentDependencies
 from local_llm.application.decision_handler import IterationContext, LoopDecisionVisitor
@@ -24,7 +25,7 @@ from local_llm.domain.values.numeric_values import (
     Temperature,
 )
 from local_llm.domain.values.role import ASSISTANT, SYSTEM, USER
-from local_llm.domain.values.text_values import MessageContent, Prompt
+from local_llm.domain.values.text_values import MessageContent, Prompt, RunId
 
 FALLBACK_ANSWER = MessageContent(
     "The agent reached the maximum number of iterations without producing a "
@@ -55,39 +56,41 @@ class AgentRuntime:
         self._config = config
 
     def run(self, prompt: Prompt) -> AgentResult:
-        self._dependencies.observer.on_run_started(prompt)
+        run_id = RunId(uuid4().hex)
+        self._dependencies.observer.on_run_started(run_id, prompt)
         started_at = time.perf_counter()
         state = AgentLoopState(self._initial_messages(prompt))
 
         for index in range(1, self._config.max_iterations.value + 1):
-            answer = self._run_iteration(state, prompt, Iteration(index))
+            answer = self._run_iteration(run_id, state, prompt, Iteration(index))
 
             if answer is not None:
-                return self._finish(started_at, answer, state.steps)
+                return self._finish(run_id, started_at, answer, state.steps)
 
-        return self._finish(started_at, FALLBACK_ANSWER, state.steps)
+        return self._finish(run_id, started_at, FALLBACK_ANSWER, state.steps)
 
     def _run_iteration(
         self,
+        run_id: RunId,
         state: AgentLoopState,
         prompt: Prompt,
         iteration: Iteration,
     ) -> MessageContent | None:
-        output = self._complete(state.messages)
-        self._dependencies.observer.on_model_completed(iteration, output)
+        output = self._complete_timed(run_id, iteration, state.messages)
         state.append_message(ChatMessage(ASSISTANT, output))
 
-        decision = self._parse_or_repair(state, prompt, output, iteration)
+        decision = self._parse_or_repair(run_id, state, prompt, output, iteration)
 
         if decision is None:
             return None
 
-        self._dependencies.observer.on_decision_parsed(iteration, decision)
-        context = IterationContext(prompt, iteration, output, state)
+        self._dependencies.observer.on_decision_parsed(run_id, iteration, decision)
+        context = IterationContext(run_id, prompt, iteration, output, state)
         return decision.accept(LoopDecisionVisitor(self._dependencies, context))
 
     def _parse_or_repair(
         self,
+        run_id: RunId,
         state: AgentLoopState,
         prompt: Prompt,
         output: MessageContent,
@@ -96,7 +99,7 @@ class AgentRuntime:
         try:
             return self._dependencies.policy.parse_model_output(output)
         except AgentProtocolError as error:
-            self._dependencies.observer.on_repair(iteration, error)
+            self._dependencies.observer.on_repair(run_id, iteration, error)
             message = self._dependencies.policy.build_repair_message(prompt, error)
             state.record_step(AgentStep(iteration, output, None, message.content))
             state.append_message(message)
@@ -108,21 +111,40 @@ class AgentRuntime:
         user = ChatMessage(USER, MessageContent(prompt.value))
         return MessageHistory().with_message(system).with_message(user)
 
+    def _complete_timed(
+        self,
+        run_id: RunId,
+        iteration: Iteration,
+        messages: MessageHistory,
+    ) -> MessageContent:
+        started_at = time.perf_counter()
+        output = self._complete(messages)
+        elapsed = ElapsedSeconds(time.perf_counter() - started_at)
+        self._dependencies.observer.on_model_completed(
+            run_id, iteration, output, elapsed
+        )
+        return output
+
     def _complete(self, messages: MessageHistory) -> MessageContent:
         request = ChatCompletionRequest(
             messages,
             self._config.temperature,
             self._config.max_tokens,
         )
-        return self._dependencies.chat_model.complete(request).content
+        chunks: list[str] = []
+        for chunk in self._dependencies.chat_model.complete_streaming(request):
+            chunks.append(chunk.value)
+            self._dependencies.token_sink.emit(chunk)
+        return MessageContent("".join(chunks))
 
     def _finish(
         self,
+        run_id: RunId,
         started_at: float,
         answer: MessageContent,
         steps: AgentSteps,
     ) -> AgentResult:
         elapsed = ElapsedSeconds(time.perf_counter() - started_at)
         result = AgentResult(answer, elapsed, steps)
-        self._dependencies.observer.on_run_finished(result)
+        self._dependencies.observer.on_run_finished(run_id, result)
         return result

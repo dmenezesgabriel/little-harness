@@ -22,6 +22,23 @@ class Prompt:
 
 
 @dataclass(frozen=True)
+class RunId:
+    """Correlation id for a single agent run. Non-empty and trimmed.
+
+    Ties together every observability event of one run (logs, metrics, spans).
+
+    Example:
+        run_id = RunId("a1b2c3d4")
+    """
+
+    value: str
+
+    def __post_init__(self) -> None:
+        normalized = require_non_empty_text(self.value, "RunId")
+        object.__setattr__(self, "value", normalized)
+
+
+@dataclass(frozen=True)
 class MessageContent:
     """Free-form text of a chat message (system/user/assistant or observation).
 

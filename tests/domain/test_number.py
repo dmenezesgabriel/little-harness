@@ -53,6 +53,23 @@ class TestNumberPowerGuards:
         assert exponent_result.value == expected_exponent_result
 
 
+class TestNumberZeroDivisionGuards:
+    def test_divide_by_zero_raises_value_error(self) -> None:
+        # Act / Assert
+        with pytest.raises(ValueError, match="Division by zero"):
+            Number(6).divide(Number(0))
+
+    def test_floor_divide_by_zero_raises_value_error(self) -> None:
+        # Act / Assert
+        with pytest.raises(ValueError, match="Division by zero"):
+            Number(6).floor_divide(Number(0))
+
+    def test_modulo_by_zero_raises_value_error(self) -> None:
+        # Act / Assert
+        with pytest.raises(ValueError, match="Division by zero"):
+            Number(6).modulo(Number(0))
+
+
 class TestNumberFormatted:
     @pytest.mark.parametrize(
         ("value", "expected"),

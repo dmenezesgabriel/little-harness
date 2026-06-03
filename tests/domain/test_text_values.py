@@ -5,6 +5,7 @@ import pytest
 from local_llm.domain.values.text_values import (
     MessageContent,
     Prompt,
+    RunId,
     ToolInput,
     ToolName,
     ToolOutput,
@@ -49,6 +50,17 @@ class TestToolInput:
         # Assert
         assert trimmed.value == "144 / 12"
         assert empty.value == ""
+
+
+class TestRunId:
+    def test_keeps_non_empty_value(self) -> None:
+        # Act / Assert
+        assert RunId("a1b2c3").value == "a1b2c3"
+
+    def test_rejects_blank_value(self) -> None:
+        # Act / Assert
+        with pytest.raises(ValueError, match="RunId is empty"):
+            RunId("   ")
 
 
 class TestPlainTextWrappers:

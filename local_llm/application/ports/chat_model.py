@@ -1,10 +1,12 @@
-"""Port for a chat-completion model, plus its request/response DTOs."""
+"""Port for a chat-completion model, plus its request DTO."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Protocol
 
+from local_llm.application.ports.closeable import Closeable
 from local_llm.domain.message_history import MessageHistory
 from local_llm.domain.values.numeric_values import MaxTokens, Temperature
 from local_llm.domain.values.text_values import MessageContent
@@ -17,16 +19,19 @@ class ChatCompletionRequest:
     max_tokens: MaxTokens
 
 
-@dataclass(frozen=True)
-class ChatCompletionResponse:
-    content: MessageContent
+class ChatModel(Closeable, Protocol):
+    """A chat-completion model. Owns native resources, so it is `Closeable`."""
 
+    def complete_streaming(
+        self, request: ChatCompletionRequest
+    ) -> Iterator[MessageContent]:
+        """Stream the completion as content chunks as they are generated.
 
-class ChatModel(Protocol):
-    def complete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-        """Return a chat completion for the given conversation.
+        The caller joins the chunks for the full text and may forward each to a
+        `TokenSink` for live output. The same method serves single-prompt and
+        interactive modes.
 
         Example:
-            response = model.complete(request)
+            text = "".join(chunk.value for chunk in model.complete_streaming(req))
         """
         ...

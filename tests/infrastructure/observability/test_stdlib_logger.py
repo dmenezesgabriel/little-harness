@@ -30,6 +30,19 @@ class TestStdlibStructuredLogger:
             "ok": True,
         }
 
+    def test_created_logger_emits_to_stderr_without_external_configuration(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        # Arrange: no logging.basicConfig — the factory must configure emission.
+        logger = create_structured_logger("local_llm_stderr_logger")
+
+        # Act
+        logger.log("run_started", {"run_id": "abc"})
+
+        # Assert
+        assert '"event": "run_started"' in capsys.readouterr().err
+
     def test_serializes_non_json_values_via_str(
         self,
         caplog: pytest.LogCaptureFixture,

@@ -6,12 +6,14 @@ from local_llm.application.ports.structured_logger import StructuredLogger
 from local_llm.domain.decision import AgentDecision
 from local_llm.domain.result import AgentResult
 from local_llm.domain.tool_result import ToolRunResult
-from local_llm.domain.values.numeric_values import Iteration
-from local_llm.domain.values.text_values import MessageContent, Prompt
+from local_llm.domain.values.numeric_values import ElapsedSeconds, Iteration
+from local_llm.domain.values.text_values import MessageContent, Prompt, RunId
 
 
 class StructuredLoggingObserver:
     """Translates agent events into structured logs via a `StructuredLogger`.
+
+    Every record carries `run_id` so a run's events can be correlated.
 
     Example:
         observer = StructuredLoggingObserver(create_structured_logger("agent"))
@@ -20,39 +22,70 @@ class StructuredLoggingObserver:
     def __init__(self, logger: StructuredLogger) -> None:
         self._logger = logger
 
-    def on_run_started(self, prompt: Prompt) -> None:
-        self._logger.log("run_started", {"prompt": prompt.value})
+    def on_run_started(self, run_id: RunId, prompt: Prompt) -> None:
+        self._logger.log(
+            "run_started", {"run_id": run_id.value, "prompt": prompt.value}
+        )
 
-    def on_model_completed(self, iteration: Iteration, output: MessageContent) -> None:
+    def on_model_completed(
+        self,
+        run_id: RunId,
+        iteration: Iteration,
+        output: MessageContent,
+        elapsed: ElapsedSeconds,
+    ) -> None:
         self._logger.log(
             "model_completed",
-            {"iteration": iteration.value, "output_chars": len(output.value)},
-        )
-
-    def on_decision_parsed(self, iteration: Iteration, decision: AgentDecision) -> None:
-        self._logger.log(
-            "decision_parsed",
-            {"iteration": iteration.value, "decision": type(decision).__name__},
-        )
-
-    def on_tool_invoked(self, iteration: Iteration, result: ToolRunResult) -> None:
-        self._logger.log(
-            "tool_invoked",
             {
+                "run_id": run_id.value,
                 "iteration": iteration.value,
-                "tool": result.tool_name.value,
-                "succeeded": result.succeeded,
+                "output_chars": len(output.value),
+                "elapsed_seconds": elapsed.value,
             },
         )
 
-    def on_repair(self, iteration: Iteration, error: Exception) -> None:
+    def on_decision_parsed(
+        self, run_id: RunId, iteration: Iteration, decision: AgentDecision
+    ) -> None:
         self._logger.log(
-            "repair",
-            {"iteration": iteration.value, "error": str(error)},
+            "decision_parsed",
+            {
+                "run_id": run_id.value,
+                "iteration": iteration.value,
+                "decision": type(decision).__name__,
+            },
         )
 
-    def on_run_finished(self, result: AgentResult) -> None:
+    def on_tool_invoked(
+        self,
+        run_id: RunId,
+        iteration: Iteration,
+        result: ToolRunResult,
+        elapsed: ElapsedSeconds,
+    ) -> None:
+        self._logger.log(
+            "tool_invoked",
+            {
+                "run_id": run_id.value,
+                "iteration": iteration.value,
+                "tool": result.tool_name.value,
+                "succeeded": result.succeeded,
+                "elapsed_seconds": elapsed.value,
+            },
+        )
+
+    def on_repair(self, run_id: RunId, iteration: Iteration, error: Exception) -> None:
+        self._logger.log(
+            "repair",
+            {"run_id": run_id.value, "iteration": iteration.value, "error": str(error)},
+        )
+
+    def on_run_finished(self, run_id: RunId, result: AgentResult) -> None:
         self._logger.log(
             "run_finished",
-            {"elapsed_seconds": result.elapsed.value, "steps": len(result.steps)},
+            {
+                "run_id": run_id.value,
+                "elapsed_seconds": result.elapsed.value,
+                "steps": len(result.steps),
+            },
         )

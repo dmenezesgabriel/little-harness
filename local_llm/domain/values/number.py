@@ -31,12 +31,15 @@ class Number:
         return Number(self.value * other.value)
 
     def divide(self, other: Number) -> Number:
+        other._guard_nonzero_divisor(self)
         return Number(self.value / other.value)
 
     def floor_divide(self, other: Number) -> Number:
+        other._guard_nonzero_divisor(self)
         return Number(self.value // other.value)
 
     def modulo(self, other: Number) -> Number:
+        other._guard_nonzero_divisor(self)
         return Number(self.value % other.value)
 
     def power(self, other: Number) -> Number:
@@ -54,6 +57,14 @@ class Number:
             return str(int(self.value))
 
         return str(self.value)
+
+    def _guard_nonzero_divisor(self, dividend: Number) -> None:
+        if self.value != 0:
+            return
+
+        raise ValueError(
+            f"Division by zero: {dividend.value}/0. Expected a non-zero divisor."
+        )
 
     def _guard_power(self, other: Number) -> None:
         if abs(self.value) > MAX_POWER_BASE:

@@ -35,3 +35,11 @@ class TestCalculatorTool:
         assert result.tool_name == ToolName("calculator")
         assert result.succeeded is False
         assert result.output.value.startswith("Calculator error: Invalid expression")
+
+    def test_returns_failed_result_for_division_by_zero(self) -> None:
+        # Act
+        result = CalculatorTool().run(calculator_request("144 / 0"))
+
+        # Assert
+        assert result.succeeded is False
+        assert result.output.value.startswith("Calculator error: Division by zero")

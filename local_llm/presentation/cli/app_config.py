@@ -26,3 +26,6 @@ class AppConfig:
     temperature: Temperature
     max_tokens: MaxTokens
     max_iterations: MaxIterations
+    provider: str = "llama_cpp"
+    enable_logging: bool = False
+    enable_streaming: bool = False

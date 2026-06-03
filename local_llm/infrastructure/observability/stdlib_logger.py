@@ -22,4 +22,22 @@ class StdlibStructuredLogger:
 
 
 def create_structured_logger(name: str) -> StdlibStructuredLogger:
-    return StdlibStructuredLogger(logging.getLogger(name))
+    logger = logging.getLogger(name)
+    configure_stderr_emission(logger)
+    return StdlibStructuredLogger(logger)
+
+
+def configure_stderr_emission(logger: logging.Logger) -> None:
+    """Emit records to stderr at INFO without requiring `logging.basicConfig`.
+
+    stderr keeps structured logs off stdout, where the plain-text CLI answer goes.
+    Idempotent: a second call does not add a duplicate handler.
+    """
+    logger.setLevel(logging.INFO)
+
+    if logger.handlers:
+        return
+
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)

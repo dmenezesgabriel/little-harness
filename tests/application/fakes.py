@@ -2,23 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
-from local_llm.application.ports.chat_model import (
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-)
+from local_llm.application.ports.chat_model import ChatCompletionRequest
 from local_llm.domain.decision import AgentDecision, FinalAnswer, ToolCall
 from local_llm.domain.errors import AgentProtocolError
 from local_llm.domain.message import ChatMessage
 from local_llm.domain.result import AgentResult
 from local_llm.domain.tool_result import ToolRunRequest, ToolRunResult
 from local_llm.domain.tool_spec import ToolInputSchema, ToolSpec
-from local_llm.domain.values.numeric_values import Iteration
+from local_llm.domain.values.numeric_values import ElapsedSeconds, Iteration
 from local_llm.domain.values.role import USER
 from local_llm.domain.values.text_values import (
     MessageContent,
     Prompt,
+    RunId,
     ToolInput,
     ToolName,
     ToolOutput,
@@ -26,15 +24,50 @@ from local_llm.domain.values.text_values import (
 
 
 class RecordingChatModel:
-    """ChatModel that replays scripted outputs and records each request."""
+    """ChatModel that streams each scripted output as one chunk per request."""
 
     def __init__(self, outputs: Sequence[str]) -> None:
         self.requests: list[ChatCompletionRequest] = []
+        self.closed = False
         self._outputs = list(outputs)
 
-    def complete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
+    def complete_streaming(
+        self, request: ChatCompletionRequest
+    ) -> Iterator[MessageContent]:
         self.requests.append(request)
-        return ChatCompletionResponse(MessageContent(self._outputs.pop(0)))
+        yield MessageContent(self._outputs.pop(0))
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class ChunkedChatModel:
+    """ChatModel that streams a fixed list of chunks for a single model turn."""
+
+    def __init__(self, chunks: Sequence[str]) -> None:
+        self.requests: list[ChatCompletionRequest] = []
+        self.closed = False
+        self._chunks = list(chunks)
+
+    def complete_streaming(
+        self, request: ChatCompletionRequest
+    ) -> Iterator[MessageContent]:
+        self.requests.append(request)
+        for chunk in self._chunks:
+            yield MessageContent(chunk)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class RecordingTokenSink:
+    """TokenSink spy that records every chunk it receives, in order."""
+
+    def __init__(self) -> None:
+        self.chunks: list[MessageContent] = []
+
+    def emit(self, chunk: MessageContent) -> None:
+        self.chunks.append(chunk)
 
 
 class RecordingAgentTool:
@@ -110,36 +143,65 @@ class DecisionQueuePolicy:
 
 
 class RecordingObserver:
-    """AgentObserver spy: records the event sequence and each event's payload."""
+    """AgentObserver spy: records the event sequence and each event's payload.
+
+    `run_ids` collects the correlation id from every event so tests can assert a
+    single run shares one id; `*_elapsed` collect the per-call measurements.
+    """
 
     def __init__(self) -> None:
         self.events: list[str] = []
+        self.run_ids: list[RunId] = []
         self.model_outputs: list[tuple[Iteration, MessageContent]] = []
+        self.model_elapsed: list[ElapsedSeconds] = []
         self.parsed: list[tuple[Iteration, AgentDecision]] = []
         self.tool_invocations: list[tuple[Iteration, ToolRunResult]] = []
+        self.tool_elapsed: list[ElapsedSeconds] = []
         self.repairs: list[tuple[Iteration, Exception]] = []
         self.finished: list[AgentResult] = []
 
-    def on_run_started(self, prompt: Prompt) -> None:
+    def on_run_started(self, run_id: RunId, prompt: Prompt) -> None:
+        self.run_ids.append(run_id)
         self.events.append(f"run_started:{prompt.value}")
 
-    def on_model_completed(self, iteration: Iteration, output: MessageContent) -> None:
+    def on_model_completed(
+        self,
+        run_id: RunId,
+        iteration: Iteration,
+        output: MessageContent,
+        elapsed: ElapsedSeconds,
+    ) -> None:
+        self.run_ids.append(run_id)
         self.events.append("model_completed")
         self.model_outputs.append((iteration, output))
+        self.model_elapsed.append(elapsed)
 
-    def on_decision_parsed(self, iteration: Iteration, decision: AgentDecision) -> None:
+    def on_decision_parsed(
+        self, run_id: RunId, iteration: Iteration, decision: AgentDecision
+    ) -> None:
+        self.run_ids.append(run_id)
         self.events.append("decision_parsed")
         self.parsed.append((iteration, decision))
 
-    def on_tool_invoked(self, iteration: Iteration, result: ToolRunResult) -> None:
+    def on_tool_invoked(
+        self,
+        run_id: RunId,
+        iteration: Iteration,
+        result: ToolRunResult,
+        elapsed: ElapsedSeconds,
+    ) -> None:
+        self.run_ids.append(run_id)
         self.events.append("tool_invoked")
         self.tool_invocations.append((iteration, result))
+        self.tool_elapsed.append(elapsed)
 
-    def on_repair(self, iteration: Iteration, error: Exception) -> None:
+    def on_repair(self, run_id: RunId, iteration: Iteration, error: Exception) -> None:
+        self.run_ids.append(run_id)
         self.events.append("repair")
         self.repairs.append((iteration, error))
 
-    def on_run_finished(self, result: AgentResult) -> None:
+    def on_run_finished(self, run_id: RunId, result: AgentResult) -> None:
+        self.run_ids.append(run_id)
         self.events.append("run_finished")
         self.finished.append(result)
 

@@ -23,6 +23,7 @@ from local_llm.domain.values.text_values import Prompt
 from local_llm.presentation.cli.app_config import AppConfig
 
 DEFAULT_MODEL_PATH = "models/LFM2-8B-A1B-Q4_K_M.gguf"
+DEFAULT_PROVIDER = "llama_cpp"
 DEFAULT_PROMPT = (
     "Explain llama.cpp in exactly 3 short bullet points. "
     "Be specific: mention GGUF models, local inference, "
@@ -85,6 +86,21 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-iterations", type=int, default=5, help="Maximum agent loop iterations."
     )
+    parser.add_argument(
+        "--log",
+        action="store_true",
+        help="Emit structured JSON logs for each agent event.",
+    )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream generated tokens to stdout as they are produced.",
+    )
+    parser.add_argument(
+        "--provider",
+        default=DEFAULT_PROVIDER,
+        help="Chat model provider to use.",
+    )
 
 
 def to_app_config(namespace: argparse.Namespace) -> AppConfig:
@@ -97,4 +113,7 @@ def to_app_config(namespace: argparse.Namespace) -> AppConfig:
         temperature=Temperature(float(namespace.temperature)),
         max_tokens=MaxTokens(int(namespace.max_tokens)),
         max_iterations=MaxIterations(int(namespace.max_iterations)),
+        provider=str(namespace.provider),
+        enable_logging=bool(namespace.log),
+        enable_streaming=bool(namespace.stream),
     )

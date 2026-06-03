@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import cast
 
-from llama_cpp.llama_types import CreateChatCompletionResponse
+from llama_cpp.llama_types import CreateChatCompletionStreamResponse
 
-from local_llm.application.ports.chat_model import (
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-)
+from local_llm.application.ports.chat_model import ChatCompletionRequest
 from local_llm.domain.values.text_values import MessageContent
 from local_llm.infrastructure.llama_cpp.message_mapper import to_llama_message
 from local_llm.infrastructure.llama_cpp.model_factory import create_llama_model
@@ -17,36 +15,47 @@ from local_llm.infrastructure.llama_cpp.settings import LlamaCppModelSettings
 
 
 class LlamaCppChatModel:
-    """Runs chat completions on a local GGUF model via llama.cpp.
+    """Streams chat completions from a local GGUF model via llama.cpp.
 
     Example:
-        response = LlamaCppChatModel(settings).complete(request)
+        chunks = LlamaCppChatModel(settings).complete_streaming(request)
     """
 
     def __init__(self, settings: LlamaCppModelSettings) -> None:
         self._llm = create_llama_model(settings)
 
-    def complete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-        response = self._llm.create_chat_completion(
+    def complete_streaming(
+        self, request: ChatCompletionRequest
+    ) -> Iterator[MessageContent]:
+        stream = self._llm.create_chat_completion(
             messages=[to_llama_message(message) for message in request.messages],
             temperature=request.temperature.value,
             max_tokens=request.max_tokens.value,
+            stream=True,
         )
-        content = extract_response_content(
-            cast("CreateChatCompletionResponse", response)
-        )
-        return ChatCompletionResponse(MessageContent(content))
+        for chunk in stream:
+            content = extract_chunk_content(
+                cast("CreateChatCompletionStreamResponse", chunk)
+            )
+            if content is not None:
+                yield MessageContent(content)
+
+    def close(self) -> None:
+        self._llm.close()
 
 
-def extract_response_content(response: CreateChatCompletionResponse) -> str:
-    choices = response["choices"]
+def extract_chunk_content(chunk: CreateChatCompletionStreamResponse) -> str | None:
+    choices = chunk["choices"]
 
     if len(choices) == 0:
-        raise ValueError("Expected at least one response choice, got empty list.")
+        return None
 
-    content = choices[0]["message"]["content"]
+    content = choices[0]["delta"].get("content")
+
+    if content is None:
+        return None
 
     if not isinstance(content, str):
-        raise TypeError(f"Expected message content string, got: {type(content)}")
+        raise TypeError(f"Expected streamed content string, got: {type(content)}")
 
-    return content.strip()
+    return content
