@@ -53,6 +53,10 @@ class ToolInputSchema:
 class ToolSpec:
     """The advertised contract of a tool.
 
+    `requires_approval` lets a tool declare that it performs sensitive actions
+    (writing files, running shell commands) so the runtime asks a human before
+    each call. The core never names tools; danger is the tool's own declaration.
+
     Example:
         spec = ToolSpec(ToolName("calculator"), "Evaluate math", schema)
     """
@@ -60,3 +64,4 @@ class ToolSpec:
     name: ToolName
     description: str
     input_schema: ToolInputSchema
+    requires_approval: bool = False

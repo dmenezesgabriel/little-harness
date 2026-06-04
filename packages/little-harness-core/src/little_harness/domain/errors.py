@@ -13,3 +13,7 @@ class ToolRegistrationError(ValueError):
 
 class UnknownProviderError(ValueError):
     """Raised when no installed plugin registers the requested provider name."""
+
+
+class UnknownToolError(ValueError):
+    """Raised when `--tools` names a tool no installed plugin registers."""

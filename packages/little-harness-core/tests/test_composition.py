@@ -6,29 +6,45 @@ from collections.abc import Mapping
 import pytest
 from little_harness.application.agent_runtime import AgentRuntimeConfig
 from little_harness.application.ports.chat_model import ChatModel
+from little_harness.application.tool_registry import ToolRegistry
 from little_harness.composition import (
     build_application,
     build_chat_model,
     build_hooks,
     build_observer,
+    build_permission_requester,
     build_token_sink,
     run_cli,
     to_runtime_config,
 )
 from little_harness.domain.errors import UnknownProviderError
+from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
+from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.numeric_values import (
     MaxIterations,
     MaxTokens,
     Temperature,
 )
-from little_harness.domain.values.text_values import Prompt, RunId
+from little_harness.domain.values.text_values import (
+    Prompt,
+    RunId,
+    ToolName,
+    ToolOutput,
+)
+from little_harness.infrastructure.hooks.approval_hook import ApprovalHook
 from little_harness.infrastructure.hooks.null_hook import NullHook
 from little_harness.infrastructure.observability.null_observer import NullObserver
 from little_harness.infrastructure.observability.structured_logging_observer import (
     StructuredLoggingObserver,
 )
+from little_harness.infrastructure.permissions.auto_approve_requester import (
+    AutoApprovePermissionRequester,
+)
 from little_harness.plugin_discovery import PROVIDER_GROUP
 from little_harness.presentation.cli.argument_parser import ArgumentParser
+from little_harness.presentation.cli.permission_prompt import (
+    InteractivePermissionRequester,
+)
 from little_harness.presentation.cli.token_sinks import NullTokenSink, StdoutTokenSink
 
 from tests.application.fakes import RecordingObserver
@@ -252,7 +268,67 @@ class TestTokenSinkSelection:
         assert isinstance(build_token_sink(config), StdoutTokenSink)
 
 
+class SensitiveTool:
+    """A fake tool that declares it needs human approval before running."""
+
+    @property
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            ToolName("bash"),
+            "Run a shell command.",
+            ToolInputSchema("a command"),
+            requires_approval=True,
+        )
+
+    def run(self, request: ToolRunRequest) -> ToolRunResult:
+        return ToolRunResult(request.tool_name, ToolOutput("ran"), succeeded=True)
+
+
 class TestHookSelection:
-    def test_defaults_to_the_null_hook(self) -> None:
-        # Act / Assert: no hooks are configured by default.
-        assert isinstance(build_hooks(), NullHook)
+    def test_defaults_to_the_null_hook_when_no_tool_needs_approval(self) -> None:
+        # Act / Assert: a registry with no sensitive tools needs no gating.
+        config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
+
+        assert isinstance(build_hooks(ToolRegistry([]), config), NullHook)
+
+    def test_builds_an_approval_hook_when_a_tool_needs_approval(self) -> None:
+        # Act
+        config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
+        hooks = build_hooks(ToolRegistry([SensitiveTool()]), config)
+
+        # Assert
+        assert isinstance(hooks, ApprovalHook)
+
+
+class TestPermissionRequesterSelection:
+    def test_auto_approves_when_yes_flag_is_set(self) -> None:
+        # Act / Assert: --yes runs unattended regardless of a terminal.
+        config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
+
+        assert isinstance(
+            build_permission_requester(config), AutoApprovePermissionRequester
+        )
+
+    def test_auto_approves_when_no_terminal_is_attached(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: piped input has no tty, so there is no human to prompt.
+        config = ArgumentParser().parse(["--prompt", "hi"])
+        monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+        # Act / Assert
+        assert isinstance(
+            build_permission_requester(config), AutoApprovePermissionRequester
+        )
+
+    def test_prompts_interactively_when_a_terminal_is_attached(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: a real terminal and no --yes means a human is asked.
+        config = ArgumentParser().parse(["--prompt", "hi"])
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+
+        # Act / Assert
+        assert isinstance(
+            build_permission_requester(config), InteractivePermissionRequester
+        )

@@ -22,6 +22,7 @@ from little_harness.presentation.cli.app_config import AppConfig
 # Provider-agnostic default: exercises tool calling without naming any provider.
 DEFAULT_PROMPT = "What is 144 divided by 12? Then tell me if the result is even or odd."
 OPTION_SEPARATOR = "="
+TOOL_SEPARATOR = ","
 
 
 class ArgumentParser:
@@ -73,6 +74,17 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Stream generated tokens to stdout as they are produced.",
     )
+    parser.add_argument(
+        "--tools",
+        help="Comma-separated tool names to enable (installed plugin names). "
+        "Defaults to every installed tool.",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        dest="approve_all",
+        help="Approve every sensitive tool without prompting (non-interactive runs).",
+    )
 
 
 def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
@@ -112,7 +124,23 @@ def to_app_config(namespace: argparse.Namespace) -> AppConfig:
         provider_options=build_provider_options(namespace.model, namespace.options),
         enable_logging=namespace.log,
         enable_streaming=namespace.stream,
+        tool_selection=parse_tool_selection(namespace.tools),
+        approve_all=namespace.approve_all,
     )
+
+
+def parse_tool_selection(raw: str | None) -> tuple[str, ...] | None:
+    if raw is None:
+        return None
+
+    names = tuple(name.strip() for name in raw.split(TOOL_SEPARATOR))
+
+    if any(name == "" for name in names):
+        raise ValueError(
+            f"Invalid --tools: {raw!r}. Expected comma-separated tool names."
+        )
+
+    return names
 
 
 def build_provider_options(model: str | None, pairs: Sequence[str]) -> dict[str, str]:

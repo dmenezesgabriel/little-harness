@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 
 from little_harness.application.agent_dependencies import AgentDependencies
@@ -10,9 +11,11 @@ from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.closeable import Closeable
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
+from little_harness.application.ports.permission_requester import PermissionRequester
 from little_harness.application.ports.token_sink import TokenSink
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.domain.values.text_values import Prompt
+from little_harness.infrastructure.hooks.approval_hook import ApprovalHook
 from little_harness.infrastructure.hooks.null_hook import NullHook
 from little_harness.infrastructure.observability.null_observer import NullObserver
 from little_harness.infrastructure.observability.stdlib_logger import (
@@ -20,6 +23,9 @@ from little_harness.infrastructure.observability.stdlib_logger import (
 )
 from little_harness.infrastructure.observability.structured_logging_observer import (
     StructuredLoggingObserver,
+)
+from little_harness.infrastructure.permissions.auto_approve_requester import (
+    AutoApprovePermissionRequester,
 )
 from little_harness.infrastructure.policy.json_agent_policy import JsonAgentPolicy
 from little_harness.plugin_discovery import (
@@ -29,6 +35,9 @@ from little_harness.plugin_discovery import (
 )
 from little_harness.presentation.cli.app_config import AppConfig
 from little_harness.presentation.cli.argument_parser import ArgumentParser
+from little_harness.presentation.cli.permission_prompt import (
+    InteractivePermissionRequester,
+)
 from little_harness.presentation.cli.result_renderer import ResultRenderer
 from little_harness.presentation.cli.token_sinks import NullTokenSink, StdoutTokenSink
 
@@ -83,19 +92,41 @@ def build_dependencies(
     config: AppConfig,
     observer: AgentObserver,
 ) -> AgentDependencies:
+    registry = ToolRegistry(discover_tools(config.tool_selection))
     return AgentDependencies(
         chat_model=build_chat_model(config),
-        tool_registry=ToolRegistry(discover_tools()),
+        tool_registry=registry,
         policy=JsonAgentPolicy(),
         observer=observer,
         token_sink=build_token_sink(config),
-        hooks=build_hooks(),
+        hooks=build_hooks(registry, config),
     )
 
 
-def build_hooks() -> LifecycleHook:
-    # The seam: wrap real hooks in `HookChain([...])` here. None by default.
-    return NullHook()
+def build_hooks(registry: ToolRegistry, config: AppConfig) -> LifecycleHook:
+    # The seam: wrap real hooks in `HookChain([...])` here. With no sensitive
+    # tool loaded, there is nothing to gate, so the null hook stays the default.
+    names_requiring_approval = approval_required_names(registry)
+
+    if not names_requiring_approval:
+        return NullHook()
+
+    return ApprovalHook(build_permission_requester(config), names_requiring_approval)
+
+
+def approval_required_names(registry: ToolRegistry) -> frozenset[str]:
+    return frozenset(
+        spec.name.value for spec in registry.specs() if spec.requires_approval
+    )
+
+
+def build_permission_requester(config: AppConfig) -> PermissionRequester:
+    # A terminal is required to prompt a human; piped input, CI, and `--yes` all
+    # run unattended, so they auto-approve and rely on each tool's guardrails.
+    if config.approve_all or not sys.stdin.isatty():
+        return AutoApprovePermissionRequester()
+
+    return InteractivePermissionRequester()
 
 
 def build_chat_model(config: AppConfig) -> ChatModel:

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 import pytest
+from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
-from little_harness.domain.errors import UnknownProviderError
+from little_harness.domain.errors import UnknownProviderError, UnknownToolError
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.text_values import ToolName, ToolOutput
@@ -17,6 +18,7 @@ from little_harness.plugin_discovery import (
     default_provider_name,
     discover_tools,
     installed_providers,
+    installed_tools,
     load_chat_model_builder,
 )
 
@@ -41,6 +43,40 @@ class FakeTool:
 
 def unbuilt_provider(_options: Mapping[str, str]) -> ChatModel:
     return FakeChatModel("")
+
+
+class NamedFakeTool:
+    """AgentTool whose advertised name is set per instance, for selection tests."""
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    @property
+    def spec(self) -> ToolSpec:
+        return ToolSpec(ToolName(self._name), "A fake tool.", ToolInputSchema("input"))
+
+    def run(self, request: ToolRunRequest) -> ToolRunResult:
+        return ToolRunResult(request.tool_name, ToolOutput("ok"), succeeded=True)
+
+
+def make_tool_builder(name: str) -> Callable[[], AgentTool]:
+    def build() -> AgentTool:
+        return NamedFakeTool(name)
+
+    return build
+
+
+def install_three_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_entry_points(
+        monkeypatch,
+        {
+            TOOL_GROUP: [
+                FakeEntryPoint("read_file", make_tool_builder("read_file")),
+                FakeEntryPoint("bash", make_tool_builder("bash")),
+                FakeEntryPoint("ripgrep", make_tool_builder("ripgrep")),
+            ]
+        },
+    )
 
 
 class TestLoadChatModelBuilder:
@@ -177,3 +213,50 @@ class TestDiscoverTools:
 
         # Act / Assert
         assert discover_tools() == []
+
+    def test_returns_every_tool_sorted_by_name_when_no_selection(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_three_tools(monkeypatch)
+
+        # Act
+        names = [tool.spec.name.value for tool in discover_tools()]
+
+        # Assert: deterministic order regardless of entry-point registration order.
+        assert names == ["bash", "read_file", "ripgrep"]
+
+    def test_limits_discovery_to_the_selected_names_in_order(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_three_tools(monkeypatch)
+
+        # Act
+        names = [tool.spec.name.value for tool in discover_tools(["ripgrep", "bash"])]
+
+        # Assert: selection order is preserved, unselected tools are dropped.
+        assert names == ["ripgrep", "bash"]
+
+    def test_rejects_a_selected_tool_that_is_not_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_three_tools(monkeypatch)
+
+        # Act / Assert: the message names the offending value and the installed list.
+        with pytest.raises(UnknownToolError) as err:
+            discover_tools(["read_file", "mystery"])
+        assert str(err.value) == (
+            "Unknown tool: 'mystery'. "
+            "Installed tools: ['bash', 'read_file', 'ripgrep']."
+        )
+
+
+class TestInstalledTools:
+    def test_returns_sorted_tool_names(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Arrange
+        install_three_tools(monkeypatch)
+
+        # Act / Assert
+        assert installed_tools() == ["bash", "read_file", "ripgrep"]

@@ -49,6 +49,19 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object]] = [
         "Provider-specific setting, repeatable (e.g. -o n_ctx=8192).",
         None,
     ),
+    (
+        "tools",
+        ["--tools"],
+        "Comma-separated tool names to enable (installed plugin names). "
+        "Defaults to every installed tool.",
+        None,
+    ),
+    (
+        "approve_all",
+        ["--yes"],
+        "Approve every sensitive tool without prompting (non-interactive runs).",
+        False,
+    ),
 ]
 
 
@@ -180,3 +193,30 @@ class TestArgumentParser:
         # Act / Assert: a leading '=' yields an empty key and is rejected.
         with pytest.raises(ValueError, match="Invalid --option: '=value'"):
             ArgumentParser().parse(["-o", "=value"])
+
+    def test_defaults_tool_selection_to_none(self) -> None:
+        # Act / Assert: omitting --tools means every installed tool.
+        assert ArgumentParser().parse([]).tool_selection is None
+
+    def test_selects_tools_from_a_comma_separated_list(self) -> None:
+        # Act
+        config = ArgumentParser().parse(["--tools", "read_file,bash"])
+
+        # Assert
+        assert config.tool_selection == ("read_file", "bash")
+
+    def test_trims_whitespace_around_each_tool_name(self) -> None:
+        # Act
+        config = ArgumentParser().parse(["--tools", " read_file , bash "])
+
+        # Assert
+        assert config.tool_selection == ("read_file", "bash")
+
+    def test_rejects_an_empty_tool_name(self) -> None:
+        # Act / Assert: a trailing comma yields an empty name and is rejected.
+        with pytest.raises(ValueError, match="Invalid --tools: 'read_file,'"):
+            ArgumentParser().parse(["--tools", "read_file,"])
+
+    def test_enables_approve_all_with_the_yes_flag(self) -> None:
+        # Act / Assert
+        assert ArgumentParser().parse(["--yes"]).approve_all is True

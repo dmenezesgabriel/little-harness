@@ -33,3 +33,7 @@ class AppConfig:
     provider_options: Mapping[str, str] = field(default_factory=_no_options)
     enable_logging: bool = False
     enable_streaming: bool = False
+    # None means "every installed tool"; a tuple limits discovery to those names.
+    tool_selection: tuple[str, ...] | None = None
+    # Skip interactive approval prompts and allow every sensitive tool to run.
+    approve_all: bool = False

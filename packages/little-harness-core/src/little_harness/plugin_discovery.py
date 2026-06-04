@@ -14,11 +14,11 @@ Example:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from importlib.metadata import entry_points
+from importlib.metadata import EntryPoint, entry_points
 
 from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
-from little_harness.domain.errors import UnknownProviderError
+from little_harness.domain.errors import UnknownProviderError, UnknownToolError
 
 PROVIDER_GROUP = "little_harness.chat_model_providers"
 TOOL_GROUP = "little_harness.tools"
@@ -74,5 +74,31 @@ def default_provider_name() -> str:
     return installed[0]
 
 
-def discover_tools() -> Sequence[AgentTool]:
-    return [point.load()() for point in entry_points(group=TOOL_GROUP)]
+def installed_tools() -> list[str]:
+    return sorted(point.name for point in entry_points(group=TOOL_GROUP))
+
+
+def discover_tools(selection: Sequence[str] | None = None) -> Sequence[AgentTool]:
+    """Instantiate registered tool plugins, optionally limited to a selection.
+
+    `selection` is the `--tools` list; None means every installed tool. An
+    unknown name fails loudly with the installed list rather than silently
+    dropping it.
+
+    Example:
+        tools = discover_tools(["read_file", "ripgrep"])
+    """
+    points = {point.name: point for point in entry_points(group=TOOL_GROUP)}
+    names = sorted(points) if selection is None else selection
+    return [build_discovered_tool(points, name) for name in names]
+
+
+def build_discovered_tool(points: Mapping[str, EntryPoint], name: str) -> AgentTool:
+    point = points.get(name)
+
+    if point is None:
+        raise UnknownToolError(
+            f"Unknown tool: {name!r}. Installed tools: {sorted(points)}."
+        )
+
+    return point.load()()
