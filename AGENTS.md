@@ -58,3 +58,12 @@
 
 - Structured JSON when logging for debugging / observability.
 - Plain text only for user-facing CLI output.
+
+## Core vs extensions
+
+- `little-harness-core` stays provider-agnostic and vendor-free: no provider
+  names, no provider-specific defaults/prompts, no vendor SDK imports.
+- Every provider or tool is its own distribution that depends on core,
+  implements a port, and registers an entry point — never a core edit.
+- The umbrella `little-harness` exposes each plugin as an opt-in extra
+  (`little-harness[<name>]`). Add an integration as a new package + extra.

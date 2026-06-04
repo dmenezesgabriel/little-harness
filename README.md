@@ -10,21 +10,27 @@ provider that is installed.
 
 ## Install & run
 
-Batteries-included (core + llama.cpp provider + calculator tool):
+`little-harness` is core-only; pick the provider/tool **extras** you want:
 
 ```
-uv pip install little-harness
+uv pip install "little-harness[llama-cpp,calculator]"
 little-harness --model models/LFM2-8B-A1B-Q4_K_M.gguf \
   -p "What is 144 divided by 12? Then tell me if the result is even or odd."
 ```
 
-Or compose explicitly — core plus just the plugins you want:
+Extras are `llama-cpp`, `litellm`, `calculator`, and `all`. With exactly one
+provider installed, `--provider` is optional; the sole provider is the default.
+
+Pick a different provider by its extra:
 
 ```
-uv pip install little-harness-core little-harness-litellm
+uv pip install "little-harness[litellm]"
 export GEMINI_API_KEY=...   # litellm reads provider keys from the environment
 little-harness --provider litellm --model gemini/gemini-2.5-flash -p "Hello!"
 ```
+
+Composing the distributions by name (`uv pip install little-harness-core
+little-harness-litellm`) is equivalent — the extras are just a curated shorthand.
 
 ### CLI flags
 
@@ -61,7 +67,7 @@ packages/
   little-harness-llama-cpp/    # provider plugin (entry point: llama_cpp)
   little-harness-calculator/   # tool plugin (entry point: calculator)
   little-harness-litellm/      # provider plugin (entry point: litellm)
-  little-harness/              # umbrella meta-distribution (no code)
+  little-harness/              # umbrella meta-distribution (no code; maps extras to plugins)
 ```
 
 `little-harness-core` follows Clean Architecture — four concentric layers whose
@@ -81,6 +87,12 @@ port, and registers an entry point — so core discovers plugins without importi
 them. That is Dependency Inversion at the package boundary.
 
 ### Extending it — add a distribution, not a branch
+
+**The convention:** core stays provider-agnostic and vendor-free — it names no
+provider and imports no SDK. Every provider and tool is a separate distribution
+that depends on core, implements a port, and registers an entry point; the
+umbrella exposes each as an opt-in extra (`little-harness[<name>]`). Adding an
+integration is a new package + extra, never a branch or a core edit.
 
 - **New provider** — a `little-harness-<name>` package implementing `ChatModel`
   (`complete_streaming` + `close`, vendor SDK sealed inside it) with a
