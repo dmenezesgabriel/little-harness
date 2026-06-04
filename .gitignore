@@ -210,6 +210,10 @@ tempCodeRunnerFile.py
 
 # Mutmut
 mutants/
+.mutmut-cache
+
+# import-linter
+.import_linter_cache/
 
 # PyPI configuration file
 .pypirc

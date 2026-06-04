@@ -1,4 +1,12 @@
-.PHONY: format lint typecheck complexity dead-code deps imports security semgrep test integration mutation check pre-commit-install
+.PHONY: format lint typecheck complexity dead-code deps imports security semgrep \
+        test integration mutation check sync pre-commit-install
+
+# Code-bearing workspace members (the umbrella `little-harness` ships no code).
+CODE_PACKAGES := little-harness-core little-harness-llama-cpp \
+                 little-harness-calculator little-harness-litellm
+
+sync:
+	uv sync --all-packages
 
 format:
 	uv run ruff format .
@@ -7,43 +15,58 @@ lint:
 	uv run ruff check .
 
 typecheck:
-	uv run pyright
+	@for pkg in $(CODE_PACKAGES); do \
+		echo "pyright: $$pkg"; \
+		uv run --directory packages/$$pkg pyright || exit 1; \
+	done
 
 complexity:
-	@output="$$(uv run radon cc local_llm main.py --min B)"; \
-	if [ -n "$$output" ]; then \
-		printf '%s\n' "$$output"; \
-		exit 1; \
-	fi
+	@output="$$(uv run radon cc packages/*/little_harness packages/*/little_harness_* --min B)"; \
+	if [ -n "$$output" ]; then printf '%s\n' "$$output"; exit 1; fi
 
 dead-code:
-	uv run vulture local_llm main.py tests
+	@for pkg in $(CODE_PACKAGES); do \
+		echo "vulture: $$pkg"; \
+		uv run --directory packages/$$pkg vulture || exit 1; \
+	done
 
 deps:
-	uv run deptry .
+	@for pkg in $(CODE_PACKAGES); do \
+		echo "deptry: $$pkg"; \
+		uv run --directory packages/$$pkg deptry . || exit 1; \
+	done
 
 imports:
-	uv run lint-imports
+	@for pkg in $(CODE_PACKAGES); do \
+		echo "import-linter: $$pkg"; \
+		uv run --directory packages/$$pkg lint-imports || exit 1; \
+	done
 
 security:
-	uv run bandit -r local_llm main.py
+	uv run bandit -qr packages -x '*/tests/*'
 
 semgrep:
-	uv run semgrep --error --config semgrep-rules .
+	uv run semgrep --error --config semgrep-rules packages
 
 test:
-	uv run pytest
+	@for pkg in $(CODE_PACKAGES); do \
+		echo "pytest: $$pkg"; \
+		uv run --directory packages/$$pkg pytest || exit 1; \
+	done
 
 integration:
-	uv run pytest -m integration --no-cov
+	uv run --directory packages/little-harness-llama-cpp pytest -m integration --no-cov
 
 mutation:
-	uv run mutmut run
-	@survivors="$$(uv run mutmut results | grep -E ': (survived|no tests)' || true)"; \
-	if [ -n "$$survivors" ]; then \
-		printf 'Surviving mutants (add tests to kill them):\n%s\n' "$$survivors"; \
-		exit 1; \
-	fi; \
+	@for pkg in $(CODE_PACKAGES); do \
+		echo "mutmut: $$pkg"; \
+		( cd packages/$$pkg && uv run mutmut run ); \
+		survivors="$$(cd packages/$$pkg && uv run mutmut results | grep -E ': (survived|no tests)' || true)"; \
+		if [ -n "$$survivors" ]; then \
+			printf 'Surviving mutants in %s (add tests to kill them):\n%s\n' "$$pkg" "$$survivors"; \
+			exit 1; \
+		fi; \
+	done; \
 	echo "No surviving mutants."
 
 check: lint typecheck complexity dead-code deps imports security semgrep test mutation

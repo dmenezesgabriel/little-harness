@@ -9,55 +9,55 @@ repos:
         always_run: true
       - id: ruff-check
         name: ruff check
-        entry: uv run ruff check .
+        entry: make lint
         language: system
         pass_filenames: false
         always_run: true
       - id: pyright
-        name: pyright
-        entry: uv run pyright
+        name: pyright (per package)
+        entry: make typecheck
         language: system
         pass_filenames: false
         always_run: true
       - id: radon
         name: radon complexity
-        entry: sh -c 'output="$(uv run radon cc local_llm main.py --min B)"; if [ -n "$output" ]; then printf "%s\n" "$output"; exit 1; fi'
+        entry: make complexity
         language: system
         pass_filenames: false
         always_run: true
       - id: vulture
         name: vulture dead code
-        entry: uv run vulture local_llm main.py tests
+        entry: make dead-code
         language: system
         pass_filenames: false
         always_run: true
       - id: deptry
         name: deptry dependencies
-        entry: uv run deptry .
+        entry: make deps
         language: system
         pass_filenames: false
         always_run: true
       - id: import-linter
         name: import-linter
-        entry: uv run lint-imports
+        entry: make imports
         language: system
         pass_filenames: false
         always_run: true
       - id: bandit
         name: bandit security
-        entry: uv run bandit -r local_llm main.py
+        entry: make security
         language: system
         pass_filenames: false
         always_run: true
       - id: semgrep
         name: semgrep agents rules
-        entry: uv run semgrep --error --config semgrep-rules .
+        entry: make semgrep
         language: system
         pass_filenames: false
         always_run: true
       - id: pytest
-        name: pytest
-        entry: uv run pytest
+        name: pytest (per package)
+        entry: make test
         language: system
         pass_filenames: false
         always_run: true

@@ -1,11 +1,10 @@
-[project]
-name = "local-llm"
-version = "0.1.0"
-description = "Local LLM experiments with llama.cpp"
-readme = "README.md"
-requires-python = ">=3.12,<3.13"
-dependencies = [
-    "llama-cpp-python==0.3.23",
+[tool.uv.workspace]
+members = [
+    "packages/little-harness-core",
+    "packages/little-harness-llama-cpp",
+    "packages/little-harness-calculator",
+    "packages/little-harness-litellm",
+    "packages/little-harness",
 ]
 
 [dependency-groups]
@@ -23,10 +22,23 @@ dev = [
     "ruff==0.15.14",
     "semgrep==1.163.0",
     "vulture==2.16",
+    # Workspace members, installed editable so entry points register for discovery.
+    "little-harness-core",
+    "little-harness-llama-cpp",
+    "little-harness-calculator",
+    "little-harness-litellm",
 ]
 
 [tool.uv]
 exclude-newer = "7 days"
+
+[tool.uv.sources]
+little-harness-core = { workspace = true }
+little-harness-llama-cpp = { workspace = true }
+little-harness-calculator = { workspace = true }
+little-harness-litellm = { workspace = true }
+
+# --- Shared lint/type config applied repo-wide (one source of truth) ---
 
 [tool.ruff]
 target-version = "py312"
@@ -68,53 +80,6 @@ max-branches = 8
 max-returns = 4
 max-statements = 20
 
-[tool.pyright]
-include = ["local_llm", "main.py", "tests"]
-exclude = [".venv", "models", "__pycache__"]
-pythonVersion = "3.12"
-typeCheckingMode = "strict"
-reportMissingTypeStubs = false
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-pythonpath = ["."]
-addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=local_llm --cov-report=term-missing -m 'not integration'"
-markers = [
-    "integration: end-to-end tests that load the real local GGUF model (slow, opt-in)",
-]
-
-[tool.mutmut]
-paths_to_mutate = ["local_llm"]
-tests_dir = ["tests"]
-pytest_add_cli_args = ["--no-cov"]
-
-[tool.deptry]
-exclude = [".venv", "models", "__pycache__", "mutants"]
-known_first_party = ["local_llm"]
-per_rule_ignores = { DEP004 = ["pytest", "pytest_bdd"] }
-
-[tool.vulture]
-paths = ["local_llm", "main.py", "tests"]
-exclude = [".venv", "models", "__pycache__"]
-min_confidence = 80
-
-[tool.importlinter]
-root_package = "local_llm"
-
-[[tool.importlinter.contracts]]
-name = "Domain is the innermost layer"
-type = "layers"
-layers = ["application", "domain"]
-containers = ["local_llm"]
-
-[[tool.importlinter.contracts]]
-name = "Core stays free of outer layers"
-type = "forbidden"
-source_modules = ["local_llm.domain", "local_llm.application"]
-forbidden_modules = ["local_llm.infrastructure", "local_llm.presentation"]
-
-[[tool.importlinter.contracts]]
-name = "Infrastructure and presentation are independent"
-type = "independence"
-modules = ["local_llm.infrastructure", "local_llm.presentation"]
+# pyright is configured per package (each member's pyproject) and run with
+# `uv run --directory packages/<member> pyright`, so each package's local `tests`
+# package resolves without colliding with another member's `tests` package.
