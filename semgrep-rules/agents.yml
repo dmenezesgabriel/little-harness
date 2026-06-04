@@ -28,6 +28,19 @@ rules:
       - pattern: import llama_cpp
       - pattern: from llama_cpp import $NAME
 
+  - id: agents-tree-sitter-wrapper-boundary
+    message: Keep tree_sitter imports inside the little_harness_ast adapter package.
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - little_harness_ast/
+    pattern-either:
+      - pattern: import tree_sitter
+      - pattern: import tree_sitter_python
+      - pattern: import tree_sitter_javascript
+      - pattern: from tree_sitter import $NAME
+
   - id: agents-exception-message-expected-shape
     message: Exception messages must include the offending value and expected shape.
     severity: ERROR

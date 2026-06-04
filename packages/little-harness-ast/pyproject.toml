@@ -1,0 +1,76 @@
+[project]
+name = "little-harness-ast"
+version = "0.1.0"
+description = "Tree-sitter AST search and edit tool plugins (ast_grep, ast_edit) for little-harness."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Gabriel Menezes", email = "gabriel.d.menezes@gmail.com" }]
+dependencies = [
+    "little-harness-core",
+    "tree-sitter>=0.25,<0.26",
+    "tree-sitter-python>=0.25,<0.26",
+    "tree-sitter-javascript>=0.25,<0.26",
+]
+
+[project.urls]
+Homepage = "https://github.com/dmenezesgabriel/little-harness"
+Repository = "https://github.com/dmenezesgabriel/little-harness"
+Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
+
+[project.entry-points."little_harness.tools"]
+ast_grep = "little_harness_ast.provider:build_ast_grep"
+ast_edit = "little_harness_ast.provider:build_ast_edit"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/little_harness_ast"]
+
+[tool.pyright]
+include = ["src/little_harness_ast", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+venvPath = "../.."
+venv = ".venv"
+
+[tool.uv.sources]
+little-harness-core = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harness_ast --cov-report=term-missing -m 'not integration'"
+markers = [
+    "integration: end-to-end tests that run a tool through the core (opt-in)",
+]
+
+[tool.mutmut]
+paths_to_mutate = ["src/little_harness_ast"]
+tests_dir = ["tests"]
+pytest_add_cli_args = ["--no-cov"]
+
+[tool.deptry]
+extend_exclude = ["tests"]
+package_module_name_map = { little-harness-core = ["little_harness"], tree-sitter = ["tree_sitter"], tree-sitter-python = ["tree_sitter_python"], tree-sitter-javascript = ["tree_sitter_javascript"] }
+known_first_party = ["little_harness_ast"]
+
+[tool.vulture]
+paths = ["src/little_harness_ast", "tests"]
+min_confidence = 80
+
+[tool.importlinter]
+root_packages = ["little_harness_ast", "little_harness"]
+
+[[tool.importlinter.contracts]]
+name = "Plugin touches only core domain and ports"
+type = "forbidden"
+source_modules = ["little_harness_ast"]
+forbidden_modules = [
+    "little_harness.infrastructure",
+    "little_harness.presentation",
+]
