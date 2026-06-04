@@ -1,79 +1,109 @@
-# Local LLM
+# little-harness
 
-A small, fully local LLM agent loop running a GGUF model through
-[`llama.cpp`](https://github.com/ggerganov/llama.cpp). The model reasons in a
-strict-JSON protocol, can call tools (e.g. a safe arithmetic calculator), and
-produces a final answer — all on CPU, no network.
+A small, fully local LLM agent loop with a **plugin architecture**. The core is a
+provider-agnostic reason-act loop (strict-JSON protocol, tool calling, streaming,
+lifecycle hooks); chat-model providers and tools are separate, independently
+installable distributions discovered at runtime via packaging **entry points**.
 
-## Run
+Install only what you need — the core imports no vendor SDK until you select a
+provider that is installed.
+
+## Install & run
+
+Batteries-included (core + llama.cpp provider + calculator tool):
 
 ```
-uv run python main.py --threads 4 -p "What is 144 divided by 12? Then tell me if the result is even or odd."
+uv pip install little-harness
+little-harness -o model_path=models/LFM2-8B-A1B-Q4_K_M.gguf \
+  -p "What is 144 divided by 12? Then tell me if the result is even or odd."
 ```
 
-The default `--model-path` is `models/LFM2-8B-A1B-Q4_K_M.gguf`. See
-`uv run python main.py --help` for context size, GPU layers, temperature,
-token, and iteration flags. Notable flags:
+Or compose explicitly — core plus just the plugins you want:
 
-- `--stream` — stream generated tokens to stdout as they are produced (off by
-  default; the strict-JSON protocol means streamed text is JSON).
-- `--log` — emit a structured JSON log line per agent event, each carrying a
-  `run_id` correlation key and per-call `elapsed_seconds` (off by default).
-- `--provider` — select the chat-model provider (default `llama_cpp`).
+```
+uv pip install little-harness-core little-harness-litellm
+little-harness --provider litellm -o model=gpt-4o -o api_base=https://my-proxy/v1
+```
+
+### CLI flags
+
+The core CLI is provider-agnostic. Sampling/loop flags are first-class; every
+provider-specific setting is passed as repeatable `-o KEY=VALUE` and validated by
+the selected provider plugin.
+
+- `--provider` — the installed provider plugin to use (default `llama_cpp`).
+- `-o, --option KEY=VALUE` — provider-specific setting, repeatable. For
+  `llama_cpp`: `model_path`, `n_ctx`, `n_threads`, `n_gpu_layers`. For `litellm`:
+  `model` (required), `api_base`, `api_key`.
+- `--temperature`, `--max-tokens`, `--max-iterations` — sampling and loop bounds.
+- `--stream` — stream generated tokens to stdout (the strict-JSON protocol means
+  streamed text is JSON).
+- `--log` — emit one structured JSON log line per agent event, each carrying a
+  `run_id` correlation key and per-call `elapsed_seconds`.
+
+Selecting a provider that is not installed fails with a clear error listing the
+installed providers.
 
 ## Architecture
 
-The code follows Clean Architecture: four concentric layers whose dependencies
-point only inward, mechanically enforced by `import-linter` contracts in
-`pyproject.toml` (`make imports`). The single composition root
-(`local_llm/composition.py`) is the only place that wires concrete adapters to
-the application's ports.
+A uv **workspace** (monorepo) of one core distribution plus one distribution per
+integration — the convention used by LangChain (`langchain-*`) and LlamaIndex
+(`llama-index-*`).
 
-| Layer | Package | Responsibility |
-| --- | --- | --- |
-| `domain/` | entities + value objects | Pure types: `ChatMessage`, `AgentDecision` (polymorphic), `Number`, and validated value objects. Zero outward dependencies. |
-| `application/` | use cases + ports | `AgentRuntime` loop, the `ChatModel` (streaming + `Closeable`) / `AgentTool` / `AgentPolicy` / `AgentObserver` / `TokenSink` / `StructuredLogger` / `LifecycleHook` ports, plus `ToolRegistry` and `HookChain`. |
-| `infrastructure/` | adapters | `llama_cpp/` model adapter, `tools/calculator/` (AST visitor), `policy/` (strict-JSON), `observability/` (structured logging), `providers/` (model factory). |
-| `presentation/` | CLI delivery | Argument parsing into a validated `AppConfig` and plain-text result rendering. |
+```
+packages/
+  little-harness-core/        # import root: little_harness
+  little-harness-llama-cpp/    # provider plugin (entry point: llama_cpp)
+  little-harness-calculator/   # tool plugin (entry point: calculator)
+  little-harness-litellm/      # provider plugin (entry point: litellm)
+  little-harness/              # umbrella meta-distribution (no code)
+```
 
-Dependencies flow `presentation`/`infrastructure` → `application` → `domain`;
-`presentation` and `infrastructure` never reference each other.
+`little-harness-core` follows Clean Architecture — four concentric layers whose
+dependencies point only inward, mechanically enforced by `import-linter`:
 
-**Extending it is closed for modification:**
-- a **new tool** — implement `AgentTool`, register it in `composition.py`;
-- a **new LLM provider** — add an `infrastructure/<provider>/` adapter implementing
-  `ChatModel` (`complete_streaming` + `close`, vendor SDK kept inside that package),
-  add its config fields, and register one builder in `composition.CHAT_MODEL_BUILDERS`.
-  No application/domain change; selectable via `--provider`;
-- **tracing/metrics** — implement `AgentObserver` and pass it to `build_application`
-  (the loop emits events carrying `run_id` + `elapsed`; `NullObserver` is the default,
-  `StructuredLoggingObserver` logs JSON);
-- **live output** — implement `TokenSink` (`NullTokenSink` is the default,
-  `StdoutTokenSink` streams to the terminal under `--stream`);
-- **interception** — implement `LifecycleHook` to alter control flow at
-  `SessionStart` / `UserPromptSubmit` / `PreToolUse` / `PostToolUse` / `Stop` /
-  `SessionEnd`. Each point returns a `HookDecision` — `Proceed`, `InjectContext`
-  (append a message, then proceed), or `Block` (skip the action: abort the run,
-  skip the tool, or keep looping). Subclass `NullHook` (the default) and override
-  only the events you need; register several via `HookChain` in `build_hooks`.
+| Layer | Responsibility |
+| --- | --- |
+| `domain/` | Pure entities + validated value objects. Zero outward dependencies. |
+| `application/` | `AgentRuntime` loop and the ports (`ChatModel`, `AgentTool`, `AgentPolicy`, `AgentObserver`, `TokenSink`, `LifecycleHook`), plus `ToolRegistry` and `HookChain`. |
+| `infrastructure/` | Core defaults only: strict-JSON `policy/`, structured-logging `observability/`, `hooks/`. |
+| `presentation/` | CLI: argument parsing into a validated `AppConfig` and plain-text rendering. |
 
-Key patterns: Ports & Adapters, Strategy (`AgentPolicy`), Visitor
-(`DecisionVisitor`, `HookDecisionVisitor`, AST node evaluators), Factory (provider
-selection), Composite (`HookChain`), Observer (`AgentObserver`), Null Object
-(`NullObserver`, `NullTokenSink`, `NullHook`), and first-class collections
-(`ToolRegistry`, `MessageHistory`, `AgentSteps`).
+`little_harness/plugin_discovery.py` is the single place that loads plugins
+dynamically: `entry_point.load()` imports a provider/tool adapter (and its vendor
+SDK) only when selected. Each plugin distribution depends on core, implements a
+port, and registers an entry point — so core discovers plugins without importing
+them. That is Dependency Inversion at the package boundary.
+
+### Extending it — add a distribution, not a branch
+
+- **New provider** — a `little-harness-<name>` package implementing `ChatModel`
+  (`complete_streaming` + `close`, vendor SDK sealed inside it) with a
+  `build(options) -> ChatModel` registered under the
+  `little_harness.chat_model_providers` entry-point group. No core change;
+  selectable via `--provider <name>`.
+- **New tool** — a package implementing `AgentTool` with a `build() -> AgentTool`
+  registered under `little_harness.tools`. Discovered into the `ToolRegistry`.
+- **Tracing/metrics, live output, interception** — implement `AgentObserver`,
+  `TokenSink`, or `LifecycleHook` and wire them in the core composition root.
+
+Key patterns: Ports & Adapters, entry-point plugin discovery, Strategy
+(`AgentPolicy`), Visitor (decisions, hook decisions, AST evaluation), Factory
+(provider builders), Composite (`HookChain`), Observer, Null Object, and
+first-class collections.
 
 ## Development
 
-All quality gates run through a single command:
+Each package passes the full gate set on its own; the workspace `make check`
+aggregates them:
 
 ```
-make check   # lint, typecheck, complexity, dead-code, deps, imports, security, semgrep, test
+make check   # lint, typecheck (pyright strict), complexity, dead-code, deps,
+             # imports, security, semgrep, tests, mutation (zero survivors)
 ```
 
-Individual targets are available too (`make test`, `make typecheck`,
-`make imports`, `make mutation`, …). See the `Makefile`.
-
-End-to-end tests against the real local model are opt-in (deselected from
-`make check`) and run with `make integration`; they skip automatically when the
-GGUF model file is absent.
+Individual targets run per package (e.g. `make test`, `make typecheck`,
+`make mutation`). End-to-end tests against the real local model are opt-in and
+run with `make integration`; they skip automatically when the GGUF model file is
+absent. After adding or renaming a plugin, run `uv sync --all-packages` so its
+entry points register for discovery.
