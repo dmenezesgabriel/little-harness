@@ -35,7 +35,9 @@ def build(options: Mapping[str, str]) -> ChatModel:
 
 
 def to_settings(options: Mapping[str, str]) -> LlamaCppModelSettings:
-    model_path = options.get("model_path", DEFAULT_MODEL_PATH)
+    # The GGUF path is the model here, so accept the generic `model` key (set by
+    # --model) as an alias for the explicit `model_path` option.
+    model_path = options.get("model_path") or options.get("model") or DEFAULT_MODEL_PATH
     return LlamaCppModelSettings(
         model_path=ModelPath(Path(model_path)),
         context_size=ContextSize(int_option(options, "n_ctx", DEFAULT_CONTEXT_SIZE)),

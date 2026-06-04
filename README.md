@@ -14,7 +14,7 @@ Batteries-included (core + llama.cpp provider + calculator tool):
 
 ```
 uv pip install little-harness
-little-harness -o model_path=models/LFM2-8B-A1B-Q4_K_M.gguf \
+little-harness --model models/LFM2-8B-A1B-Q4_K_M.gguf \
   -p "What is 144 divided by 12? Then tell me if the result is even or odd."
 ```
 
@@ -22,19 +22,24 @@ Or compose explicitly — core plus just the plugins you want:
 
 ```
 uv pip install little-harness-core little-harness-litellm
-little-harness --provider litellm -o model=gpt-4o -o api_base=https://my-proxy/v1
+export GEMINI_API_KEY=...   # litellm reads provider keys from the environment
+little-harness --provider litellm --model gemini/gemini-2.5-flash -p "Hello!"
 ```
 
 ### CLI flags
 
-The core CLI is provider-agnostic. Sampling/loop flags are first-class; every
-provider-specific setting is passed as repeatable `-o KEY=VALUE` and validated by
-the selected provider plugin.
+The core CLI is provider-agnostic. `--model` and the sampling/loop flags are
+first-class; any other provider-specific setting is passed as repeatable
+`-o KEY=VALUE` and validated by the selected provider plugin.
 
 - `--provider` — the installed provider plugin to use (default `llama_cpp`).
+- `-m, --model` — the model to use; provider-specific (a model name for
+  `litellm` like `gemini/gemini-2.5-flash`, a GGUF path for `llama_cpp`).
+  Shorthand for `-o model=…`.
 - `-o, --option KEY=VALUE` — provider-specific setting, repeatable. For
   `llama_cpp`: `model_path`, `n_ctx`, `n_threads`, `n_gpu_layers`. For `litellm`:
-  `model` (required), `api_base`, `api_key`.
+  `api_base`, `api_key` (the key is also read from the environment, e.g.
+  `GEMINI_API_KEY`/`OPENAI_API_KEY`).
 - `--temperature`, `--max-tokens`, `--max-iterations` — sampling and loop bounds.
 - `--stream` — stream generated tokens to stdout (the strict-JSON protocol means
   streamed text is JSON).

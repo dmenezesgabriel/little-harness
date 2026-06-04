@@ -86,6 +86,12 @@ def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
         help="Chat model provider to use (an installed plugin name).",
     )
     parser.add_argument(
+        "-m",
+        "--model",
+        help="Model to use; provider-specific (a model name for litellm, a GGUF "
+        "path for llama_cpp). Shorthand for -o model=...",
+    )
+    parser.add_argument(
         "-o",
         "--option",
         action="append",
@@ -105,10 +111,19 @@ def to_app_config(namespace: argparse.Namespace) -> AppConfig:
         max_tokens=MaxTokens(namespace.max_tokens),
         max_iterations=MaxIterations(namespace.max_iterations),
         provider=namespace.provider,
-        provider_options=parse_options(namespace.options),
+        provider_options=build_provider_options(namespace.model, namespace.options),
         enable_logging=namespace.log,
         enable_streaming=namespace.stream,
     )
+
+
+def build_provider_options(model: str | None, pairs: Sequence[str]) -> dict[str, str]:
+    # `--model` is shorthand for the `model` option; an explicit `-o model=` wins.
+    options: dict[str, str] = {}
+    if model is not None:
+        options["model"] = model
+    options.update(parse_options(pairs))
+    return options
 
 
 def parse_options(pairs: Sequence[str]) -> dict[str, str]:

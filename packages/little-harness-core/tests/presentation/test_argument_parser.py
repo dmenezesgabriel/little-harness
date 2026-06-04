@@ -38,6 +38,13 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object]] = [
         "llama_cpp",
     ),
     (
+        "model",
+        ["-m", "--model"],
+        "Model to use; provider-specific (a model name for litellm, a GGUF path "
+        "for llama_cpp). Shorthand for -o model=...",
+        None,
+    ),
+    (
         "options",
         ["-o", "--option"],
         "Provider-specific setting, repeatable (e.g. -o n_ctx=8192).",
@@ -117,6 +124,18 @@ class TestArgumentParser:
             "model_path": "/tmp/m.gguf",
             "n_ctx": "4096",
         }
+
+    def test_model_flag_sets_the_model_option(self) -> None:
+        # Act / Assert: --model is shorthand for -o model=...
+        config = ArgumentParser().parse(["--model", "gemini/gemini-2.5-flash"])
+        assert config.provider_options == {"model": "gemini/gemini-2.5-flash"}
+
+    def test_explicit_model_option_overrides_the_model_flag(self) -> None:
+        # Act
+        config = ArgumentParser().parse(["--model", "a", "-o", "model=b"])
+
+        # Assert
+        assert config.provider_options == {"model": "b"}
 
     def test_keeps_equals_signs_inside_an_option_value(self) -> None:
         # Act

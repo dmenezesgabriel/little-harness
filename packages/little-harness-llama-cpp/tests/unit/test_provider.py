@@ -43,6 +43,20 @@ class TestToSettings:
         assert settings.thread_count == ThreadCount(4)
         assert settings.gpu_layer_count == GpuLayerCount(20)
 
+    def test_uses_the_generic_model_option_as_the_gguf_path(self) -> None:
+        # Act / Assert: --model (the `model` key) is an alias for `model_path`.
+        settings = to_settings({"model": "/tmp/from-model.gguf"})
+        assert settings.model_path == ModelPath(Path("/tmp/from-model.gguf"))
+
+    def test_prefers_model_path_over_the_generic_model_option(self) -> None:
+        # Act
+        settings = to_settings(
+            {"model_path": "/tmp/explicit.gguf", "model": "/tmp/generic.gguf"}
+        )
+
+        # Assert
+        assert settings.model_path == ModelPath(Path("/tmp/explicit.gguf"))
+
     def test_rejects_a_non_integer_option(self) -> None:
         # Act / Assert: the message names the offending key and value.
         with pytest.raises(ValueError, match="Option 'n_ctx' is not an integer"):
