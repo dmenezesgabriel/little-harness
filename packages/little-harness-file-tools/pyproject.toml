@@ -1,0 +1,83 @@
+[project]
+name = "little-harness-file-tools"
+version = "0.1.0"
+description = "Filesystem and shell tool plugins (read_file, write_file, edit_file, bash) for little-harness."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Gabriel Menezes", email = "gabriel.d.menezes@gmail.com" }]
+dependencies = [
+    "little-harness-core",
+]
+
+[project.urls]
+Homepage = "https://github.com/dmenezesgabriel/little-harness"
+Repository = "https://github.com/dmenezesgabriel/little-harness"
+Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
+
+[project.entry-points."little_harness.tools"]
+read_file = "little_harness_file_tools.provider:build_read_file"
+write_file = "little_harness_file_tools.provider:build_write_file"
+edit_file = "little_harness_file_tools.provider:build_edit_file"
+bash = "little_harness_file_tools.provider:build_bash"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/little_harness_file_tools"]
+
+[tool.pyright]
+include = ["src/little_harness_file_tools", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+venvPath = "../.."
+venv = ".venv"
+
+[tool.uv.sources]
+little-harness-core = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harness_file_tools --cov-report=term-missing -m 'not integration'"
+markers = [
+    "integration: end-to-end tests that run a tool through the core (opt-in)",
+]
+
+[tool.mutmut]
+paths_to_mutate = ["src/little_harness_file_tools"]
+tests_dir = ["tests"]
+pytest_add_cli_args = ["--no-cov"]
+
+[tool.deptry]
+extend_exclude = ["tests"]
+# Editable workspace install: tell deptry the core distribution provides `little_harness`.
+package_module_name_map = { little-harness-core = ["little_harness"] }
+known_first_party = ["little_harness_file_tools"]
+
+[tool.vulture]
+paths = ["src/little_harness_file_tools", "tests"]
+min_confidence = 80
+
+[tool.bandit]
+# The bash tool is, by design, a shell runner: B404 (import subprocess) and B602
+# (subprocess with shell=True) are the feature, not a vulnerability. Risk is
+# bounded by the DangerousCommandGuardrail denylist and human-in-the-loop
+# approval (ToolSpec.requires_approval), so these checks are skipped here only.
+skips = ["B404", "B602"]
+
+[tool.importlinter]
+root_packages = ["little_harness_file_tools", "little_harness"]
+
+[[tool.importlinter.contracts]]
+name = "Plugin touches only core domain and ports"
+type = "forbidden"
+source_modules = ["little_harness_file_tools"]
+forbidden_modules = [
+    "little_harness.infrastructure",
+    "little_harness.presentation",
+]
