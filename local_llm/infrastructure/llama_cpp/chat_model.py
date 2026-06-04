@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import cast
 
 from llama_cpp.llama_types import CreateChatCompletionStreamResponse
 
@@ -33,10 +32,13 @@ class LlamaCppChatModel:
             max_tokens=request.max_tokens.value,
             stream=True,
         )
+        # `stream=True` returns an iterator, but the SDK's return type is a union
+        # with the non-streaming response; narrow it so chunks are typed.
+        if not isinstance(stream, Iterator):
+            raise TypeError(f"Expected a streaming response, got: {type(stream)}")
+
         for chunk in stream:
-            content = extract_chunk_content(
-                cast("CreateChatCompletionStreamResponse", chunk)
-            )
+            content = extract_chunk_content(chunk)
             if content is not None:
                 yield MessageContent(content)
 

@@ -5,10 +5,7 @@ import pytest
 from local_llm.domain.decision import FinalAnswer, ToolCall
 from local_llm.domain.errors import AgentProtocolError
 from local_llm.domain.values.text_values import MessageContent, ToolInput, ToolName
-from local_llm.infrastructure.policy.decision_parser import (
-    JsonDecisionParser,
-    load_json_object,
-)
+from local_llm.infrastructure.policy.decision_parser import JsonDecisionParser
 
 
 def parse(output: str) -> object:
@@ -49,27 +46,25 @@ class TestJsonDecisionParserValid:
 
 class TestJsonDecisionParserInvalid:
     def test_rejects_missing_json_object(self) -> None:
-        # Act / Assert
-        with pytest.raises(AgentProtocolError, match="Could not find JSON object"):
+        # Act / Assert: the full message names the cause and the guidance line.
+        with pytest.raises(AgentProtocolError) as err:
             parse("plain text")
+        assert str(err.value) == (
+            "Could not find JSON object in model output: plain text. "
+            "Expected one valid JSON object."
+        )
 
     def test_rejects_malformed_json_after_a_brace(self) -> None:
-        # Act / Assert
-        with pytest.raises(AgentProtocolError, match="Invalid JSON object"):
+        # Act / Assert: the full message echoes the offending text.
+        with pytest.raises(AgentProtocolError) as err:
             parse("here it is { not valid json")
+        assert str(err.value) == (
+            "Invalid JSON object in model output: here it is { not valid json. "
+            "Expected one valid JSON object."
+        )
 
 
-class TestLoadJsonObject:
-    def test_rejects_unparseable_text(self) -> None:
-        # Act / Assert
-        with pytest.raises(AgentProtocolError, match="Invalid JSON object"):
-            load_json_object("{bad", "{bad")
-
-    def test_rejects_json_that_is_not_an_object(self) -> None:
-        # Act / Assert
-        with pytest.raises(AgentProtocolError, match="Expected JSON object"):
-            load_json_object("[1, 2, 3]", "[1, 2, 3]")
-
+class TestJsonDecisionParserShape:
     @pytest.mark.parametrize(
         ("payload", "message"),
         [

@@ -1,8 +1,8 @@
-"""Polymorphic AST evaluation: one evaluator per node kind, no isinstance chain.
+"""Safe AST evaluation: one strategy per node kind, dispatched by node type.
 
-The tree evaluator dispatches by node type to a strategy. Recursion-bearing
-strategies (binary/unary) hold a reference to the tree evaluator; the constant
-strategy is a leaf and needs nothing.
+The tree evaluator narrows each node to its concrete kind and delegates to a
+small strategy. Recursion-bearing strategies (binary/unary) hold a reference to
+the tree evaluator; the constant strategy is a leaf and needs nothing.
 
 Example:
     value = ExpressionTreeEvaluator().evaluate(tree.body)
@@ -11,7 +11,7 @@ Example:
 from __future__ import annotations
 
 import ast
-from typing import Protocol, cast
+from typing import Protocol
 
 from local_llm.domain.values.number import Number
 from local_llm.infrastructure.tools.calculator.operators import (
@@ -25,8 +25,8 @@ class NodeEvaluator(Protocol):
 
 
 class ConstantEvaluator:
-    def evaluate(self, node: ast.AST) -> Number:
-        return number_from_constant(cast("ast.Constant", node))
+    def evaluate(self, node: ast.Constant) -> Number:
+        return number_from_constant(node)
 
 
 class BinaryOperationEvaluator:
@@ -34,18 +34,17 @@ class BinaryOperationEvaluator:
         self._tree_evaluator = tree_evaluator
         self._operations = binary_operations()
 
-    def evaluate(self, node: ast.AST) -> Number:
-        binary = cast("ast.BinOp", node)
-        operation = self._operations.get(type(binary.op))
+    def evaluate(self, node: ast.BinOp) -> Number:
+        operation = self._operations.get(type(node.op))
 
         if operation is None:
             raise ValueError(
-                f"Unsupported binary operator: {type(binary.op).__name__}. "
+                f"Unsupported binary operator: {type(node.op).__name__}. "
                 "Expected one of +, -, *, /, //, %, **."
             )
 
-        left = self._tree_evaluator.evaluate(binary.left)
-        right = self._tree_evaluator.evaluate(binary.right)
+        left = self._tree_evaluator.evaluate(node.left)
+        right = self._tree_evaluator.evaluate(node.right)
         return operation(left, right)
 
 
@@ -54,37 +53,38 @@ class UnaryOperationEvaluator:
         self._tree_evaluator = tree_evaluator
         self._operations = unary_operations()
 
-    def evaluate(self, node: ast.AST) -> Number:
-        unary = cast("ast.UnaryOp", node)
-        operation = self._operations.get(type(unary.op))
+    def evaluate(self, node: ast.UnaryOp) -> Number:
+        operation = self._operations.get(type(node.op))
 
         if operation is None:
             raise ValueError(
-                f"Unsupported unary operator: {type(unary.op).__name__}. "
+                f"Unsupported unary operator: {type(node.op).__name__}. "
                 "Expected + or -."
             )
 
-        return operation(self._tree_evaluator.evaluate(unary.operand))
+        return operation(self._tree_evaluator.evaluate(node.operand))
 
 
 class ExpressionTreeEvaluator:
     def __init__(self) -> None:
-        self._evaluators: dict[type[ast.AST], NodeEvaluator] = {
-            ast.Constant: ConstantEvaluator(),
-            ast.BinOp: BinaryOperationEvaluator(self),
-            ast.UnaryOp: UnaryOperationEvaluator(self),
-        }
+        self._constant = ConstantEvaluator()
+        self._binary = BinaryOperationEvaluator(self)
+        self._unary = UnaryOperationEvaluator(self)
 
     def evaluate(self, node: ast.AST) -> Number:
-        evaluator = self._evaluators.get(type(node))
+        if isinstance(node, ast.Constant):
+            return self._constant.evaluate(node)
 
-        if evaluator is None:
-            raise ValueError(
-                f"Unsupported expression node: {type(node).__name__}. "
-                "Expected a safe numeric expression."
-            )
+        if isinstance(node, ast.BinOp):
+            return self._binary.evaluate(node)
 
-        return evaluator.evaluate(node)
+        if isinstance(node, ast.UnaryOp):
+            return self._unary.evaluate(node)
+
+        raise ValueError(
+            f"Unsupported expression node: {type(node).__name__}. "
+            "Expected a safe numeric expression."
+        )
 
 
 def number_from_constant(node: ast.Constant) -> Number:

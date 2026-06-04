@@ -52,3 +52,6 @@ class TestJsonAgentPolicy:
         assert observation.role == USER
         assert repair.role == USER
         assert "q" in observation.content.value
+        # Pin the rendered bodies so dropping the renderer or its error is caught.
+        assert "4" in observation.content.value
+        assert "bad" in repair.content.value

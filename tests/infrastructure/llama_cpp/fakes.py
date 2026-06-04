@@ -57,6 +57,20 @@ class FakeLlama:
         )
 
 
+class NonStreamingLlama:
+    """Stand-in whose create_chat_completion returns a non-iterator response."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.init_kwargs = kwargs
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+    def create_chat_completion(self, **_kwargs: Any) -> dict[str, Any]:
+        return {"choices": [{"message": {"content": "whole answer"}}]}
+
+
 def make_settings(model_path: Path) -> LlamaCppModelSettings:
     return LlamaCppModelSettings(
         model_path=ModelPath(model_path),

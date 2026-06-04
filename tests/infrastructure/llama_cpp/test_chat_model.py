@@ -16,7 +16,11 @@ from local_llm.infrastructure.llama_cpp.chat_model import (
     LlamaCppChatModel,
     extract_chunk_content,
 )
-from tests.infrastructure.llama_cpp.fakes import FakeLlama, make_settings
+from tests.infrastructure.llama_cpp.fakes import (
+    FakeLlama,
+    NonStreamingLlama,
+    make_settings,
+)
 
 
 def make_chunk(delta: dict[str, object]) -> CreateChatCompletionStreamResponse:
@@ -43,9 +47,10 @@ class TestExtractChunkContent:
         assert extract_chunk_content(chunk) is None
 
     def test_rejects_non_string_content(self) -> None:
-        # Act / Assert
-        with pytest.raises(TypeError, match="Expected streamed content string"):
+        # Act / Assert: the message names the offending type, not a fixed one.
+        with pytest.raises(TypeError, match="Expected streamed content string") as err:
             extract_chunk_content(make_chunk({"content": 123}))
+        assert "int" in str(err.value)
 
 
 class TestLlamaCppChatModelStreaming:
@@ -89,3 +94,26 @@ class TestLlamaCppChatModelStreaming:
             "system",
             "user",
         ]
+
+    def test_rejects_a_non_streaming_response(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Arrange: the SDK returns a plain response object instead of an iterator.
+        model_file = tmp_path / "model.gguf"
+        model_file.write_bytes(b"")
+        monkeypatch.setattr(
+            "local_llm.infrastructure.llama_cpp.model_factory.Llama", NonStreamingLlama
+        )
+        chat_model = LlamaCppChatModel(make_settings(model_file))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.2),
+            MaxTokens(64),
+        )
+
+        # Act / Assert: the adapter rejects it and names the offending type.
+        with pytest.raises(TypeError, match="Expected a streaming response") as err:
+            list(chat_model.complete_streaming(request))
+        assert "dict" in str(err.value)

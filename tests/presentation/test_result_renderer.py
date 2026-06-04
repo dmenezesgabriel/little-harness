@@ -58,10 +58,8 @@ class TestResultRenderer:
         # Act
         text = ResultRenderer().render(result)
 
-        # Assert
-        assert "the answer" in text
-        assert "Elapsed: 1.50s" in text
-        assert "Agent steps:" not in text
+        # Assert: exact layout — a blank line separates answer from elapsed.
+        assert text == "the answer\n\nElapsed: 1.50s"
 
     def test_renders_steps_when_present(self) -> None:
         # Arrange
@@ -76,8 +74,8 @@ class TestResultRenderer:
         # Act
         text = ResultRenderer().render(result)
 
-        # Assert
-        assert "Agent steps:" in text
-        assert "Step 1" in text
-        assert "Action: calculator" in text
-        assert "Observation: 4" in text
+        # Assert: exact layout, including the blank-line separators.
+        assert text == (
+            "done\n\nElapsed: 0.50s\n\n"
+            "Agent steps:\n\nStep 1\nAction: calculator\nObservation: 4"
+        )

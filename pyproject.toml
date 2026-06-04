@@ -90,7 +90,7 @@ tests_dir = ["tests"]
 pytest_add_cli_args = ["--no-cov"]
 
 [tool.deptry]
-exclude = [".venv", "models", "__pycache__"]
+exclude = [".venv", "models", "__pycache__", "mutants"]
 known_first_party = ["local_llm"]
 per_rule_ignores = { DEP004 = ["pytest", "pytest_bdd"] }
 

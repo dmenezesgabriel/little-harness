@@ -7,6 +7,7 @@ import pytest
 
 from local_llm.infrastructure.observability.stdlib_logger import (
     StdlibStructuredLogger,
+    configure_stderr_emission,
     create_structured_logger,
 )
 
@@ -42,6 +43,22 @@ class TestStdlibStructuredLogger:
 
         # Assert
         assert '"event": "run_started"' in capsys.readouterr().err
+
+    def test_configure_adds_one_info_stream_handler_and_is_idempotent(self) -> None:
+        # Arrange: a fresh logger with no handlers exercises the full branch.
+        logger = logging.getLogger("local_llm_configure_test")
+        logger.handlers.clear()
+
+        # Act
+        configure_stderr_emission(logger)
+        configure_stderr_emission(logger)  # second call must not duplicate
+
+        # Assert
+        assert logger.level == logging.INFO
+        assert len(logger.handlers) == 1
+        handler = logger.handlers[0]
+        assert isinstance(handler, logging.StreamHandler)
+        assert handler.level == logging.INFO
 
     def test_serializes_non_json_values_via_str(
         self,

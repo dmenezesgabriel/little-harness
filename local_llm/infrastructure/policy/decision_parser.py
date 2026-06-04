@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from typing import cast
 
 from local_llm.domain.decision import AgentDecision, FinalAnswer, ToolCall
 from local_llm.domain.errors import AgentProtocolError
@@ -23,9 +22,7 @@ class JsonDecisionParser:
     """
 
     def parse(self, output: MessageContent) -> AgentDecision:
-        json_text = extract_first_json_object(output.value)
-        parsed = load_json_object(json_text, output.value)
-        return build_decision(parsed)
+        return build_decision(extract_first_json_object(output.value))
 
 
 def build_decision(parsed: Mapping[str, object]) -> AgentDecision:
@@ -66,22 +63,13 @@ def to_tool_name(value: str) -> ToolName:
         ) from error
 
 
-def load_json_object(json_text: str, original: str) -> Mapping[str, object]:
-    try:
-        parsed = json.loads(json_text)
-    except json.JSONDecodeError as error:
-        raise AgentProtocolError(
-            f"Invalid JSON object in model output: {original}. "
-            "Expected one valid JSON object."
-        ) from error
+def extract_first_json_object(text: str) -> Mapping[str, object]:
+    """Decode the first brace-delimited JSON object, ignoring surrounding text.
 
-    if not isinstance(parsed, dict):
-        raise AgentProtocolError(f"Expected JSON object, got: {type(parsed)}")
-
-    return cast("Mapping[str, object]", parsed)
-
-
-def extract_first_json_object(text: str) -> str:
+    Anchoring on the first "{" both skips any prose the model emits and means a
+    successful decode is always an object, so no separate object-type check is
+    needed. `build_decision` validates the object's fields.
+    """
     stripped = text.strip()
     start = stripped.find("{")
 
@@ -92,11 +80,11 @@ def extract_first_json_object(text: str) -> str:
         )
 
     try:
-        _, end = json.JSONDecoder().raw_decode(stripped[start:])
+        decoded, _ = json.JSONDecoder().raw_decode(stripped[start:])
     except json.JSONDecodeError as error:
         raise AgentProtocolError(
             f"Invalid JSON object in model output: {text}. "
             "Expected one valid JSON object."
         ) from error
 
-    return stripped[start : start + end]
+    return decoded

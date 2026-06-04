@@ -39,8 +39,14 @@ integration:
 
 mutation:
 	uv run mutmut run
+	@survivors="$$(uv run mutmut results | grep -E ': (survived|no tests)' || true)"; \
+	if [ -n "$$survivors" ]; then \
+		printf 'Surviving mutants (add tests to kill them):\n%s\n' "$$survivors"; \
+		exit 1; \
+	fi; \
+	echo "No surviving mutants."
 
-check: lint typecheck complexity dead-code deps imports security semgrep test
+check: lint typecheck complexity dead-code deps imports security semgrep test mutation
 
 pre-commit-install:
 	uv run pre-commit install

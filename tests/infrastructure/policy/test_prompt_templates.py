@@ -14,6 +14,7 @@ from local_llm.infrastructure.policy.prompt_templates import (
     render_repair_request,
     render_system_prompt,
     render_tool_observation,
+    render_tool_spec,
 )
 
 
@@ -61,13 +62,44 @@ class TestRenderSystemPrompt:
         assert "echo: Evaluate arithmetic. Input: A numeric expression." in prompt
         assert "Examples:" not in prompt
 
+    def test_joins_multiple_tool_specs_with_a_single_newline(self) -> None:
+        # Arrange
+        first = tool_spec("alpha")
+        second = tool_spec("beta")
+
+        # Act
+        prompt = render_system_prompt([first, second]).value
+
+        # Assert: the two specs are separated by exactly one newline.
+        block = f"{render_tool_spec(first)}\n{render_tool_spec(second)}"
+        assert block in prompt
+
+
+class TestRenderToolSpec:
+    def test_renders_description_input_and_joined_examples(self) -> None:
+        # Act
+        rendered = render_tool_spec(tool_spec("calc", ("2 + 2", "3 + 3")))
+
+        # Assert: exact text, examples comma-joined.
+        assert rendered == (
+            "calc: Evaluate arithmetic. Input: A numeric expression. "
+            "Examples: 2 + 2, 3 + 3."
+        )
+
+    def test_omits_the_examples_clause_when_there_are_none(self) -> None:
+        # Act
+        rendered = render_tool_spec(tool_spec("calc"))
+
+        # Assert
+        assert rendered == "calc: Evaluate arithmetic. Input: A numeric expression."
+
 
 class TestRenderToolObservation:
     @pytest.mark.parametrize(
-        ("succeeded", "expected_status"),
+        ("succeeded", "status"),
         [(True, "succeeded"), (False, "failed")],
     )
-    def test_reports_status(self, succeeded: bool, expected_status: str) -> None:
+    def test_renders_the_exact_observation(self, succeeded: bool, status: str) -> None:
         # Arrange
         result = ToolRunResult(ToolName("calculator"), ToolOutput("4"), succeeded)
 
@@ -75,13 +107,16 @@ class TestRenderToolObservation:
         message = render_tool_observation(Prompt("What is 2 + 2?"), result).value
 
         # Assert
-        assert "What is 2 + 2?" in message
-        assert f"(calculator, {expected_status})" in message
-        assert "4" in message
+        assert message == (
+            "Original user question:\nWhat is 2 + 2?\n\n"
+            f"Tool observation (calculator, {status}):\n4\n\n"
+            "Now answer the full original user question.\n"
+            "Return only one valid JSON object with action='final'."
+        )
 
 
 class TestRenderRepairRequest:
-    def test_includes_prompt_and_error_and_stays_tool_agnostic(self) -> None:
+    def test_renders_the_exact_tool_agnostic_repair_message(self) -> None:
         # Arrange
         error = AgentProtocolError("Expected JSON object")
 
@@ -89,6 +124,16 @@ class TestRenderRepairRequest:
         message = render_repair_request(Prompt("original question"), error).value
 
         # Assert
-        assert "original question" in message
-        assert "Expected JSON object" in message
+        assert message == (
+            "Your previous response was invalid. Error: Expected JSON object\n\n"
+            "Original user question:\noriginal question\n\n"
+            "Return only one valid JSON object.\n\n"
+            "Use this schema for a final answer:\n"
+            '{"action":"final","tool_name":null,"tool_input":null,"answer":"..."}'
+            "\n\n"
+            "Use this schema for a tool call:\n"
+            '{"action":"tool","tool_name":"tool_name","tool_input":"tool input",'
+            '"answer":null}\n\n'
+            "Do not return plain text. Do not return multiple JSON objects."
+        )
         assert "calculator" not in message

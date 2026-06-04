@@ -104,16 +104,18 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def to_app_config(namespace: argparse.Namespace) -> AppConfig:
+    # argparse already applied each argument's `type=`/`action`, so the values
+    # arrive correctly typed; the value objects validate ranges at construction.
     return AppConfig(
-        prompt=Prompt(str(namespace.prompt)),
-        model_path=ModelPath(Path(str(namespace.model_path))),
-        context_size=ContextSize(int(namespace.ctx)),
-        thread_count=ThreadCount(int(namespace.threads)),
-        gpu_layer_count=GpuLayerCount(int(namespace.gpu_layers)),
-        temperature=Temperature(float(namespace.temperature)),
-        max_tokens=MaxTokens(int(namespace.max_tokens)),
-        max_iterations=MaxIterations(int(namespace.max_iterations)),
-        provider=str(namespace.provider),
-        enable_logging=bool(namespace.log),
-        enable_streaming=bool(namespace.stream),
+        prompt=Prompt(namespace.prompt),
+        model_path=ModelPath(Path(namespace.model_path)),
+        context_size=ContextSize(namespace.ctx),
+        thread_count=ThreadCount(namespace.threads),
+        gpu_layer_count=GpuLayerCount(namespace.gpu_layers),
+        temperature=Temperature(namespace.temperature),
+        max_tokens=MaxTokens(namespace.max_tokens),
+        max_iterations=MaxIterations(namespace.max_iterations),
+        provider=namespace.provider,
+        enable_logging=namespace.log,
+        enable_streaming=namespace.stream,
     )
