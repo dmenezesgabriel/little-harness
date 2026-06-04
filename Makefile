@@ -1,5 +1,5 @@
 .PHONY: format lint typecheck complexity dead-code deps imports security semgrep \
-        test integration mutation check sync pre-commit-install
+        test integration mutation gates check sync pre-commit-install
 
 # Code-bearing workspace members (the umbrella `little-harness` ships no code).
 CODE_PACKAGES := little-harness-core little-harness-llama-cpp \
@@ -69,7 +69,10 @@ mutation:
 	done; \
 	echo "No surviving mutants."
 
-check: lint typecheck complexity dead-code deps imports security semgrep test mutation
+# Every gate except mutation; the fast set CI runs as its own job.
+gates: lint typecheck complexity dead-code deps imports security semgrep test
+
+check: gates mutation
 
 pre-commit-install:
 	uv run pre-commit install
