@@ -1,0 +1,124 @@
+"""Parses command-line arguments into a validated `AppConfig`.
+
+The core CLI is provider-agnostic: sampling/loop flags are first-class, but every
+provider-specific setting arrives through repeatable `--option KEY=VALUE` pairs and
+is validated later by the selected provider plugin. Value objects reject invalid
+ranges here, at the boundary, with a clear message.
+"""
+
+from __future__ import annotations
+
+import argparse
+from collections.abc import Sequence
+
+from little_harness.domain.values.numeric_values import (
+    MaxIterations,
+    MaxTokens,
+    Temperature,
+)
+from little_harness.domain.values.text_values import Prompt
+from little_harness.presentation.cli.app_config import AppConfig
+
+DEFAULT_PROVIDER = "llama_cpp"
+DEFAULT_PROMPT = (
+    "Explain llama.cpp in exactly 3 short bullet points. "
+    "Be specific: mention GGUF models, local inference, "
+    "and CPU-friendly execution."
+)
+OPTION_SEPARATOR = "="
+
+
+class ArgumentParser:
+    """Turns argv into an `AppConfig`.
+
+    Example:
+        config = ArgumentParser().parse(["--provider", "litellm", "-o", "model=gpt"])
+    """
+
+    def parse(self, argv: Sequence[str] | None = None) -> AppConfig:
+        namespace = build_parser().parse_args(argv)
+        return to_app_config(namespace)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run a small local LLM agent.")
+    add_prompt_arguments(parser)
+    add_runtime_arguments(parser)
+    add_provider_arguments(parser)
+    return parser
+
+
+def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "-p",
+        "--prompt",
+        default=DEFAULT_PROMPT,
+        help="Prompt to send to the model.",
+    )
+
+
+def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--temperature", type=float, default=0.0, help="Sampling temperature."
+    )
+    parser.add_argument(
+        "--max-tokens", type=int, default=512, help="Maximum generated tokens."
+    )
+    parser.add_argument(
+        "--max-iterations", type=int, default=5, help="Maximum agent loop iterations."
+    )
+    parser.add_argument(
+        "--log",
+        action="store_true",
+        help="Emit structured JSON logs for each agent event.",
+    )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream generated tokens to stdout as they are produced.",
+    )
+
+
+def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--provider",
+        default=DEFAULT_PROVIDER,
+        help="Chat model provider to use (an installed plugin name).",
+    )
+    parser.add_argument(
+        "-o",
+        "--option",
+        action="append",
+        default=[],
+        dest="options",
+        metavar="KEY=VALUE",
+        help="Provider-specific setting, repeatable (e.g. -o n_ctx=8192).",
+    )
+
+
+def to_app_config(namespace: argparse.Namespace) -> AppConfig:
+    # argparse already applied each argument's `type=`/`action`; value objects then
+    # validate ranges, and the provider validates its own options downstream.
+    return AppConfig(
+        prompt=Prompt(namespace.prompt),
+        temperature=Temperature(namespace.temperature),
+        max_tokens=MaxTokens(namespace.max_tokens),
+        max_iterations=MaxIterations(namespace.max_iterations),
+        provider=namespace.provider,
+        provider_options=parse_options(namespace.options),
+        enable_logging=namespace.log,
+        enable_streaming=namespace.stream,
+    )
+
+
+def parse_options(pairs: Sequence[str]) -> dict[str, str]:
+    return dict(split_option(pair) for pair in pairs)
+
+
+def split_option(pair: str) -> tuple[str, str]:
+    key, separator, value = pair.partition(OPTION_SEPARATOR)
+
+    if separator == "" or key == "":
+        raise ValueError(f"Invalid --option: {pair!r}. Expected KEY=VALUE.")
+
+    return key, value
