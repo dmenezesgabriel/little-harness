@@ -18,12 +18,12 @@ rules:
       - pattern: typing.Dict[$KEY, $VALUE]
 
   - id: agents-llama-cpp-wrapper-boundary
-    message: Keep llama_cpp imports inside the local_llm.infrastructure.llama_cpp adapter package.
+    message: Keep llama_cpp imports inside the little_harness_llama_cpp adapter package.
     severity: ERROR
     languages: [python]
     paths:
       exclude:
-        - /local_llm/infrastructure/llama_cpp/
+        - little_harness_llama_cpp/
     pattern-either:
       - pattern: import llama_cpp
       - pattern: from llama_cpp import $NAME
