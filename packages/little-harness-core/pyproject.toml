@@ -2,8 +2,16 @@
 name = "little-harness-core"
 version = "0.1.0"
 description = "Core agent loop, ports, discovery, and CLI for the little-harness LLM harness."
+readme = "README.md"
 requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Gabriel Menezes", email = "gabriel.d.menezes@gmail.com" }]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/dmenezesgabriel/little-harness"
+Repository = "https://github.com/dmenezesgabriel/little-harness"
+Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
 
 [project.scripts]
 little-harness = "little_harness.__main__:main"

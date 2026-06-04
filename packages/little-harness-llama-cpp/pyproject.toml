@@ -2,11 +2,19 @@
 name = "little-harness-llama-cpp"
 version = "0.1.0"
 description = "llama.cpp chat-model provider plugin for little-harness."
+readme = "README.md"
 requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Gabriel Menezes", email = "gabriel.d.menezes@gmail.com" }]
 dependencies = [
     "little-harness-core",
     "llama-cpp-python==0.3.23",
 ]
+
+[project.urls]
+Homepage = "https://github.com/dmenezesgabriel/little-harness"
+Repository = "https://github.com/dmenezesgabriel/little-harness"
+Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
 
 [project.entry-points."little_harness.chat_model_providers"]
 llama_cpp = "little_harness_llama_cpp.provider:build"

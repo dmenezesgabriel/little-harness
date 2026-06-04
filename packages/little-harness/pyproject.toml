@@ -4,10 +4,17 @@ version = "0.1.0"
 description = "Umbrella for little-harness: the core CLI, with providers and tools selected as extras."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Gabriel Menezes", email = "gabriel.d.menezes@gmail.com" }]
 # Bare install is core-only; every provider/tool is opt-in via an extra below.
 dependencies = [
     "little-harness-core",
 ]
+
+[project.urls]
+Homepage = "https://github.com/dmenezesgabriel/little-harness"
+Repository = "https://github.com/dmenezesgabriel/little-harness"
+Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
 
 [project.optional-dependencies]
 llama-cpp = ["little-harness-llama-cpp"]
