@@ -16,10 +16,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["little_harness_llama_cpp"]
+packages = ["src/little_harness_llama_cpp"]
 
 [tool.pyright]
-include = ["little_harness_llama_cpp", "tests"]
+include = ["src/little_harness_llama_cpp", "tests"]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
@@ -39,7 +39,7 @@ markers = [
 ]
 
 [tool.mutmut]
-paths_to_mutate = ["little_harness_llama_cpp"]
+paths_to_mutate = ["src/little_harness_llama_cpp"]
 tests_dir = ["tests"]
 pytest_add_cli_args = ["--no-cov"]
 
@@ -47,9 +47,11 @@ pytest_add_cli_args = ["--no-cov"]
 extend_exclude = ["tests"]
 # Editable workspace install: tell deptry the core distribution provides `little_harness`.
 package_module_name_map = { little-harness-core = ["little_harness"] }
+# src/ layout: our own package is first-party (it now lives under src/).
+known_first_party = ["little_harness_llama_cpp"]
 
 [tool.vulture]
-paths = ["little_harness_llama_cpp", "tests"]
+paths = ["src/little_harness_llama_cpp", "tests"]
 min_confidence = 80
 
 [tool.importlinter]

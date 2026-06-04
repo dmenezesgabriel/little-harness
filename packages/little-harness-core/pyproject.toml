@@ -13,10 +13,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["little_harness"]
+packages = ["src/little_harness"]
 
 [tool.pyright]
-include = ["little_harness", "tests"]
+include = ["src/little_harness", "tests"]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
@@ -34,15 +34,18 @@ addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harne
 exclude_also = ["if __name__ == .__main__.:"]
 
 [tool.mutmut]
-paths_to_mutate = ["little_harness"]
+paths_to_mutate = ["src/little_harness"]
 tests_dir = ["tests"]
 pytest_add_cli_args = ["--no-cov"]
 
 [tool.deptry]
 extend_exclude = ["tests"]
+# src/ layout: tell deptry our own package is first-party (it scans the project
+# root for first-party modules, which now live under src/ rather than beside it).
+known_first_party = ["little_harness"]
 
 [tool.vulture]
-paths = ["little_harness", "tests"]
+paths = ["src/little_harness", "tests"]
 min_confidence = 80
 
 [tool.importlinter]
