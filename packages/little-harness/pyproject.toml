@@ -20,7 +20,12 @@ Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
 llama-cpp = ["little-harness-llama-cpp"]
 litellm = ["little-harness-litellm"]
 calculator = ["little-harness-calculator"]
-all = ["little-harness[llama-cpp,litellm,calculator]"]
+file-tools = ["little-harness-file-tools"]
+ripgrep = ["little-harness-ripgrep"]
+ast = ["little-harness-ast"]
+all = [
+    "little-harness[llama-cpp,litellm,calculator,file-tools,ripgrep,ast]",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -35,3 +40,6 @@ little-harness-core = { workspace = true }
 little-harness-llama-cpp = { workspace = true }
 little-harness-calculator = { workspace = true }
 little-harness-litellm = { workspace = true }
+little-harness-file-tools = { workspace = true }
+little-harness-ripgrep = { workspace = true }
+little-harness-ast = { workspace = true }

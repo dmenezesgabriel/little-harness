@@ -3,7 +3,13 @@
 
 # Code-bearing workspace members (the umbrella `little-harness` ships no code).
 CODE_PACKAGES := little-harness-core little-harness-llama-cpp \
-                 little-harness-calculator little-harness-litellm
+                 little-harness-calculator little-harness-litellm \
+                 little-harness-file-tools little-harness-ripgrep \
+                 little-harness-ast
+
+# Members with opt-in, end-to-end integration tests (marked `integration`).
+INTEGRATION_PACKAGES := little-harness-llama-cpp little-harness-file-tools \
+                        little-harness-ripgrep little-harness-ast
 
 sync:
 	uv sync --all-packages
@@ -43,7 +49,10 @@ imports:
 	done
 
 security:
-	uv run bandit -qr packages -x '*/tests/*'
+	@for pkg in $(CODE_PACKAGES); do \
+		echo "bandit: $$pkg"; \
+		uv run --directory packages/$$pkg bandit -qr src -c pyproject.toml || exit 1; \
+	done
 
 semgrep:
 	uv run semgrep --error --config semgrep-rules packages
@@ -55,7 +64,10 @@ test:
 	done
 
 integration:
-	uv run --directory packages/little-harness-llama-cpp pytest -m integration --no-cov
+	@for pkg in $(INTEGRATION_PACKAGES); do \
+		echo "integration: $$pkg"; \
+		uv run --directory packages/$$pkg pytest -m integration --no-cov || exit 1; \
+	done
 
 mutation:
 	@for pkg in $(CODE_PACKAGES); do \

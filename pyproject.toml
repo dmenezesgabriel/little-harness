@@ -4,6 +4,9 @@ members = [
     "packages/little-harness-llama-cpp",
     "packages/little-harness-calculator",
     "packages/little-harness-litellm",
+    "packages/little-harness-file-tools",
+    "packages/little-harness-ripgrep",
+    "packages/little-harness-ast",
     "packages/little-harness",
 ]
 
@@ -27,6 +30,9 @@ dev = [
     "little-harness-llama-cpp",
     "little-harness-calculator",
     "little-harness-litellm",
+    "little-harness-file-tools",
+    "little-harness-ripgrep",
+    "little-harness-ast",
 ]
 
 [tool.uv]
@@ -37,6 +43,9 @@ little-harness-core = { workspace = true }
 little-harness-llama-cpp = { workspace = true }
 little-harness-calculator = { workspace = true }
 little-harness-litellm = { workspace = true }
+little-harness-file-tools = { workspace = true }
+little-harness-ripgrep = { workspace = true }
+little-harness-ast = { workspace = true }
 
 # --- Shared lint/type config applied repo-wide (one source of truth) ---
 
@@ -70,6 +79,16 @@ ignore = [
     "ANN401",
     "PLR0913",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# SubprocessShellRunner reports non-zero exits via CommandOutcome instead of
+# raising, so it omits `check`. An explicit `check=False` (what PLW1510 wants)
+# only adds an *equivalent* mutant the zero-survivor mutation gate cannot kill,
+# so the two gates conflict here; the runners are covered by their own tests.
+# `ripgrep_search.py` is the same case: it reports rg's exit code (0/1/2) rather
+# than raising, so `check` is deliberately omitted.
+"**/shell_command_runner.py" = ["PLW1510"]
+"**/ripgrep_search.py" = ["PLW1510"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 8

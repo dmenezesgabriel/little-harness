@@ -21,6 +21,23 @@ jobs:
       - name: Run gates
         run: make gates
 
+  integration:
+    name: integration (tools through the core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync workspace
+        run: uv sync --all-packages
+      # Hermetic tool integration tests run; llama-cpp scenarios skip without a
+      # local GGUF model.
+      - name: Run integration tests
+        run: make integration
+
   mutation:
     name: mutation (zero survivors)
     runs-on: ubuntu-latest
