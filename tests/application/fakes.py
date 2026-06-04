@@ -7,6 +7,7 @@ from collections.abc import Iterator, Sequence
 from local_llm.application.ports.chat_model import ChatCompletionRequest
 from local_llm.domain.decision import AgentDecision, FinalAnswer, ToolCall
 from local_llm.domain.errors import AgentProtocolError
+from local_llm.domain.hook_decision import HookDecision, Proceed
 from local_llm.domain.message import ChatMessage
 from local_llm.domain.result import AgentResult
 from local_llm.domain.tool_result import ToolRunRequest, ToolRunResult
@@ -204,6 +205,87 @@ class RecordingObserver:
         self.run_ids.append(run_id)
         self.events.append("run_finished")
         self.finished.append(result)
+
+
+class ScriptedHook:
+    """LifecycleHook double: returns a configured decision per point, records calls.
+
+    Each point defaults to `Proceed()`; pass a decision to script one point while
+    leaving the rest proceeding, the way `DecisionQueuePolicy` scripts decisions.
+    Every argument is recorded so tests can assert correct delegation/threading.
+    """
+
+    def __init__(
+        self,
+        *,
+        session_start: HookDecision | None = None,
+        user_prompt_submit: HookDecision | None = None,
+        pre_tool_use: HookDecision | None = None,
+        post_tool_use: HookDecision | None = None,
+        stop: HookDecision | None = None,
+    ) -> None:
+        self.calls: list[str] = []
+        self.run_ids: list[RunId] = []
+        self.prompts: list[Prompt] = []
+        self.iterations: list[Iteration] = []
+        self.tool_calls: list[ToolCall] = []
+        self.tool_results: list[ToolRunResult] = []
+        self.answers: list[MessageContent] = []
+        self.ended_with: list[AgentResult] = []
+        self._session_start = session_start or Proceed()
+        self._user_prompt_submit = user_prompt_submit or Proceed()
+        self._pre_tool_use = pre_tool_use or Proceed()
+        self._post_tool_use = post_tool_use or Proceed()
+        self._stop = stop or Proceed()
+
+    def on_session_start(self, run_id: RunId, prompt: Prompt) -> HookDecision:
+        self.calls.append("session_start")
+        self.run_ids.append(run_id)
+        self.prompts.append(prompt)
+        return self._session_start
+
+    def on_user_prompt_submit(self, run_id: RunId, prompt: Prompt) -> HookDecision:
+        self.calls.append("user_prompt_submit")
+        self.run_ids.append(run_id)
+        self.prompts.append(prompt)
+        return self._user_prompt_submit
+
+    def on_pre_tool_use(
+        self, run_id: RunId, iteration: Iteration, call: ToolCall
+    ) -> HookDecision:
+        self.calls.append("pre_tool_use")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        self.tool_calls.append(call)
+        return self._pre_tool_use
+
+    def on_post_tool_use(
+        self,
+        run_id: RunId,
+        iteration: Iteration,
+        call: ToolCall,
+        result: ToolRunResult,
+    ) -> HookDecision:
+        self.calls.append("post_tool_use")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        self.tool_calls.append(call)
+        self.tool_results.append(result)
+        return self._post_tool_use
+
+    def on_stop(
+        self, run_id: RunId, iteration: Iteration, answer: MessageContent
+    ) -> HookDecision:
+        self.calls.append("stop")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        self.answers.append(answer)
+        return self._stop
+
+    def on_session_end(self, run_id: RunId, result: AgentResult) -> None:
+        self.calls.append("session_end")
+        self.run_ids.append(run_id)
+        self.ended_with.append(result)
 
 
 def final_decision(answer: str) -> FinalAnswer:

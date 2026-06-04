@@ -12,6 +12,7 @@ from local_llm.application.loop_state import AgentLoopState
 from local_llm.application.ports.chat_model import ChatCompletionRequest
 from local_llm.domain.decision import AgentDecision
 from local_llm.domain.errors import AgentProtocolError
+from local_llm.domain.hook_decision import Block, InjectContext, Proceed
 from local_llm.domain.message import ChatMessage
 from local_llm.domain.message_history import MessageHistory
 from local_llm.domain.result import AgentResult
@@ -24,7 +25,7 @@ from local_llm.domain.values.numeric_values import (
     MaxTokens,
     Temperature,
 )
-from local_llm.domain.values.role import ASSISTANT, SYSTEM, USER
+from local_llm.domain.values.role import ASSISTANT, SYSTEM, USER, Role
 from local_llm.domain.values.text_values import MessageContent, Prompt, RunId
 
 FALLBACK_ANSWER = MessageContent(
@@ -38,6 +39,28 @@ class AgentRuntimeConfig:
     max_iterations: MaxIterations
     temperature: Temperature
     max_tokens: MaxTokens
+
+
+class SessionDecisionApplier:
+    """Applies a session hook's decision: inject a message, or report a block.
+
+    Implements `HookDecisionVisitor[MessageContent | None]`; the returned reason
+    is the answer the run aborts with, or None to continue.
+    """
+
+    def __init__(self, state: AgentLoopState, role: Role) -> None:
+        self._state = state
+        self._role = role
+
+    def visit_proceed(self, _decision: Proceed) -> MessageContent | None:
+        return None
+
+    def visit_inject_context(self, decision: InjectContext) -> MessageContent | None:
+        self._state.append_message(ChatMessage(self._role, decision.content))
+        return None
+
+    def visit_block(self, decision: Block) -> MessageContent | None:
+        return decision.reason
 
 
 class AgentRuntime:
@@ -61,6 +84,10 @@ class AgentRuntime:
         started_at = time.perf_counter()
         state = AgentLoopState(self._initial_messages(prompt))
 
+        blocked = self._begin_session(run_id, prompt, state)
+        if blocked is not None:
+            return self._finish(run_id, started_at, blocked, state.steps)
+
         for index in range(1, self._config.max_iterations.value + 1):
             answer = self._run_iteration(run_id, state, prompt, Iteration(index))
 
@@ -68,6 +95,19 @@ class AgentRuntime:
                 return self._finish(run_id, started_at, answer, state.steps)
 
         return self._finish(run_id, started_at, FALLBACK_ANSWER, state.steps)
+
+    def _begin_session(
+        self, run_id: RunId, prompt: Prompt, state: AgentLoopState
+    ) -> MessageContent | None:
+        """Run session-start then prompt-submit hooks; a block returns its reason."""
+        start = self._dependencies.hooks.on_session_start(run_id, prompt)
+        blocked = start.accept(SessionDecisionApplier(state, SYSTEM))
+
+        if blocked is not None:
+            return blocked
+
+        submit = self._dependencies.hooks.on_user_prompt_submit(run_id, prompt)
+        return submit.accept(SessionDecisionApplier(state, USER))
 
     def _run_iteration(
         self,
@@ -147,4 +187,5 @@ class AgentRuntime:
         elapsed = ElapsedSeconds(time.perf_counter() - started_at)
         result = AgentResult(answer, elapsed, steps)
         self._dependencies.observer.on_run_finished(run_id, result)
+        self._dependencies.hooks.on_session_end(run_id, result)
         return result

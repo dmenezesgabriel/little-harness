@@ -10,7 +10,9 @@ from local_llm.application.agent_runtime import (
 )
 from local_llm.application.ports.agent_tool import AgentTool
 from local_llm.application.ports.chat_model import ChatModel
+from local_llm.application.ports.lifecycle_hook import LifecycleHook
 from local_llm.application.tool_registry import ToolRegistry
+from local_llm.domain.hook_decision import Block, InjectContext
 from local_llm.domain.message import ChatMessage
 from local_llm.domain.message_history import MessageHistory
 from local_llm.domain.tool_result import ToolRunRequest, ToolRunResult
@@ -24,10 +26,12 @@ from local_llm.domain.values.role import ASSISTANT, SYSTEM, USER
 from local_llm.domain.values.text_values import (
     MessageContent,
     Prompt,
+    RunId,
     ToolInput,
     ToolName,
     ToolOutput,
 )
+from local_llm.infrastructure.hooks.null_hook import NullHook
 from tests.application.fakes import (
     ChunkedChatModel,
     DecisionQueuePolicy,
@@ -36,6 +40,7 @@ from tests.application.fakes import (
     RecordingChatModel,
     RecordingObserver,
     RecordingTokenSink,
+    ScriptedHook,
     final_decision,
     tool_decision,
 )
@@ -48,6 +53,7 @@ def create_runtime(
     observer: RecordingObserver | None = None,
     max_iterations: int = 3,
     token_sink: RecordingTokenSink | None = None,
+    hooks: LifecycleHook | None = None,
 ) -> AgentRuntime:
     dependencies = AgentDependencies(
         chat_model=chat_model,
@@ -55,6 +61,7 @@ def create_runtime(
         policy=policy,
         observer=observer or RecordingObserver(),
         token_sink=token_sink or RecordingTokenSink(),
+        hooks=hooks or NullHook(),
     )
     config = AgentRuntimeConfig(
         max_iterations=MaxIterations(max_iterations),
@@ -169,7 +176,8 @@ class TestAgentRuntimeRepair:
         # Arrange
         chat_model = RecordingChatModel(["invalid", "final"])
         policy = DecisionQueuePolicy([final_decision("done")])
-        runtime = create_runtime(chat_model, [], policy)
+        observer = RecordingObserver()
+        runtime = create_runtime(chat_model, [], policy, observer)
 
         # Act
         result = runtime.run(Prompt("question"))
@@ -188,6 +196,12 @@ class TestAgentRuntimeRepair:
             message.content.value.startswith("Repair")
             for message in chat_model.requests[1].messages
         )
+        # The repair event carries the iteration, the real error, and one run id.
+        repair_iteration, repair_error = observer.repairs[0]
+        assert repair_iteration == Iteration(1)
+        assert repair_error is policy.repair_errors[0]
+        assert all(isinstance(rid, RunId) and rid.value for rid in observer.run_ids)
+        assert len(set(observer.run_ids)) == 1
 
 
 class TestAgentRuntimeExhaustion:
@@ -218,13 +232,230 @@ class TestAgentRuntimeStreaming:
         chat_model = ChunkedChatModel(["fi", "nal"])
         policy = DecisionQueuePolicy([final_decision("done")])
         token_sink = RecordingTokenSink()
-        runtime = create_runtime(chat_model, [], policy, token_sink=token_sink)
+        observer = RecordingObserver()
+        runtime = create_runtime(
+            chat_model, [], policy, observer, token_sink=token_sink
+        )
 
         # Act
         runtime.run(Prompt("question"))
 
-        # Assert: chunks reach the sink in order; the runtime joins them for parsing.
+        # Assert: chunks reach the sink in order, and the runtime joins them with
+        # no separator into the completed model output.
         assert [chunk.value for chunk in token_sink.chunks] == ["fi", "nal"]
+        assert observer.model_outputs == [(Iteration(1), MessageContent("final"))]
+
+
+class TestAgentRuntimeSessionHooks:
+    def test_session_start_block_aborts_before_calling_the_model(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(session_start=Block(MessageContent("denied")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        # Act
+        result = runtime.run(Prompt("question"))
+
+        # Assert: the run ends with the block reason and the model is never called.
+        assert result.answer == MessageContent("denied")
+        assert list(result.steps) == []
+        assert chat_model.requests == []
+        assert hook.calls == ["session_start", "session_end"]
+        # The aborting finish still threads one real run id to every hook.
+        assert all(isinstance(rid, RunId) and rid.value for rid in hook.run_ids)
+        assert len(set(hook.run_ids)) == 1
+
+    def test_user_prompt_submit_injects_context_into_the_conversation(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(user_prompt_submit=InjectContext(MessageContent("ctx")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the injected message reaches the model on the first turn.
+        first_messages = list(chat_model.requests[0].messages)
+        assert ChatMessage(USER, MessageContent("ctx")) in first_messages
+
+    def test_session_start_injects_a_system_message_into_the_conversation(
+        self,
+    ) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(session_start=InjectContext(MessageContent("rules")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the injected system context reaches the model on the first turn.
+        first_messages = list(chat_model.requests[0].messages)
+        assert ChatMessage(SYSTEM, MessageContent("rules")) in first_messages
+
+    def test_session_end_runs_after_the_session_hooks(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook()
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the final answer routes through the stop hook before the end.
+        assert hook.calls == [
+            "session_start",
+            "user_prompt_submit",
+            "stop",
+            "session_end",
+        ]
+
+
+class TestAgentRuntimeToolHooks:
+    def test_pre_tool_use_block_skips_the_tool_and_feeds_the_reason(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("ok")]
+        )
+        tool = RecordingAgentTool()
+        hook = ScriptedHook(pre_tool_use=Block(MessageContent("not allowed")))
+        runtime = create_runtime(chat_model, [tool], policy, hooks=hook)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the tool never ran; the block reason is the failed observation.
+        assert tool.requests == []
+        assert policy.tool_results == [
+            ToolRunResult(
+                ToolName("calculator"),
+                ToolOutput("not allowed"),
+                succeeded=False,
+            )
+        ]
+
+    def test_pre_tool_use_inject_adds_context_and_still_runs_the_tool(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("4")]
+        )
+        tool = RecordingAgentTool()
+        hook = ScriptedHook(pre_tool_use=InjectContext(MessageContent("hint")))
+        runtime = create_runtime(chat_model, [tool], policy, hooks=hook)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the tool still ran and the injected hint reaches the next turn.
+        assert tool.requests == [
+            ToolRunRequest(ToolName("calculator"), ToolInput("2 + 2"))
+        ]
+        assert ChatMessage(USER, MessageContent("hint")) in list(
+            chat_model.requests[1].messages
+        )
+
+    def test_post_tool_use_block_appends_the_reason_as_feedback(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("4")]
+        )
+        tool = RecordingAgentTool()
+        hook = ScriptedHook(post_tool_use=Block(MessageContent("rejected")))
+        runtime = create_runtime(chat_model, [tool], policy, hooks=hook)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the tool ran, and the block reason is fed back to the model.
+        assert tool.requests == [
+            ToolRunRequest(ToolName("calculator"), ToolInput("2 + 2"))
+        ]
+        assert ChatMessage(USER, MessageContent("rejected")) in list(
+            chat_model.requests[1].messages
+        )
+
+    def test_post_tool_use_injects_feedback_after_the_observation(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("4")]
+        )
+        tool = RecordingAgentTool()
+        hook = ScriptedHook(post_tool_use=InjectContext(MessageContent("checked")))
+        runtime = create_runtime(chat_model, [tool], policy, hooks=hook)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the feedback reaches the model on the next turn.
+        second_turn = list(chat_model.requests[1].messages)
+        assert ChatMessage(USER, MessageContent("checked")) in second_turn
+
+    def test_threads_run_id_iteration_and_payloads_to_every_hook(self) -> None:
+        # Arrange: one tool turn then a final answer, hooks proceeding throughout.
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("4")]
+        )
+        hook = ScriptedHook()
+        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy, hooks=hook)
+
+        # Act
+        result = runtime.run(Prompt("question"))
+
+        # Assert: each hook is called with the correct correlation id and payload.
+        assert hook.calls == [
+            "session_start",
+            "user_prompt_submit",
+            "pre_tool_use",
+            "post_tool_use",
+            "stop",
+            "session_end",
+        ]
+        assert len(set(hook.run_ids)) == 1
+        assert hook.prompts == [Prompt("question"), Prompt("question")]
+        assert hook.iterations == [Iteration(1), Iteration(1), Iteration(2)]
+        assert hook.tool_calls == [
+            tool_decision("calculator", "2 + 2"),
+            tool_decision("calculator", "2 + 2"),
+        ]
+        assert hook.tool_results == [
+            ToolRunResult(ToolName("calculator"), ToolOutput("4"), succeeded=True)
+        ]
+        assert hook.answers == [MessageContent("4")]
+        assert hook.ended_with == [result]
+
+    def test_stop_block_keeps_looping_with_the_reason_as_guidance(self) -> None:
+        # Arrange: every stop is vetoed, so two final answers still exhaust the loop.
+        vetoed_turns = 2
+        chat_model = RecordingChatModel(["final", "final"])
+        policy = DecisionQueuePolicy(
+            [final_decision("first"), final_decision("second")]
+        )
+        hook = ScriptedHook(stop=Block(MessageContent("keep going")))
+        runtime = create_runtime(
+            chat_model, [], policy, hooks=hook, max_iterations=vetoed_turns
+        )
+
+        # Act
+        result = runtime.run(Prompt("question"))
+
+        # Assert: the loop ran twice and the guidance was fed back after the veto.
+        assert result.answer == FALLBACK_ANSWER
+        assert len(chat_model.requests) == vetoed_turns
+        assert ChatMessage(USER, MessageContent("keep going")) in list(
+            chat_model.requests[1].messages
+        )
+        # The fallback finish threads one real run id through to session end.
+        assert all(isinstance(rid, RunId) and rid.value for rid in hook.run_ids)
+        assert len(set(hook.run_ids)) == 1
 
 
 class TestAgentRuntimeObservability:
@@ -257,9 +488,13 @@ class TestAgentRuntimeObservability:
             )
         ]
         assert observer.finished == [result]
-        assert [decision for _, decision in observer.parsed] == [
-            tool_decision("calculator", "2 + 2"),
-            final_decision("4"),
+        assert observer.parsed == [
+            (Iteration(1), tool_decision("calculator", "2 + 2")),
+            (Iteration(2), final_decision("4")),
+        ]
+        assert observer.model_outputs == [
+            (Iteration(1), MessageContent("tool")),
+            (Iteration(2), MessageContent("final")),
         ]
 
     def test_correlates_every_event_with_one_run_id(self) -> None:
@@ -274,9 +509,10 @@ class TestAgentRuntimeObservability:
         # Act
         runtime.run(Prompt("question"))
 
-        # Assert: a single run shares exactly one correlation id across all events.
+        # Assert: a single run shares exactly one real correlation id everywhere.
         assert len(observer.run_ids) == len(observer.events)
         assert len(set(observer.run_ids)) == 1
+        assert all(isinstance(rid, RunId) and rid.value for rid in observer.run_ids)
 
     def test_measures_non_negative_model_and_tool_durations(self) -> None:
         # Arrange
@@ -290,9 +526,10 @@ class TestAgentRuntimeObservability:
         # Act
         runtime.run(Prompt("question"))
 
-        # Assert: one measurement per model/tool event, all non-negative.
+        # Assert: one measurement per model/tool event, each a small elapsed delta.
+        upper_bound_seconds = 10.0
         assert len(observer.model_elapsed) == observer.events.count("model_completed")
         assert len(observer.tool_elapsed) == observer.events.count("tool_invoked")
         assert observer.model_elapsed and observer.tool_elapsed
-        assert all(elapsed.value >= 0.0 for elapsed in observer.model_elapsed)
-        assert all(elapsed.value >= 0.0 for elapsed in observer.tool_elapsed)
+        assert all(0.0 <= e.value < upper_bound_seconds for e in observer.model_elapsed)
+        assert all(0.0 <= e.value < upper_bound_seconds for e in observer.tool_elapsed)

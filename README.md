@@ -32,7 +32,7 @@ the application's ports.
 | Layer | Package | Responsibility |
 | --- | --- | --- |
 | `domain/` | entities + value objects | Pure types: `ChatMessage`, `AgentDecision` (polymorphic), `Number`, and validated value objects. Zero outward dependencies. |
-| `application/` | use cases + ports | `AgentRuntime` loop, the `ChatModel` (streaming + `Closeable`) / `AgentTool` / `AgentPolicy` / `AgentObserver` / `TokenSink` / `StructuredLogger` ports, and `ToolRegistry`. |
+| `application/` | use cases + ports | `AgentRuntime` loop, the `ChatModel` (streaming + `Closeable`) / `AgentTool` / `AgentPolicy` / `AgentObserver` / `TokenSink` / `StructuredLogger` / `LifecycleHook` ports, plus `ToolRegistry` and `HookChain`. |
 | `infrastructure/` | adapters | `llama_cpp/` model adapter, `tools/calculator/` (AST visitor), `policy/` (strict-JSON), `observability/` (structured logging), `providers/` (model factory). |
 | `presentation/` | CLI delivery | Argument parsing into a validated `AppConfig` and plain-text result rendering. |
 
@@ -49,12 +49,19 @@ Dependencies flow `presentation`/`infrastructure` → `application` → `domain`
   (the loop emits events carrying `run_id` + `elapsed`; `NullObserver` is the default,
   `StructuredLoggingObserver` logs JSON);
 - **live output** — implement `TokenSink` (`NullTokenSink` is the default,
-  `StdoutTokenSink` streams to the terminal under `--stream`).
+  `StdoutTokenSink` streams to the terminal under `--stream`);
+- **interception** — implement `LifecycleHook` to alter control flow at
+  `SessionStart` / `UserPromptSubmit` / `PreToolUse` / `PostToolUse` / `Stop` /
+  `SessionEnd`. Each point returns a `HookDecision` — `Proceed`, `InjectContext`
+  (append a message, then proceed), or `Block` (skip the action: abort the run,
+  skip the tool, or keep looping). Subclass `NullHook` (the default) and override
+  only the events you need; register several via `HookChain` in `build_hooks`.
 
 Key patterns: Ports & Adapters, Strategy (`AgentPolicy`), Visitor
-(`DecisionVisitor`, AST node evaluators), Factory (provider selection), Observer
-(`AgentObserver`), Null Object (`NullObserver`, `NullTokenSink`), and first-class
-collections (`ToolRegistry`, `MessageHistory`, `AgentSteps`).
+(`DecisionVisitor`, `HookDecisionVisitor`, AST node evaluators), Factory (provider
+selection), Composite (`HookChain`), Observer (`AgentObserver`), Null Object
+(`NullObserver`, `NullTokenSink`, `NullHook`), and first-class collections
+(`ToolRegistry`, `MessageHistory`, `AgentSteps`).
 
 ## Development
 
