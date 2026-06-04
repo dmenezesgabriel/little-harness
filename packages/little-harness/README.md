@@ -1,13 +1,14 @@
 # little-harness
 
-Batteries-included install of the little-harness local LLM agent: the core CLI
-(`little-harness`), the llama.cpp chat-model provider, and the calculator tool.
+Umbrella for the little-harness local LLM agent. Installing it bare pulls in the
+core CLI (`little-harness`) only; providers and tools are opt-in **extras**.
 
 ```
-uv pip install little-harness
-little-harness --provider llama_cpp -o model_path=models/model.gguf -p "2 + 2?"
+uv pip install "little-harness[llama-cpp,calculator]"
+little-harness -o model_path=models/model.gguf -p "2 + 2?"
 ```
 
-Install only what you need instead by combining `little-harness-core` with
-individual provider/tool plugins (e.g. `little-harness-litellm`). See the
-repository root README for the full architecture.
+Available extras: `llama-cpp`, `litellm`, `calculator`, and `all`. Combining
+`little-harness-core` with individually-named plugin distributions (e.g.
+`little-harness-litellm`) is equivalent. See the repository root README for the
+full architecture.

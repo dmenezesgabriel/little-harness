@@ -22,6 +22,8 @@ def local_agent() -> None:
 def ask_the_agent(question: str, model_path: Path) -> str:
     return run_cli(
         [
+            "--provider",
+            "llama_cpp",
             "--prompt",
             question,
             "-o",

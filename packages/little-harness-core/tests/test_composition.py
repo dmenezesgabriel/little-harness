@@ -122,6 +122,25 @@ class TestProviderSelection:
         # Act / Assert
         assert isinstance(build_chat_model(config), FakeChatModel)
 
+    def test_rejects_no_selection_when_several_providers_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: two providers, and the config names none (provider stays None).
+        install_entry_points(
+            monkeypatch,
+            {
+                PROVIDER_GROUP: [
+                    FakeEntryPoint("litellm", make_provider_builder("")),
+                    FakeEntryPoint("llama_cpp", make_provider_builder("")),
+                ]
+            },
+        )
+        config = ArgumentParser().parse(["--prompt", "hi"])
+
+        # Act / Assert: ambiguous default fails instead of guessing.
+        with pytest.raises(UnknownProviderError, match=r"2 installed"):
+            build_chat_model(config)
+
     def test_rejects_an_unknown_provider_with_the_installed_list(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

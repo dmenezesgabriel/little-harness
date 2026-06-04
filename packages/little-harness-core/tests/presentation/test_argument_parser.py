@@ -14,9 +14,7 @@ from little_harness.presentation.cli.argument_parser import (
 )
 
 DEFAULT_PROMPT_TEXT = (
-    "Explain llama.cpp in exactly 3 short bullet points. "
-    "Be specific: mention GGUF models, local inference, "
-    "and CPU-friendly execution."
+    "What is 144 divided by 12? Then tell me if the result is even or odd."
 )
 
 EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object]] = [
@@ -34,8 +32,9 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object]] = [
     (
         "provider",
         ["--provider"],
-        "Chat model provider to use (an installed plugin name).",
-        "llama_cpp",
+        "Chat model provider to use (an installed plugin name). "
+        "Defaults to the sole installed provider.",
+        None,
     ),
     (
         "model",
@@ -95,7 +94,7 @@ class TestArgumentParser:
             temperature=Temperature(0.0),
             max_tokens=MaxTokens(512),
             max_iterations=MaxIterations(5),
-            provider="llama_cpp",
+            provider=None,
             provider_options={},
             enable_logging=False,
             enable_streaming=False,

@@ -22,7 +22,11 @@ from little_harness.infrastructure.observability.structured_logging_observer imp
     StructuredLoggingObserver,
 )
 from little_harness.infrastructure.policy.json_agent_policy import JsonAgentPolicy
-from little_harness.plugin_discovery import discover_tools, load_chat_model_builder
+from little_harness.plugin_discovery import (
+    default_provider_name,
+    discover_tools,
+    load_chat_model_builder,
+)
 from little_harness.presentation.cli.app_config import AppConfig
 from little_harness.presentation.cli.argument_parser import ArgumentParser
 from little_harness.presentation.cli.result_renderer import ResultRenderer
@@ -96,7 +100,8 @@ def build_hooks() -> LifecycleHook:
 
 def build_chat_model(config: AppConfig) -> ChatModel:
     # Discovery imports only the selected provider's adapter (and its vendor SDK).
-    builder = load_chat_model_builder(config.provider)
+    provider = config.provider or default_provider_name()
+    builder = load_chat_model_builder(provider)
     return builder(config.provider_options)
 
 

@@ -28,7 +28,8 @@ class AppConfig:
     temperature: Temperature
     max_tokens: MaxTokens
     max_iterations: MaxIterations
-    provider: str = "llama_cpp"
+    # None means "no provider chosen"; the composition root resolves the default.
+    provider: str | None = None
     provider_options: Mapping[str, str] = field(default_factory=_no_options)
     enable_logging: bool = False
     enable_streaming: bool = False

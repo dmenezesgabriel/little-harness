@@ -19,12 +19,8 @@ from little_harness.domain.values.numeric_values import (
 from little_harness.domain.values.text_values import Prompt
 from little_harness.presentation.cli.app_config import AppConfig
 
-DEFAULT_PROVIDER = "llama_cpp"
-DEFAULT_PROMPT = (
-    "Explain llama.cpp in exactly 3 short bullet points. "
-    "Be specific: mention GGUF models, local inference, "
-    "and CPU-friendly execution."
-)
+# Provider-agnostic default: exercises tool calling without naming any provider.
+DEFAULT_PROMPT = "What is 144 divided by 12? Then tell me if the result is even or odd."
 OPTION_SEPARATOR = "="
 
 
@@ -81,9 +77,11 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
 
 def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
+        # No `default=`: argparse defaults to None, meaning "no provider chosen",
+        # which the composition root resolves to the sole installed provider.
         "--provider",
-        default=DEFAULT_PROVIDER,
-        help="Chat model provider to use (an installed plugin name).",
+        help="Chat model provider to use (an installed plugin name). "
+        "Defaults to the sole installed provider.",
     )
     parser.add_argument(
         "-m",

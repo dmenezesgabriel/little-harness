@@ -54,5 +54,25 @@ def installed_providers() -> list[str]:
     return sorted(point.name for point in entry_points(group=PROVIDER_GROUP))
 
 
+def default_provider_name() -> str:
+    """Name the provider to use when `--provider` is omitted.
+
+    Core ships no provider, so the default is whichever single provider is
+    installed. Zero or several is ambiguous and fails with the installed list.
+
+    Example:
+        builder = load_chat_model_builder(default_provider_name())
+    """
+    installed = installed_providers()
+
+    if len(installed) != 1:
+        raise UnknownProviderError(
+            f"No provider selected and {len(installed)} installed: {installed}. "
+            "Pass --provider, or install exactly one provider plugin."
+        )
+
+    return installed[0]
+
+
 def discover_tools() -> Sequence[AgentTool]:
     return [point.load()() for point in entry_points(group=TOOL_GROUP)]

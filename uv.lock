@@ -780,17 +780,34 @@ name = "little-harness"
 version = "0.1.0"
 source = { editable = "packages/little-harness" }
 dependencies = [
-    { name = "little-harness-calculator" },
     { name = "little-harness-core" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "little-harness-calculator" },
+    { name = "little-harness-litellm" },
+    { name = "little-harness-llama-cpp" },
+]
+calculator = [
+    { name = "little-harness-calculator" },
+]
+litellm = [
+    { name = "little-harness-litellm" },
+]
+llama-cpp = [
     { name = "little-harness-llama-cpp" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "little-harness-calculator", editable = "packages/little-harness-calculator" },
+    { name = "little-harness", extras = ["llama-cpp", "litellm", "calculator"], marker = "extra == 'all'" },
+    { name = "little-harness-calculator", marker = "extra == 'calculator'", editable = "packages/little-harness-calculator" },
     { name = "little-harness-core", editable = "packages/little-harness-core" },
-    { name = "little-harness-llama-cpp", editable = "packages/little-harness-llama-cpp" },
+    { name = "little-harness-litellm", marker = "extra == 'litellm'", editable = "packages/little-harness-litellm" },
+    { name = "little-harness-llama-cpp", marker = "extra == 'llama-cpp'", editable = "packages/little-harness-llama-cpp" },
 ]
+provides-extras = ["llama-cpp", "litellm", "calculator", "all"]
 
 [[package]]
 name = "little-harness-calculator"

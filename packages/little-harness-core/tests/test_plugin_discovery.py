@@ -14,6 +14,7 @@ from little_harness.plugin_discovery import (
     PROVIDER_GROUP,
     TOOL_GROUP,
     ChatModelBuilder,
+    default_provider_name,
     discover_tools,
     installed_providers,
     load_chat_model_builder,
@@ -101,6 +102,56 @@ class TestInstalledProviders:
 
         # Act / Assert
         assert installed_providers() == ["litellm", "llama_cpp"]
+
+
+class TestDefaultProviderName:
+    def test_returns_the_sole_installed_provider(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch,
+            {PROVIDER_GROUP: [FakeEntryPoint("llama_cpp", unbuilt_provider)]},
+        )
+
+        # Act / Assert
+        assert default_provider_name() == "llama_cpp"
+
+    def test_rejects_when_no_provider_is_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(monkeypatch, {})
+
+        # Act / Assert: the message names the count and the installed list.
+        with pytest.raises(UnknownProviderError) as err:
+            default_provider_name()
+        assert str(err.value) == (
+            "No provider selected and 0 installed: []. "
+            "Pass --provider, or install exactly one provider plugin."
+        )
+
+    def test_rejects_when_several_providers_are_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch,
+            {
+                PROVIDER_GROUP: [
+                    FakeEntryPoint("litellm", unbuilt_provider),
+                    FakeEntryPoint("llama_cpp", unbuilt_provider),
+                ]
+            },
+        )
+
+        # Act / Assert: ambiguous, so the sorted installed list is reported.
+        with pytest.raises(UnknownProviderError) as err:
+            default_provider_name()
+        assert str(err.value) == (
+            "No provider selected and 2 installed: ['litellm', 'llama_cpp']. "
+            "Pass --provider, or install exactly one provider plugin."
+        )
 
 
 class TestDiscoverTools:
