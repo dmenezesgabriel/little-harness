@@ -23,7 +23,8 @@ class WriteFileTool:
     def spec(self) -> ToolSpec:
         return ToolSpec(
             ToolName("write_file"),
-            "Write text to a file, creating parent directories and overwriting.",
+            "Create a new file (or overwrite an existing one) with the given text, "
+            "making parent directories as needed. Use this to create a file.",
             ToolInputSchema(
                 'A JSON object {"path": "...", "content": "..."}.',
                 ToolExamples(('{"path": "notes.txt", "content": "hello"}',)),

@@ -24,7 +24,8 @@ class EditFileTool:
     def spec(self) -> ToolSpec:
         return ToolSpec(
             ToolName("edit_file"),
-            "Replace the unique occurrence of a text snippet in a file.",
+            "Replace a unique text snippet inside a file that already exists. "
+            "The file must already exist; use write_file to create a new one.",
             ToolInputSchema(
                 'A JSON object {"path": "...", "old": "...", "new": "..."}.',
                 ToolExamples(('{"path": "app.py", "old": "x = 1", "new": "x = 2"}',)),
