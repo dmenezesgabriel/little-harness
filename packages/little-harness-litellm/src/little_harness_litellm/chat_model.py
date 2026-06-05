@@ -14,7 +14,10 @@ from collections.abc import Iterator
 from typing import Any
 
 import litellm
-from little_harness.application.ports.chat_model import ChatCompletionRequest
+from little_harness.application.ports.chat_model import (
+    ChatCompletionRequest,
+    ResponseSchema,
+)
 from little_harness.domain.values.text_values import MessageContent
 
 from little_harness_litellm.message_mapper import to_litellm_message
@@ -48,6 +51,7 @@ class LiteLLMChatModel:
             stream=True,
             api_base=self._settings.api_base,
             api_key=self._settings.api_key,
+            response_format=to_response_format(request.response_schema),
         )
         # `stream=True` yields an iterator, but the SDK's return type unions it with
         # the non-streaming response; reject the non-streaming case at runtime. The
@@ -61,6 +65,23 @@ class LiteLLMChatModel:
 
     def close(self) -> None:
         """LiteLLM holds no persistent native resource; nothing to release."""
+
+
+def to_response_format(
+    schema: ResponseSchema | None,
+) -> dict[str, object] | None:
+    """Turn a policy schema into LiteLLM's OpenAI-style `json_schema` format.
+
+    Backends with structured outputs or guided decoding (OpenAI, vLLM, Ollama)
+    enforce it; LiteLLM degrades it for the rest. None leaves output free.
+    """
+    if schema is None:
+        return None
+
+    return {
+        "type": "json_schema",
+        "json_schema": {"name": "agent_decision", "schema": dict(schema.value)},
+    }
 
 
 def reject_non_streaming(response: object) -> None:

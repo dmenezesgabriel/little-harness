@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import pytest
-from little_harness.application.ports.chat_model import ChatCompletionRequest
+from little_harness.application.ports.chat_model import (
+    ChatCompletionRequest,
+    ResponseSchema,
+)
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.numeric_values import MaxTokens, Temperature
 from little_harness.domain.values.role import SYSTEM, USER
 from little_harness.domain.values.text_values import MessageContent
-from little_harness_litellm.chat_model import LiteLLMChatModel, extract_delta_content
+from little_harness_litellm.chat_model import (
+    LiteLLMChatModel,
+    extract_delta_content,
+    to_response_format,
+)
 from little_harness_litellm.settings import LiteLLMSettings
 
 from tests.unit.fakes import (
@@ -91,6 +98,32 @@ class TestLiteLLMChatModelStreaming:
             "system",
             "user",
         ]
+        # No schema on the request leaves the response format unset.
+        assert completion.kwargs["response_format"] is None
+
+    def test_forwards_a_response_schema_as_an_openai_json_schema(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        completion = RecordingCompletion([content_chunk("ok")])
+        monkeypatch.setattr("litellm.completion", completion)
+        model = LiteLLMChatModel(LiteLLMSettings("gpt-4o"))
+        schema = {"type": "object", "required": ["action"]}
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.2),
+            MaxTokens(64),
+            ResponseSchema(schema),
+        )
+
+        # Act
+        list(model.complete_streaming(request))
+
+        # Assert
+        assert completion.kwargs["response_format"] == {
+            "type": "json_schema",
+            "json_schema": {"name": "agent_decision", "schema": schema},
+        }
 
     def test_rejects_a_non_streaming_response(
         self, monkeypatch: pytest.MonkeyPatch
@@ -112,3 +145,19 @@ class TestLiteLLMChatModelStreaming:
     def test_close_is_a_noop(self) -> None:
         # Act / Assert: LiteLLM has no native resource; close must not raise.
         LiteLLMChatModel(LiteLLMSettings("gpt-4o")).close()
+
+
+class TestToResponseFormat:
+    def test_returns_none_for_no_schema(self) -> None:
+        # Act / Assert
+        assert to_response_format(None) is None
+
+    def test_wraps_the_schema_as_an_openai_json_schema(self) -> None:
+        # Arrange
+        schema = {"type": "object", "required": ["action"]}
+
+        # Act / Assert
+        assert to_response_format(ResponseSchema(schema)) == {
+            "type": "json_schema",
+            "json_schema": {"name": "agent_decision", "schema": schema},
+        }
