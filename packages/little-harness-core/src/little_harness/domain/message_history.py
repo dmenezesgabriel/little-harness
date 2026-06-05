@@ -21,9 +21,6 @@ class MessageHistory:
     def with_message(self, message: ChatMessage) -> MessageHistory:
         return MessageHistory((*self._messages, message))
 
-    def contains(self, message: ChatMessage) -> bool:
-        return message in self._messages
-
     def __iter__(self) -> Iterator[ChatMessage]:
         return iter(self._messages)
 

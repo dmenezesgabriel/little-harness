@@ -25,11 +25,3 @@ class TestMessageHistory:
         # Assert
         assert len(empty) == 0
         assert list(grown) == [system_message(), user_message()]
-
-    def test_contains_reports_membership(self) -> None:
-        # Arrange
-        history = MessageHistory().with_message(system_message())
-
-        # Act / Assert
-        assert history.contains(system_message()) is True
-        assert history.contains(user_message()) is False
