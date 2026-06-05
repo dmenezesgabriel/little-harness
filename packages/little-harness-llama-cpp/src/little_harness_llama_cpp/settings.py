@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from little_harness_llama_cpp.values import (
+    BatchSize,
     ContextSize,
     GpuLayerCount,
     ModelPath,
@@ -18,3 +19,5 @@ class LlamaCppModelSettings:
     context_size: ContextSize
     thread_count: ThreadCount
     gpu_layer_count: GpuLayerCount
+    batch_size: BatchSize
+    flash_attention: bool

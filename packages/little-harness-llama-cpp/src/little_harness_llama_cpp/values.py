@@ -67,6 +67,20 @@ class ThreadCount:
 
 
 @dataclass(frozen=True)
+class BatchSize:
+    """Prompt tokens processed per llama.cpp batch. Larger speeds prefill. Must be > 0.
+
+    Example:
+        batch_size = BatchSize(512)
+    """
+
+    value: int
+
+    def __post_init__(self) -> None:
+        require_positive_int(self.value, "BatchSize")
+
+
+@dataclass(frozen=True)
 class GpuLayerCount:
     """Number of layers offloaded to GPU. 0 means CPU-only. Must be >= 0.
 

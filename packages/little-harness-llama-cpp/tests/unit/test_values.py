@@ -6,6 +6,7 @@ from typing import Protocol
 
 import pytest
 from little_harness_llama_cpp.values import (
+    BatchSize,
     ContextSize,
     GpuLayerCount,
     ModelPath,
@@ -20,7 +21,11 @@ class IntValueObject(Protocol):
 
 PositiveIntFactory = Callable[[int], IntValueObject]
 
-POSITIVE_INT_FACTORIES: list[PositiveIntFactory] = [ContextSize, ThreadCount]
+POSITIVE_INT_FACTORIES: list[PositiveIntFactory] = [
+    ContextSize,
+    ThreadCount,
+    BatchSize,
+]
 
 
 class TestPositiveIntegerValues:

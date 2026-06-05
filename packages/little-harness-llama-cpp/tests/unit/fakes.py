@@ -8,6 +8,7 @@ from typing import Any, cast
 
 from little_harness_llama_cpp.settings import LlamaCppModelSettings
 from little_harness_llama_cpp.values import (
+    BatchSize,
     ContextSize,
     GpuLayerCount,
     ModelPath,
@@ -34,12 +35,14 @@ class FakeLlama:
         temperature: float,
         max_tokens: int,
         stream: bool = False,
+        response_format: object = None,
     ) -> Iterator[CreateChatCompletionStreamResponse]:
         self.completion_kwargs = {
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": stream,
+            "response_format": response_format,
         }
         # First chunk is role-only (no content); the adapter must skip it.
         return iter(
@@ -76,4 +79,6 @@ def make_settings(model_path: Path) -> LlamaCppModelSettings:
         context_size=ContextSize(8192),
         thread_count=ThreadCount(8),
         gpu_layer_count=GpuLayerCount(0),
+        batch_size=BatchSize(512),
+        flash_attention=True,
     )

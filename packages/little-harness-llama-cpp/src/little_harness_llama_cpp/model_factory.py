@@ -19,6 +19,11 @@ def create_llama_model(settings: LlamaCppModelSettings) -> Llama:
         model_path=str(path),
         n_ctx=settings.context_size.value,
         n_threads=settings.thread_count.value,
+        # Reuse the inference threads for prefill: small local runs rarely gain
+        # from a separate batch pool, and an unset value would fall back to 1.
+        n_threads_batch=settings.thread_count.value,
+        n_batch=settings.batch_size.value,
         n_gpu_layers=settings.gpu_layer_count.value,
+        flash_attn=settings.flash_attention,
         verbose=False,
     )

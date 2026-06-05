@@ -4,7 +4,10 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from little_harness.application.ports.chat_model import ChatCompletionRequest
+from little_harness.application.ports.chat_model import (
+    ChatCompletionRequest,
+    ResponseSchema,
+)
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.numeric_values import MaxTokens, Temperature
@@ -13,6 +16,7 @@ from little_harness.domain.values.text_values import MessageContent
 from little_harness_llama_cpp.chat_model import (
     LlamaCppChatModel,
     extract_chunk_content,
+    to_response_format,
 )
 from llama_cpp.llama_types import CreateChatCompletionStreamResponse
 
@@ -92,6 +96,42 @@ class TestLlamaCppChatModelStreaming:
             "system",
             "user",
         ]
+        # No schema on the request leaves decoding unconstrained.
+        assert recorded["response_format"] is None
+
+    def test_forwards_a_response_schema_as_a_json_grammar(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Arrange
+        model_file = tmp_path / "model.gguf"
+        model_file.write_bytes(b"")
+        created: list[FakeLlama] = []
+
+        def fake_llama(**kwargs: Any) -> FakeLlama:
+            instance = FakeLlama(**kwargs)
+            created.append(instance)
+            return instance
+
+        monkeypatch.setattr("little_harness_llama_cpp.model_factory.Llama", fake_llama)
+        chat_model = LlamaCppChatModel(make_settings(model_file))
+        schema = {"type": "object", "required": ["action"]}
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.2),
+            MaxTokens(64),
+            ResponseSchema(schema),
+        )
+
+        # Act
+        list(chat_model.complete_streaming(request))
+
+        # Assert: the schema becomes llama.cpp's json_object grammar request.
+        assert created[0].completion_kwargs["response_format"] == {
+            "type": "json_object",
+            "schema": schema,
+        }
 
     def test_close_releases_the_native_model(
         self,
@@ -139,3 +179,19 @@ class TestLlamaCppChatModelStreaming:
         with pytest.raises(TypeError, match="Expected a streaming response") as err:
             list(chat_model.complete_streaming(request))
         assert "dict" in str(err.value)
+
+
+class TestToResponseFormat:
+    def test_returns_none_for_no_schema(self) -> None:
+        # Act / Assert
+        assert to_response_format(None) is None
+
+    def test_wraps_the_schema_as_a_json_object_grammar(self) -> None:
+        # Arrange
+        schema = {"type": "object", "required": ["action"]}
+
+        # Act / Assert
+        assert to_response_format(ResponseSchema(schema)) == {
+            "type": "json_object",
+            "schema": schema,
+        }

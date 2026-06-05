@@ -37,6 +37,9 @@ class TestCreateLlamaModel:
             "model_path": str(model_file),
             "n_ctx": 8192,
             "n_threads": 8,
+            "n_threads_batch": 8,
+            "n_batch": 512,
             "n_gpu_layers": 0,
+            "flash_attn": True,
             "verbose": False,
         }

@@ -18,6 +18,7 @@ from little_harness.application.ports.chat_model import ChatModel
 from little_harness_llama_cpp.chat_model import LlamaCppChatModel
 from little_harness_llama_cpp.settings import LlamaCppModelSettings
 from little_harness_llama_cpp.values import (
+    BatchSize,
     ContextSize,
     GpuLayerCount,
     ModelPath,
@@ -28,6 +29,9 @@ DEFAULT_MODEL_PATH = "models/LFM2-8B-A1B-Q4_K_M.gguf"
 DEFAULT_CONTEXT_SIZE = 8192
 DEFAULT_THREAD_COUNT = 8
 DEFAULT_GPU_LAYER_COUNT = 0
+DEFAULT_BATCH_SIZE = 512
+DEFAULT_FLASH_ATTENTION = True
+TRUE_OPTION_VALUES = frozenset({"1", "true", "yes", "on"})
 
 
 def build(options: Mapping[str, str]) -> ChatModel:
@@ -47,7 +51,18 @@ def to_settings(options: Mapping[str, str]) -> LlamaCppModelSettings:
         gpu_layer_count=GpuLayerCount(
             int_option(options, "n_gpu_layers", DEFAULT_GPU_LAYER_COUNT)
         ),
+        batch_size=BatchSize(int_option(options, "n_batch", DEFAULT_BATCH_SIZE)),
+        flash_attention=bool_option(options, "flash_attn", DEFAULT_FLASH_ATTENTION),
     )
+
+
+def bool_option(options: Mapping[str, str], key: str, default: bool) -> bool:
+    raw = options.get(key)
+
+    if raw is None:
+        return default
+
+    return raw.strip().lower() in TRUE_OPTION_VALUES
 
 
 def int_option(options: Mapping[str, str], key: str, default: int) -> int:

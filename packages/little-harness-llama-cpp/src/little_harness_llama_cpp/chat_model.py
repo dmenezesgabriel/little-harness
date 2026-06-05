@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from little_harness.application.ports.chat_model import ChatCompletionRequest
+from little_harness.application.ports.chat_model import (
+    ChatCompletionRequest,
+    ResponseSchema,
+)
 from little_harness.domain.values.text_values import MessageContent
-from llama_cpp.llama_types import CreateChatCompletionStreamResponse
+from llama_cpp.llama_types import (
+    ChatCompletionRequestResponseFormat,
+    CreateChatCompletionStreamResponse,
+)
 
 from little_harness_llama_cpp.message_mapper import to_llama_message
 from little_harness_llama_cpp.model_factory import create_llama_model
@@ -31,6 +37,7 @@ class LlamaCppChatModel:
             temperature=request.temperature.value,
             max_tokens=request.max_tokens.value,
             stream=True,
+            response_format=to_response_format(request.response_schema),
         )
         # `stream=True` returns an iterator, but the SDK's return type is a union
         # with the non-streaming response; narrow it so chunks are typed.
@@ -44,6 +51,23 @@ class LlamaCppChatModel:
 
     def close(self) -> None:
         self._llm.close()
+
+
+def to_response_format(
+    schema: ResponseSchema | None,
+) -> ChatCompletionRequestResponseFormat | None:
+    """Turn a policy schema into llama.cpp's JSON-grammar response format.
+
+    Passing `schema` makes llama.cpp build a GBNF grammar that constrains decoding
+    to schema-valid JSON, so malformed output (and its repair round-trips) cannot
+    happen. None leaves generation unconstrained.
+    """
+    if schema is None:
+        return None
+
+    return ChatCompletionRequestResponseFormat(
+        type="json_object", schema=dict(schema.value)
+    )
 
 
 def extract_chunk_content(chunk: CreateChatCompletionStreamResponse) -> str | None:
