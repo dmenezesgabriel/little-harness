@@ -7,6 +7,8 @@ members = [
     "packages/little-harness-file-tools",
     "packages/little-harness-ripgrep",
     "packages/little-harness-ast",
+    "packages/little-harness-json-policy",
+    "packages/little-harness-logging",
     "packages/little-harness",
 ]
 
@@ -33,6 +35,8 @@ dev = [
     "little-harness-file-tools",
     "little-harness-ripgrep",
     "little-harness-ast",
+    "little-harness-json-policy",
+    "little-harness-logging",
 ]
 
 [tool.uv]
@@ -46,6 +50,8 @@ little-harness-litellm = { workspace = true }
 little-harness-file-tools = { workspace = true }
 little-harness-ripgrep = { workspace = true }
 little-harness-ast = { workspace = true }
+little-harness-json-policy = { workspace = true }
+little-harness-logging = { workspace = true }
 
 # --- Shared lint/type config applied repo-wide (one source of truth) ---
 

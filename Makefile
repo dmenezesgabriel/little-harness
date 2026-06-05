@@ -5,7 +5,8 @@
 CODE_PACKAGES := little-harness-core little-harness-llama-cpp \
                  little-harness-calculator little-harness-litellm \
                  little-harness-file-tools little-harness-ripgrep \
-                 little-harness-ast
+                 little-harness-ast little-harness-json-policy \
+                 little-harness-logging
 
 # Members with opt-in, end-to-end integration tests (marked `integration`).
 INTEGRATION_PACKAGES := little-harness-llama-cpp little-harness-file-tools \

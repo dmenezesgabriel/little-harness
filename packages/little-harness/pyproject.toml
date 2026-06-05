@@ -23,8 +23,10 @@ calculator = ["little-harness-calculator"]
 file-tools = ["little-harness-file-tools"]
 ripgrep = ["little-harness-ripgrep"]
 ast = ["little-harness-ast"]
+json-policy = ["little-harness-json-policy"]
+logging = ["little-harness-logging"]
 all = [
-    "little-harness[llama-cpp,litellm,calculator,file-tools,ripgrep,ast]",
+    "little-harness[llama-cpp,litellm,calculator,file-tools,ripgrep,ast,json-policy,logging]",
 ]
 
 [build-system]
@@ -43,3 +45,5 @@ little-harness-litellm = { workspace = true }
 little-harness-file-tools = { workspace = true }
 little-harness-ripgrep = { workspace = true }
 little-harness-ast = { workspace = true }
+little-harness-json-policy = { workspace = true }
+little-harness-logging = { workspace = true }
