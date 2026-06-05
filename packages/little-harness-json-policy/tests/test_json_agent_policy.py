@@ -10,7 +10,7 @@ from little_harness.domain.values.text_values import (
     ToolName,
     ToolOutput,
 )
-from little_harness.infrastructure.policy.json_agent_policy import JsonAgentPolicy
+from little_harness_json_policy.json_agent_policy import JsonAgentPolicy
 
 
 class TestJsonAgentPolicy:

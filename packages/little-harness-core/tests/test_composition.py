@@ -1,23 +1,26 @@
 from __future__ import annotations
 
-import logging
 from collections.abc import Mapping
 
 import pytest
 from little_harness.application.agent_runtime import AgentRuntimeConfig
+from little_harness.application.hook_chain import HookChain
 from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.composition import (
     build_application,
     build_chat_model,
+    build_hook_list,
     build_hooks,
     build_observer,
     build_permission_requester,
+    build_policy,
     build_token_sink,
     run_cli,
     to_runtime_config,
 )
-from little_harness.domain.errors import UnknownProviderError
+from little_harness.domain.decision import FinalAnswer
+from little_harness.domain.errors import UnknownPolicyError, UnknownProviderError
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.numeric_values import (
@@ -26,21 +29,17 @@ from little_harness.domain.values.numeric_values import (
     Temperature,
 )
 from little_harness.domain.values.text_values import (
+    MessageContent,
     Prompt,
-    RunId,
     ToolName,
     ToolOutput,
 )
 from little_harness.infrastructure.hooks.approval_hook import ApprovalHook
-from little_harness.infrastructure.hooks.null_hook import NullHook
 from little_harness.infrastructure.observability.null_observer import NullObserver
-from little_harness.infrastructure.observability.structured_logging_observer import (
-    StructuredLoggingObserver,
-)
 from little_harness.infrastructure.permissions.auto_approve_requester import (
     AutoApprovePermissionRequester,
 )
-from little_harness.plugin_discovery import PROVIDER_GROUP
+from little_harness.plugin_discovery import OBSERVER_GROUP, POLICY_GROUP, PROVIDER_GROUP
 from little_harness.presentation.cli.argument_parser import ArgumentParser
 from little_harness.presentation.cli.permission_prompt import (
     InteractivePermissionRequester,
@@ -51,7 +50,10 @@ from tests.application.fakes import RecordingObserver
 from tests.plugin_fakes import (
     FakeChatModel,
     FakeEntryPoint,
+    FakeObserver,
     install_entry_points,
+    make_observer_builder,
+    make_policy_builder,
     make_provider_builder,
 )
 
@@ -63,7 +65,11 @@ FINAL_ANSWER_JSON = (
 
 @pytest.fixture
 def created_models(monkeypatch: pytest.MonkeyPatch) -> list[FakeChatModel]:
-    """Register a fake `llama_cpp` provider and capture each model it builds."""
+    """Register a fake provider and policy, and capture each model built.
+
+    Core ships neither a provider nor a policy, so a full run needs both
+    discoverable; the loop ends on the first reply via the fake policy.
+    """
     created: list[FakeChatModel] = []
 
     def build(_options: Mapping[str, str]) -> ChatModel:
@@ -72,7 +78,11 @@ def created_models(monkeypatch: pytest.MonkeyPatch) -> list[FakeChatModel]:
         return model
 
     install_entry_points(
-        monkeypatch, {PROVIDER_GROUP: [FakeEntryPoint("llama_cpp", build)]}
+        monkeypatch,
+        {
+            PROVIDER_GROUP: [FakeEntryPoint("llama_cpp", build)],
+            POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())],
+        },
     )
     return created
 
@@ -99,18 +109,6 @@ class TestComposition:
         assert observer.events[0] == "run_started:hi"
         assert observer.events[-1] == "run_finished"
         assert len(observer.finished) == 1
-
-    def test_run_cli_with_log_flag_emits_lifecycle_logs(
-        self,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        # Act: --log must wire the structured observer, not the null one.
-        with caplog.at_level(logging.INFO):
-            run_cli(["--prompt", "hi", "--log"])
-
-        # Assert
-        messages = [record.getMessage() for record in caplog.records]
-        assert any('"event": "run_started"' in message for message in messages)
 
 
 class TestModelLifecycle:
@@ -195,6 +193,37 @@ class TestProviderSelection:
         assert received == [{"model_path": "/m.gguf"}]
 
 
+class TestPolicySelection:
+    def test_builds_the_selected_policy_via_discovery(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch, {POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())]}
+        )
+        config = ArgumentParser().parse(["--prompt", "hi"])
+
+        # Act: the sole installed policy is selected when --policy is omitted.
+        policy = build_policy(config)
+
+        # Assert: the discovered fake policy is built (parses output as final).
+        decision = policy.parse_model_output(MessageContent("anything"))
+        assert decision == FinalAnswer(MessageContent("anything"))
+
+    def test_uses_the_explicitly_selected_policy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: a real policy is installed, but --policy names a missing one.
+        install_entry_points(
+            monkeypatch, {POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())]}
+        )
+        config = ArgumentParser().parse(["--prompt", "hi", "--policy", "mystery"])
+
+        # Act / Assert: the explicit --policy wins over the sole-installed default.
+        with pytest.raises(UnknownPolicyError, match="mystery"):
+            build_policy(config)
+
+
 class TestRuntimeConfig:
     def test_copies_the_sampling_and_loop_bounds(self) -> None:
         # Arrange
@@ -227,29 +256,31 @@ class TestObserverSelection:
         # Act / Assert
         assert isinstance(build_observer(config), NullObserver)
 
-    def test_selects_structured_logging_when_log_flag_set(self) -> None:
-        # Arrange
-        config = ArgumentParser().parse(["--prompt", "hi", "--log"])
-
-        # Act / Assert
-        assert isinstance(build_observer(config), StructuredLoggingObserver)
-
-    def test_structured_observer_logs_under_the_agent_logger(
-        self,
-        caplog: pytest.LogCaptureFixture,
+    def test_selects_the_named_observer_via_discovery(
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # Arrange
+        install_entry_points(
+            monkeypatch,
+            {OBSERVER_GROUP: [FakeEntryPoint("logging", make_observer_builder())]},
+        )
+        config = ArgumentParser().parse(["--prompt", "hi", "--observer", "logging"])
+
+        # Act / Assert
+        assert isinstance(build_observer(config), FakeObserver)
+
+    def test_log_flag_is_shorthand_for_the_logging_observer(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch,
+            {OBSERVER_GROUP: [FakeEntryPoint("logging", make_observer_builder())]},
+        )
         config = ArgumentParser().parse(["--prompt", "hi", "--log"])
-        observer = build_observer(config)
 
-        # Act
-        with caplog.at_level(logging.INFO):
-            observer.on_run_started(RunId("rid"), Prompt("hi"))
-
-        # Assert: the real logger is named "agent" and carries the payload.
-        record = caplog.records[-1]
-        assert record.name == "agent"
-        assert '"run_id": "rid"' in record.getMessage()
+        # Act / Assert: --log resolves to the discovered `logging` observer.
+        assert isinstance(build_observer(config), FakeObserver)
 
 
 class TestTokenSinkSelection:
@@ -285,19 +316,26 @@ class SensitiveTool:
 
 
 class TestHookSelection:
-    def test_defaults_to_the_null_hook_when_no_tool_needs_approval(self) -> None:
-        # Act / Assert: a registry with no sensitive tools needs no gating.
+    def test_every_run_is_wrapped_in_a_hook_chain(self) -> None:
+        # Act / Assert: the chain is the single composition point for hooks.
         config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
 
-        assert isinstance(build_hooks(ToolRegistry([]), config), NullHook)
+        assert isinstance(build_hooks(ToolRegistry([]), config), HookChain)
 
-    def test_builds_an_approval_hook_when_a_tool_needs_approval(self) -> None:
+    def test_adds_no_hook_when_no_tool_needs_approval(self) -> None:
+        # Act / Assert: an empty chain folds to Proceed, like the null hook.
+        config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
+
+        assert build_hook_list(ToolRegistry([]), config) == []
+
+    def test_adds_an_approval_hook_when_a_tool_needs_approval(self) -> None:
         # Act
         config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
-        hooks = build_hooks(ToolRegistry([SensitiveTool()]), config)
+        hooks = build_hook_list(ToolRegistry([SensitiveTool()]), config)
 
         # Assert
-        assert isinstance(hooks, ApprovalHook)
+        assert len(hooks) == 1
+        assert isinstance(hooks[0], ApprovalHook)
 
 
 class TestPermissionRequesterSelection:

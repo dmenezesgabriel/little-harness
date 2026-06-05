@@ -7,7 +7,9 @@ from collections.abc import Sequence
 
 from little_harness.application.agent_dependencies import AgentDependencies
 from little_harness.application.agent_runtime import AgentRuntime, AgentRuntimeConfig
+from little_harness.application.hook_chain import HookChain
 from little_harness.application.ports.agent_observer import AgentObserver
+from little_harness.application.ports.agent_policy import AgentPolicy
 from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.closeable import Closeable
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
@@ -16,20 +18,15 @@ from little_harness.application.ports.token_sink import TokenSink
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.domain.values.text_values import Prompt
 from little_harness.infrastructure.hooks.approval_hook import ApprovalHook
-from little_harness.infrastructure.hooks.null_hook import NullHook
 from little_harness.infrastructure.observability.null_observer import NullObserver
-from little_harness.infrastructure.observability.stdlib_logger import (
-    create_structured_logger,
-)
-from little_harness.infrastructure.observability.structured_logging_observer import (
-    StructuredLoggingObserver,
-)
 from little_harness.infrastructure.permissions.auto_approve_requester import (
     AutoApprovePermissionRequester,
 )
-from little_harness.infrastructure.policy.json_agent_policy import JsonAgentPolicy
 from little_harness.plugin_discovery import (
+    default_policy_name,
     default_provider_name,
+    discover_observer,
+    discover_policy,
     discover_tools,
     load_chat_model_builder,
 )
@@ -40,8 +37,6 @@ from little_harness.presentation.cli.permission_prompt import (
 )
 from little_harness.presentation.cli.result_renderer import ResultRenderer
 from little_harness.presentation.cli.token_sinks import NullTokenSink, StdoutTokenSink
-
-LOGGER_NAME = "agent"
 
 
 class Application:
@@ -82,10 +77,11 @@ def build_application(
 
 
 def build_observer(config: AppConfig) -> AgentObserver:
-    if not config.enable_logging:
+    # No observer selected means no observability; only a named plugin is loaded.
+    if config.observer_name is None:
         return NullObserver()
 
-    return StructuredLoggingObserver(create_structured_logger(LOGGER_NAME))
+    return discover_observer(config.observer_name)
 
 
 def build_dependencies(
@@ -96,7 +92,7 @@ def build_dependencies(
     return AgentDependencies(
         chat_model=build_chat_model(config),
         tool_registry=registry,
-        policy=JsonAgentPolicy(),
+        policy=build_policy(config),
         observer=observer,
         token_sink=build_token_sink(config),
         hooks=build_hooks(registry, config),
@@ -104,14 +100,18 @@ def build_dependencies(
 
 
 def build_hooks(registry: ToolRegistry, config: AppConfig) -> LifecycleHook:
-    # The seam: wrap real hooks in `HookChain([...])` here. With no sensitive
-    # tool loaded, there is nothing to gate, so the null hook stays the default.
+    # The seam: every lifecycle hook is composed here. An empty chain folds to
+    # `Proceed` (like the null hook), so adding a second hook needs no rewiring.
+    return HookChain(build_hook_list(registry, config))
+
+
+def build_hook_list(registry: ToolRegistry, config: AppConfig) -> list[LifecycleHook]:
     names_requiring_approval = approval_required_names(registry)
 
     if not names_requiring_approval:
-        return NullHook()
+        return []
 
-    return ApprovalHook(build_permission_requester(config), names_requiring_approval)
+    return [ApprovalHook(build_permission_requester(config), names_requiring_approval)]
 
 
 def approval_required_names(registry: ToolRegistry) -> frozenset[str]:
@@ -134,6 +134,13 @@ def build_chat_model(config: AppConfig) -> ChatModel:
     provider = config.provider or default_provider_name()
     builder = load_chat_model_builder(provider)
     return builder(config.provider_options)
+
+
+def build_policy(config: AppConfig) -> AgentPolicy:
+    # Discovery imports only the selected policy's adapter; core ships none, so an
+    # omitted --policy resolves to the sole installed policy.
+    policy = config.policy or default_policy_name()
+    return discover_policy(policy)
 
 
 def build_token_sink(config: AppConfig) -> TokenSink:

@@ -9,7 +9,7 @@ from little_harness.domain.values.text_values import (
     ToolName,
     ToolOutput,
 )
-from little_harness.infrastructure.policy.prompt_templates import (
+from little_harness_json_policy.prompt_templates import (
     render_repair_request,
     render_system_prompt,
     render_tool_observation,

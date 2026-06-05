@@ -4,7 +4,7 @@ import pytest
 from little_harness.domain.decision import FinalAnswer, ToolCall
 from little_harness.domain.errors import AgentProtocolError
 from little_harness.domain.values.text_values import MessageContent, ToolInput, ToolName
-from little_harness.infrastructure.policy.decision_parser import JsonDecisionParser
+from little_harness_json_policy.decision_parser import JsonDecisionParser
 
 
 def parse(output: str) -> object:

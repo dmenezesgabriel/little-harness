@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from little_harness.application.ports.structured_logger import StructuredLogger
 from little_harness.domain.decision import AgentDecision
 from little_harness.domain.result import AgentResult
 from little_harness.domain.tool_result import ToolRunResult
 from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
 from little_harness.domain.values.text_values import MessageContent, Prompt, RunId
+
+from little_harness_logging.structured_logger import StructuredLogger
 
 
 class StructuredLoggingObserver:

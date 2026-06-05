@@ -31,7 +31,10 @@ class AppConfig:
     # None means "no provider chosen"; the composition root resolves the default.
     provider: str | None = None
     provider_options: Mapping[str, str] = field(default_factory=_no_options)
-    enable_logging: bool = False
+    # None means "no policy chosen"; the composition root resolves the default.
+    policy: str | None = None
+    # None means "no observer"; a name selects an installed observer plugin.
+    observer_name: str | None = None
     enable_streaming: bool = False
     # None means "every installed tool"; a tuple limits discovery to those names.
     tool_selection: tuple[str, ...] | None = None

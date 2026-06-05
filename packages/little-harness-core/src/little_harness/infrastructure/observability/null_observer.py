@@ -6,6 +6,8 @@ from __future__ import annotations
 class NullObserver:
     """Discards every event so the runtime can always hold a real observer.
 
+    Also the extension point: subclass and override only the events you care
+    about, the way `NullHook` keeps `LifecycleHook` implementations selective.
     Each method accepts and ignores any arguments — the Null Object pattern —
     which is why the signatures are deliberately variadic.
     """

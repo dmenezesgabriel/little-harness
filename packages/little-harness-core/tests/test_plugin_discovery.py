@@ -7,15 +7,25 @@ from collections.abc import Callable, Mapping
 import pytest
 from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
-from little_harness.domain.errors import UnknownProviderError, UnknownToolError
+from little_harness.domain.errors import (
+    UnknownObserverError,
+    UnknownPolicyError,
+    UnknownProviderError,
+    UnknownToolError,
+)
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.text_values import ToolName, ToolOutput
 from little_harness.plugin_discovery import (
+    OBSERVER_GROUP,
+    POLICY_GROUP,
     PROVIDER_GROUP,
     TOOL_GROUP,
     ChatModelBuilder,
+    default_policy_name,
     default_provider_name,
+    discover_observer,
+    discover_policy,
     discover_tools,
     installed_providers,
     installed_tools,
@@ -23,9 +33,13 @@ from little_harness.plugin_discovery import (
 )
 
 from tests.plugin_fakes import (
+    FakeAgentPolicy,
     FakeChatModel,
     FakeEntryPoint,
+    FakeObserver,
     install_entry_points,
+    make_observer_builder,
+    make_policy_builder,
     make_provider_builder,
 )
 
@@ -260,3 +274,110 @@ class TestInstalledTools:
 
         # Act / Assert
         assert installed_tools() == ["bash", "read_file", "ripgrep"]
+
+
+class TestDiscoverPolicy:
+    def test_builds_the_policy_registered_under_the_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch, {POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())]}
+        )
+
+        # Act / Assert
+        assert isinstance(discover_policy("json"), FakeAgentPolicy)
+
+    def test_rejects_an_unknown_policy_and_lists_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch, {POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())]}
+        )
+
+        # Act / Assert: the message names the offending value and what is installed.
+        with pytest.raises(UnknownPolicyError) as err:
+            discover_policy("mystery")
+        assert str(err.value) == (
+            "Unknown policy: 'mystery'. Installed policy plugins: ['json']."
+        )
+
+
+class TestDefaultPolicyName:
+    def test_returns_the_sole_installed_policy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch, {POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())]}
+        )
+
+        # Act / Assert
+        assert default_policy_name() == "json"
+
+    def test_rejects_when_no_policy_is_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(monkeypatch, {})
+
+        # Act / Assert: the message names the count and the installed list.
+        with pytest.raises(UnknownPolicyError) as err:
+            default_policy_name()
+        assert str(err.value) == (
+            "No policy selected and 0 installed: []. "
+            "Pass --policy, or install exactly one policy plugin."
+        )
+
+    def test_rejects_when_several_policies_are_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch,
+            {
+                POLICY_GROUP: [
+                    FakeEntryPoint("json", make_policy_builder()),
+                    FakeEntryPoint("react", make_policy_builder()),
+                ]
+            },
+        )
+
+        # Act / Assert: ambiguous, so the sorted installed list is reported.
+        with pytest.raises(UnknownPolicyError) as err:
+            default_policy_name()
+        assert str(err.value) == (
+            "No policy selected and 2 installed: ['json', 'react']. "
+            "Pass --policy, or install exactly one policy plugin."
+        )
+
+
+class TestDiscoverObserver:
+    def test_builds_the_observer_registered_under_the_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch,
+            {OBSERVER_GROUP: [FakeEntryPoint("logging", make_observer_builder())]},
+        )
+
+        # Act / Assert
+        assert isinstance(discover_observer("logging"), FakeObserver)
+
+    def test_rejects_an_unknown_observer_and_lists_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        install_entry_points(
+            monkeypatch,
+            {OBSERVER_GROUP: [FakeEntryPoint("logging", make_observer_builder())]},
+        )
+
+        # Act / Assert
+        with pytest.raises(UnknownObserverError) as err:
+            discover_observer("mystery")
+        assert str(err.value) == (
+            "Unknown observer: 'mystery'. Installed observer plugins: ['logging']."
+        )

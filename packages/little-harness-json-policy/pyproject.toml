@@ -1,0 +1,71 @@
+[project]
+name = "little-harness-json-policy"
+version = "0.1.0"
+description = "Strict-JSON agent policy plugin for little-harness."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Gabriel Menezes", email = "gabriel.d.menezes@gmail.com" }]
+dependencies = [
+    "little-harness-core",
+]
+
+[project.urls]
+Homepage = "https://github.com/dmenezesgabriel/little-harness"
+Repository = "https://github.com/dmenezesgabriel/little-harness"
+Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
+
+[project.entry-points."little_harness.agent_policies"]
+json = "little_harness_json_policy.provider:build"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/little_harness_json_policy"]
+
+[tool.pyright]
+include = ["src/little_harness_json_policy", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+venvPath = "../.."
+venv = ".venv"
+
+[tool.uv.sources]
+little-harness-core = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harness_json_policy --cov-report=term-missing"
+
+[tool.mutmut]
+paths_to_mutate = ["src/little_harness_json_policy"]
+tests_dir = ["tests"]
+pytest_add_cli_args = ["--no-cov"]
+
+[tool.deptry]
+extend_exclude = ["tests"]
+# Editable workspace install: tell deptry the core distribution provides `little_harness`.
+package_module_name_map = { little-harness-core = ["little_harness"] }
+# src/ layout: our own package is first-party (it lives under src/).
+known_first_party = ["little_harness_json_policy"]
+
+[tool.vulture]
+paths = ["src/little_harness_json_policy", "tests"]
+min_confidence = 80
+
+[tool.importlinter]
+root_packages = ["little_harness_json_policy", "little_harness"]
+
+[[tool.importlinter.contracts]]
+name = "Plugin touches only core domain and ports"
+type = "forbidden"
+source_modules = ["little_harness_json_policy"]
+forbidden_modules = [
+    "little_harness.infrastructure",
+    "little_harness.presentation",
+]

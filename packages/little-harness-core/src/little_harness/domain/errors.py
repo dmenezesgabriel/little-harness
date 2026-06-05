@@ -17,3 +17,11 @@ class UnknownProviderError(ValueError):
 
 class UnknownToolError(ValueError):
     """Raised when `--tools` names a tool no installed plugin registers."""
+
+
+class UnknownPolicyError(ValueError):
+    """Raised when `--policy` names a policy no installed plugin registers."""
+
+
+class UnknownObserverError(ValueError):
+    """Raised when `--observer` names an observer no installed plugin registers."""

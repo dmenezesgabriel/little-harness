@@ -10,8 +10,9 @@ from little_harness.domain.tool_result import ToolRunResult
 from little_harness.domain.tool_spec import ToolSpec
 from little_harness.domain.values.role import USER
 from little_harness.domain.values.text_values import MessageContent, Prompt
-from little_harness.infrastructure.policy.decision_parser import JsonDecisionParser
-from little_harness.infrastructure.policy.prompt_templates import (
+
+from little_harness_json_policy.decision_parser import JsonDecisionParser
+from little_harness_json_policy.prompt_templates import (
     render_repair_request,
     render_system_prompt,
     render_tool_observation,

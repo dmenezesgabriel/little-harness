@@ -22,7 +22,14 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object]] = [
     ("temperature", ["--temperature"], "Sampling temperature.", 0.0),
     ("max_tokens", ["--max-tokens"], "Maximum generated tokens.", 512),
     ("max_iterations", ["--max-iterations"], "Maximum agent loop iterations.", 5),
-    ("log", ["--log"], "Emit structured JSON logs for each agent event.", False),
+    ("log", ["--log"], "Shorthand for --observer logging.", False),
+    (
+        "observer",
+        ["--observer"],
+        "Observer plugin to use (an installed plugin name, e.g. 'logging'). "
+        "Defaults to no observer.",
+        None,
+    ),
     (
         "stream",
         ["--stream"],
@@ -34,6 +41,13 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object]] = [
         ["--provider"],
         "Chat model provider to use (an installed plugin name). "
         "Defaults to the sole installed provider.",
+        None,
+    ),
+    (
+        "policy",
+        ["--policy"],
+        "Agent policy plugin to use (an installed plugin name, e.g. 'json'). "
+        "Defaults to the sole installed policy.",
         None,
     ),
     (
@@ -109,13 +123,25 @@ class TestArgumentParser:
             max_iterations=MaxIterations(5),
             provider=None,
             provider_options={},
-            enable_logging=False,
             enable_streaming=False,
         )
 
-    def test_enables_logging_with_the_log_flag(self) -> None:
+    def test_log_flag_is_shorthand_for_the_logging_observer(self) -> None:
         # Act / Assert
-        assert ArgumentParser().parse(["--log"]).enable_logging is True
+        assert ArgumentParser().parse(["--log"]).observer_name == "logging"
+
+    def test_explicit_observer_overrides_the_log_shorthand(self) -> None:
+        # Act / Assert
+        config = ArgumentParser().parse(["--observer", "otel", "--log"])
+        assert config.observer_name == "otel"
+
+    def test_defaults_observer_name_to_none(self) -> None:
+        # Act / Assert
+        assert ArgumentParser().parse([]).observer_name is None
+
+    def test_reads_the_policy_override(self) -> None:
+        # Act / Assert
+        assert ArgumentParser().parse(["--policy", "json"]).policy == "json"
 
     def test_enables_streaming_with_the_stream_flag(self) -> None:
         # Act / Assert

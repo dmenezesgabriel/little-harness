@@ -67,7 +67,12 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--log",
         action="store_true",
-        help="Emit structured JSON logs for each agent event.",
+        help="Shorthand for --observer logging.",
+    )
+    parser.add_argument(
+        "--observer",
+        help="Observer plugin to use (an installed plugin name, e.g. 'logging'). "
+        "Defaults to no observer.",
     )
     parser.add_argument(
         "--stream",
@@ -96,6 +101,13 @@ def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
         "Defaults to the sole installed provider.",
     )
     parser.add_argument(
+        # No `default=`: None means "no policy chosen", which the composition root
+        # resolves to the sole installed policy.
+        "--policy",
+        help="Agent policy plugin to use (an installed plugin name, e.g. 'json'). "
+        "Defaults to the sole installed policy.",
+    )
+    parser.add_argument(
         "-m",
         "--model",
         help="Model to use; provider-specific (a model name for litellm, a GGUF "
@@ -122,11 +134,20 @@ def to_app_config(namespace: argparse.Namespace) -> AppConfig:
         max_iterations=MaxIterations(namespace.max_iterations),
         provider=namespace.provider,
         provider_options=build_provider_options(namespace.model, namespace.options),
-        enable_logging=namespace.log,
+        policy=namespace.policy,
+        observer_name=resolve_observer_name(namespace.observer, namespace.log),
         enable_streaming=namespace.stream,
         tool_selection=parse_tool_selection(namespace.tools),
         approve_all=namespace.approve_all,
     )
+
+
+def resolve_observer_name(observer: str | None, log: bool) -> str | None:
+    # `--observer` is explicit; `--log` is the shorthand for the logging observer.
+    if observer is not None:
+        return observer
+
+    return "logging" if log else None
 
 
 def parse_tool_selection(raw: str | None) -> tuple[str, ...] | None:

@@ -4,7 +4,7 @@ import json
 import logging
 
 import pytest
-from little_harness.infrastructure.observability.stdlib_logger import (
+from little_harness_logging.stdlib_logger import (
     StdlibStructuredLogger,
     configure_stderr_emission,
     create_structured_logger,
