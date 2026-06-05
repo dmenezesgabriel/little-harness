@@ -74,10 +74,12 @@ class TestApprovalHook:
         # Act
         decision = hook.on_pre_tool_use(RUN_ID, ITERATION, BASH_CALL)
 
-        # Assert: the model learns why, so it can choose another path.
+        # Assert: the model learns exactly why, so it can choose another path.
         assert isinstance(decision, Block)
-        assert "'bash'" in decision.reason.value
-        assert "not approved" in decision.reason.value
+        assert decision.reason.value == (
+            "Tool 'bash' was not approved by the operator. "
+            "Expected operator approval before running a sensitive tool."
+        )
 
 
 class TestApprovalHookLeavesOtherPointsUntouched:

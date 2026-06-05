@@ -5,11 +5,15 @@ from collections.abc import Mapping
 import pytest
 from little_harness.application.agent_runtime import AgentRuntimeConfig
 from little_harness.application.hook_chain import HookChain
+from little_harness.application.ports.agent_observer import AgentObserver
+from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
+from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.composition import (
     build_application,
     build_chat_model,
+    build_dependencies,
     build_hook_list,
     build_hooks,
     build_observer,
@@ -19,11 +23,13 @@ from little_harness.composition import (
     run_cli,
     to_runtime_config,
 )
-from little_harness.domain.decision import FinalAnswer
+from little_harness.domain.decision import FinalAnswer, ToolCall
 from little_harness.domain.errors import UnknownPolicyError, UnknownProviderError
+from little_harness.domain.hook_decision import Proceed
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.numeric_values import (
+    Iteration,
     MaxIterations,
     MaxTokens,
     Temperature,
@@ -31,6 +37,8 @@ from little_harness.domain.values.numeric_values import (
 from little_harness.domain.values.text_values import (
     MessageContent,
     Prompt,
+    RunId,
+    ToolInput,
     ToolName,
     ToolOutput,
 )
@@ -40,6 +48,7 @@ from little_harness.infrastructure.permissions.auto_approve_requester import (
     AutoApprovePermissionRequester,
 )
 from little_harness.plugin_discovery import OBSERVER_GROUP, POLICY_GROUP, PROVIDER_GROUP
+from little_harness.presentation.cli.app_config import AppConfig
 from little_harness.presentation.cli.argument_parser import ArgumentParser
 from little_harness.presentation.cli.permission_prompt import (
     InteractivePermissionRequester,
@@ -120,6 +129,159 @@ class TestModelLifecycle:
 
         # Assert
         assert created_models and created_models[0].closed is True
+
+
+class FakeApplication:
+    """Stand-in for the Application context manager, recording its run output."""
+
+    def __enter__(self) -> FakeApplication:
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        return None
+
+    def run(self, _prompt: Prompt) -> str:
+        return "rendered"
+
+
+class TestCompositionThreadsConfigThroughTheStack:
+    """Each builder must pass its config-derived argument, not a placeholder.
+
+    These pin the wiring itself: that the configured observer name, tool
+    selection, config object, requester, and approval names actually reach the
+    collaborator, so dropping any of them is caught.
+    """
+
+    def test_build_observer_passes_the_configured_name_to_discovery(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: spy on discovery so the threaded name is observable.
+        received: list[str] = []
+
+        def fake_discover_observer(name: str) -> AgentObserver:
+            received.append(name)
+            return FakeObserver()
+
+        monkeypatch.setattr(
+            "little_harness.composition.discover_observer", fake_discover_observer
+        )
+        config = ArgumentParser().parse(["--prompt", "hi", "--observer", "logging"])
+
+        # Act
+        build_observer(config)
+
+        # Assert
+        assert received == ["logging"]
+
+    @pytest.mark.usefixtures("created_models")
+    def test_build_dependencies_selects_tools_from_the_config(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        received: list[tuple[str, ...] | None] = []
+
+        def fake_discover_tools(selection: tuple[str, ...] | None) -> list[AgentTool]:
+            received.append(selection)
+            return []
+
+        monkeypatch.setattr(
+            "little_harness.composition.discover_tools", fake_discover_tools
+        )
+        config = ArgumentParser().parse(["--prompt", "hi", "--tools", "calculator"])
+
+        # Act
+        build_dependencies(config, NullObserver())
+
+        # Assert
+        assert received == [("calculator",)]
+
+    @pytest.mark.usefixtures("created_models")
+    def test_build_dependencies_passes_the_config_to_build_hooks(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        received: list[AppConfig] = []
+
+        def fake_build_hooks(_registry: ToolRegistry, config: AppConfig) -> HookChain:
+            received.append(config)
+            return HookChain([])
+
+        monkeypatch.setattr("little_harness.composition.build_hooks", fake_build_hooks)
+        config = ArgumentParser().parse(["--prompt", "hi"])
+
+        # Act
+        build_dependencies(config, NullObserver())
+
+        # Assert
+        assert received == [config]
+
+    def test_build_hooks_passes_the_config_to_build_hook_list(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        received: list[AppConfig] = []
+
+        def fake_build_hook_list(
+            _registry: ToolRegistry, config: AppConfig
+        ) -> list[LifecycleHook]:
+            received.append(config)
+            return []
+
+        monkeypatch.setattr(
+            "little_harness.composition.build_hook_list", fake_build_hook_list
+        )
+        config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
+
+        # Act
+        build_hooks(ToolRegistry([]), config)
+
+        # Assert
+        assert received == [config]
+
+    def test_build_hook_list_wires_the_approval_hook_with_requester_and_names(
+        self,
+    ) -> None:
+        # Arrange: a sensitive tool and --yes (auto-approve).
+        config = ArgumentParser().parse(["--prompt", "hi", "--yes"])
+        hooks = build_hook_list(ToolRegistry([SensitiveTool()]), config)
+
+        # Act: gating a sensitive call exercises both the requester and the names.
+        decision = hooks[0].on_pre_tool_use(
+            RunId("r"), Iteration(1), ToolCall(ToolName("bash"), ToolInput("ls"))
+        )
+
+        # Assert: a missing requester or missing names would raise here instead.
+        assert decision == Proceed()
+
+    def test_run_cli_threads_the_built_observer_into_the_application(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: a recognizable observer, and a fake application that records it.
+        sentinel = RecordingObserver()
+        received: list[AgentObserver] = []
+
+        def fake_build_observer(_config: AppConfig) -> AgentObserver:
+            return sentinel
+
+        def fake_build_application(
+            _config: AppConfig, observer: AgentObserver
+        ) -> FakeApplication:
+            received.append(observer)
+            return FakeApplication()
+
+        monkeypatch.setattr(
+            "little_harness.composition.build_observer", fake_build_observer
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_application", fake_build_application
+        )
+
+        # Act
+        output = run_cli(["--prompt", "hi"])
+
+        # Assert: the built observer reaches the application, and its run renders.
+        assert output == "rendered"
+        assert received == [sentinel]
 
 
 class TestProviderSelection:
