@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol
 
+from little_harness.application.ports.chat_model import ResponseSchema
 from little_harness.domain.decision import AgentDecision
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.tool_result import ToolRunResult
@@ -18,6 +19,18 @@ class AgentPolicy(Protocol):
 
         Example:
             prompt = policy.system_prompt(registry.specs())
+        """
+        ...
+
+    def response_schema(self, tools: Sequence[ToolSpec]) -> ResponseSchema | None:
+        """Return the schema that constrains valid output, or None to leave it free.
+
+        Providers with constrained decoding use it to guarantee parseable output;
+        others ignore it. Keeping the schema here puts the protocol's shape in one
+        place, owned by the policy that also parses the result.
+
+        Example:
+            schema = policy.response_schema(registry.specs())
         """
         ...
 

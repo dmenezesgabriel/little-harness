@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 
-from little_harness.application.ports.chat_model import ChatCompletionRequest
+from little_harness.application.ports.chat_model import (
+    ChatCompletionRequest,
+    ResponseSchema,
+)
 from little_harness.domain.decision import AgentDecision, FinalAnswer, ToolCall
 from little_harness.domain.errors import AgentProtocolError
 from little_harness.domain.hook_decision import HookDecision, Proceed
@@ -112,10 +115,15 @@ class DecisionQueuePolicy:
     def __init__(self, decisions: Sequence[AgentDecision]) -> None:
         self.repair_errors: list[Exception] = []
         self.tool_results: list[ToolRunResult] = []
+        self.schema_tool_counts: list[int] = []
         self._decisions = list(decisions)
 
     def system_prompt(self, tools: Sequence[ToolSpec]) -> MessageContent:
         return MessageContent(f"Tools: {len(tools)}")
+
+    def response_schema(self, tools: Sequence[ToolSpec]) -> ResponseSchema | None:
+        self.schema_tool_counts.append(len(tools))
+        return ResponseSchema({"tools": len(tools)})
 
     def parse_model_output(self, output: MessageContent) -> AgentDecision:
         if output.value == "invalid":

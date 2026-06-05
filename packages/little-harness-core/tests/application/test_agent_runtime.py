@@ -9,7 +9,7 @@ from little_harness.application.agent_runtime import (
     AgentRuntimeConfig,
 )
 from little_harness.application.ports.agent_tool import AgentTool
-from little_harness.application.ports.chat_model import ChatModel
+from little_harness.application.ports.chat_model import ChatModel, ResponseSchema
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.domain.hook_decision import Block, InjectContext
@@ -96,6 +96,20 @@ class TestAgentRuntimeFinalAnswer:
         assert chat_model.requests[0].messages == expected_messages
         assert chat_model.requests[0].temperature == Temperature(0.0)
         assert chat_model.requests[0].max_tokens == MaxTokens(128)
+
+    def test_forwards_the_policy_schema_built_from_the_registered_tools(self) -> None:
+        # Arrange: the policy derives its schema from the registry's specs.
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: the runtime passes the registry's one spec to the policy, and
+        # the returned schema rides along on the completion request.
+        assert policy.schema_tool_counts == [1]
+        assert chat_model.requests[0].response_schema == ResponseSchema({"tools": 1})
 
 
 class TestAgentRuntimeToolUse:

@@ -11,7 +11,11 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 import pytest
 from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.agent_policy import AgentPolicy
-from little_harness.application.ports.chat_model import ChatCompletionRequest, ChatModel
+from little_harness.application.ports.chat_model import (
+    ChatCompletionRequest,
+    ChatModel,
+    ResponseSchema,
+)
 from little_harness.domain.decision import AgentDecision, FinalAnswer
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.tool_result import ToolRunResult
@@ -80,6 +84,9 @@ class FakeAgentPolicy:
 
     def system_prompt(self, tools: Sequence[ToolSpec]) -> MessageContent:
         return MessageContent(f"fake system prompt ({len(tools)} tools)")
+
+    def response_schema(self, tools: Sequence[ToolSpec]) -> ResponseSchema | None:
+        return ResponseSchema({"tools": len(tools)})
 
     def parse_model_output(self, output: MessageContent) -> AgentDecision:
         return FinalAnswer(output)

@@ -169,10 +169,12 @@ class AgentRuntime:
         return output
 
     def _complete(self, messages: MessageHistory) -> MessageContent:
+        specs = self._dependencies.tool_registry.specs()
         request = ChatCompletionRequest(
             messages,
             self._config.temperature,
             self._config.max_tokens,
+            self._dependencies.policy.response_schema(specs),
         )
         chunks: list[str] = []
         for chunk in self._dependencies.chat_model.complete_streaming(request):

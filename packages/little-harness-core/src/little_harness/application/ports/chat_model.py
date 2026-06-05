@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -13,10 +13,27 @@ from little_harness.domain.values.text_values import MessageContent
 
 
 @dataclass(frozen=True)
+class ResponseSchema:
+    """A JSON Schema that constrains model output to one parseable shape.
+
+    The policy owns the protocol, so it produces this; providers that support
+    constrained decoding (llama.cpp grammars, OpenAI json_schema) use it to make
+    invalid output structurally impossible, while others ignore it and lean on
+    the prompt plus a lenient parser.
+
+    Example:
+        schema = ResponseSchema({"type": "object", "required": ["action"]})
+    """
+
+    value: Mapping[str, object]
+
+
+@dataclass(frozen=True)
 class ChatCompletionRequest:
     messages: MessageHistory
     temperature: Temperature
     max_tokens: MaxTokens
+    response_schema: ResponseSchema | None = None
 
 
 class ChatModel(Closeable, Protocol):

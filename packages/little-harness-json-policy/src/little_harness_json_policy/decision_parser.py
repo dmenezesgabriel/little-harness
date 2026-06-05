@@ -1,7 +1,10 @@
 """Parses model JSON output into a typed `AgentDecision`.
 
-This is the boundary where untyped text becomes a typed decision, so it inspects
-the `action` discriminator directly before constructing the matching type.
+This is the boundary where untyped text becomes a typed decision. It is lenient
+on purpose: small local models flatten the protocol, so any non-"final" action is
+read as a tool name (whether the model wrote `{"action":"edit_file"}` directly or
+the older `{"action":"tool","tool_name":"edit_file"}`), and a tool input may
+arrive as a JSON string or as a nested object.
 """
 
 from __future__ import annotations
@@ -12,6 +15,10 @@ from collections.abc import Mapping
 from little_harness.domain.decision import AgentDecision, FinalAnswer, ToolCall
 from little_harness.domain.errors import AgentProtocolError
 from little_harness.domain.values.text_values import MessageContent, ToolInput, ToolName
+
+from little_harness_json_policy.prompt_templates import FINAL_ACTION
+
+LEGACY_TOOL_ACTION = "tool"
 
 
 class JsonDecisionParser:
@@ -28,18 +35,42 @@ class JsonDecisionParser:
 def build_decision(parsed: Mapping[str, object]) -> AgentDecision:
     action = parsed.get("action")
 
-    if action == "final":
+    if action == FINAL_ACTION:
         return FinalAnswer(
             MessageContent(require_string_field(parsed, "answer").strip())
         )
 
-    if action == "tool":
+    if isinstance(action, str) and action.strip():
         return ToolCall(
-            to_tool_name(require_string_field(parsed, "tool_name")),
-            ToolInput(require_string_field(parsed, "tool_input")),
+            to_tool_name(resolve_tool_name(parsed, action)),
+            resolve_tool_input(parsed),
         )
 
-    raise AgentProtocolError(f"Expected action 'tool' or 'final', got: {action}")
+    raise AgentProtocolError(
+        f"Expected a tool name or {FINAL_ACTION!r} as action, got: {action!r}."
+    )
+
+
+def resolve_tool_name(parsed: Mapping[str, object], action: str) -> str:
+    # `action == "tool"` is the older nested protocol; the name lives elsewhere.
+    if action == LEGACY_TOOL_ACTION:
+        return require_string_field(parsed, "tool_name")
+
+    return action
+
+
+def resolve_tool_input(parsed: Mapping[str, object]) -> ToolInput:
+    raw = parsed.get("input", parsed.get("tool_input"))
+
+    if isinstance(raw, str):
+        return ToolInput(raw)
+
+    if isinstance(raw, Mapping):
+        return ToolInput(json.dumps(raw))
+
+    raise AgentProtocolError(
+        f"Tool input is invalid: {raw!r}. Expected a JSON string or object."
+    )
 
 
 def require_string_field(parsed: Mapping[str, object], field_name: str) -> str:

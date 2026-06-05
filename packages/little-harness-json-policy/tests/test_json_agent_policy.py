@@ -11,6 +11,7 @@ from little_harness.domain.values.text_values import (
     ToolOutput,
 )
 from little_harness_json_policy.json_agent_policy import JsonAgentPolicy
+from little_harness_json_policy.prompt_templates import build_response_schema
 
 
 class TestJsonAgentPolicy:
@@ -28,11 +29,24 @@ class TestJsonAgentPolicy:
         # Assert
         assert "calculator: Evaluate math." in prompt.value
 
-    def test_parse_model_output_delegates_to_the_parser(self) -> None:
+    def test_response_schema_constrains_action_to_the_tools_or_final(self) -> None:
         # Arrange
-        output = MessageContent(
-            '{"action":"final","tool_name":null,"tool_input":null,"answer":"done"}'
+        spec = ToolSpec(
+            ToolName("calculator"),
+            "Evaluate math.",
+            ToolInputSchema("A numeric expression"),
         )
+
+        # Act
+        schema = JsonAgentPolicy().response_schema([spec])
+
+        # Assert: delegated to the builder, which names the tool in the enum.
+        assert schema is not None
+        assert schema.value == build_response_schema([spec]).value
+
+    def test_parse_model_output_delegates_to_the_parser(self) -> None:
+        # Arrange: a flat action with an answer is the protocol's final shape.
+        output = MessageContent('{"action":"final","answer":"done"}')
 
         # Act / Assert
         assert JsonAgentPolicy().parse_model_output(output) == FinalAnswer(

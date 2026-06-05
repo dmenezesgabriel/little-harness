@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from little_harness.application.ports.chat_model import ResponseSchema
 from little_harness.domain.decision import AgentDecision
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.tool_result import ToolRunResult
@@ -13,6 +14,7 @@ from little_harness.domain.values.text_values import MessageContent, Prompt
 
 from little_harness_json_policy.decision_parser import JsonDecisionParser
 from little_harness_json_policy.prompt_templates import (
+    build_response_schema,
     render_repair_request,
     render_system_prompt,
     render_tool_observation,
@@ -31,6 +33,9 @@ class JsonAgentPolicy:
 
     def system_prompt(self, tools: Sequence[ToolSpec]) -> MessageContent:
         return render_system_prompt(tools)
+
+    def response_schema(self, tools: Sequence[ToolSpec]) -> ResponseSchema:
+        return build_response_schema(tools)
 
     def parse_model_output(self, output: MessageContent) -> AgentDecision:
         return self._parser.parse(output)
