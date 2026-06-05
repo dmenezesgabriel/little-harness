@@ -19,6 +19,9 @@ from little_harness.domain.values.text_values import MessageContent, ToolInput, 
 from little_harness_json_policy.prompt_templates import FINAL_ACTION
 
 LEGACY_TOOL_ACTION = "tool"
+# Keys that name the decision itself, never part of a tool's input. Everything
+# else at the top level is treated as inline tool arguments (see resolve_tool_input).
+DECISION_KEYS = frozenset({"action", "answer", "tool_name", "input", "tool_input"})
 
 
 class JsonDecisionParser:
@@ -68,8 +71,31 @@ def resolve_tool_input(parsed: Mapping[str, object]) -> ToolInput:
     if isinstance(raw, Mapping):
         return ToolInput(json.dumps(raw))
 
+    if raw is None:
+        return tool_input_from_top_level(parsed)
+
     raise AgentProtocolError(
         f"Tool input is invalid: {raw!r}. Expected a JSON string or object."
+    )
+
+
+def tool_input_from_top_level(parsed: Mapping[str, object]) -> ToolInput:
+    """Treat the object's non-decision keys as inline tool arguments.
+
+    Small models often skip the `input` wrapper and write the arguments beside
+    `action`, e.g. {"action":"write_file","path":"a.txt","content":"hi"}. Folding
+    those keys into the input keeps such replies usable.
+    """
+    arguments = {
+        key: value for key, value in parsed.items() if key not in DECISION_KEYS
+    }
+
+    if arguments:
+        return ToolInput(json.dumps(arguments))
+
+    raise AgentProtocolError(
+        "Tool input is invalid: no 'input' field and no inline arguments. "
+        "Expected a JSON string, a JSON object, or arguments beside 'action'."
     )
 
 

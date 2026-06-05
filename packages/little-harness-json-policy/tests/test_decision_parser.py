@@ -63,6 +63,21 @@ class TestParsesFlattenedToolCalls:
         output = '{"action":"calculator","input":"1 + 1","tool_input":"9 + 9"}'
         assert parse(output) == ToolCall(ToolName("calculator"), ToolInput("1 + 1"))
 
+    def test_folds_inline_top_level_arguments_into_the_input(self) -> None:
+        # Arrange: the shape a local model emitted, with args beside "action".
+        output = '{"action":"write_file","path":"hello.txt","content":"hello"}'
+
+        # Act
+        decision = parse(output)
+
+        # Assert: the non-decision keys become the tool's JSON input.
+        assert isinstance(decision, ToolCall)
+        assert decision.tool_name == ToolName("write_file")
+        assert json.loads(decision.tool_input.value) == {
+            "path": "hello.txt",
+            "content": "hello",
+        }
+
 
 class TestParsesLegacyNestedToolCalls:
     def test_reads_the_tool_name_field_for_the_tool_action(self) -> None:
@@ -148,6 +163,15 @@ class TestRejectsInvalidToolInput:
         # Act / Assert
         with pytest.raises(AgentProtocolError, match="Tool input is invalid"):
             parse(payload)
+
+    def test_names_the_exact_cause_when_a_tool_call_has_no_arguments(self) -> None:
+        # Act / Assert: the full message guides the model on every accepted shape.
+        with pytest.raises(AgentProtocolError) as err:
+            parse('{"action":"calculator"}')
+        assert str(err.value) == (
+            "Tool input is invalid: no 'input' field and no inline arguments. "
+            "Expected a JSON string, a JSON object, or arguments beside 'action'."
+        )
 
 
 class TestRejectsInvalidToolName:
