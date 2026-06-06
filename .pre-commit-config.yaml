@@ -13,6 +13,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: ruff-docstyle
+        name: ruff docstring check
+        entry: uv run ruff check --select D .
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: pyright
         name: pyright (per package)
         entry: make typecheck
