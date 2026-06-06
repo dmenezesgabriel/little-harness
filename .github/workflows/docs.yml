@@ -27,12 +27,13 @@ jobs:
       - name: Sync workspace
         run: uv sync --all-packages
       - name: Build docs
-        run: uv run --directory packages/little-harness-docs \
-                sphinx-build -b html source build
+        run: |
+          uv run --directory packages/little-harness-docs \
+            sphinx-build -b html source build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/little-harness-docs/source/build
+          path: packages/little-harness-docs/build
 
   deploy:
     needs: build
