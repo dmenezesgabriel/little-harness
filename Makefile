@@ -1,6 +1,7 @@
 .PHONY: format lint typecheck complexity dead-code deps imports security semgrep \
         test integration mutation gates check sync pre-commit-install \
-        models e2e e2e-local e2e-remote e2e-repeat
+        models e2e e2e-local e2e-remote e2e-repeat \
+        docs docs-serve
 
 # Code-bearing workspace members (the umbrella `little-harness` ships no code).
 CODE_PACKAGES := little-harness-core little-harness-llama-cpp \
@@ -105,6 +106,14 @@ e2e-repeat:
 	done; \
 	printf '\nPass rate: %d/%d\n' "$$passed" "$$n"; \
 	[ "$$passed" -eq "$$n" ]
+
+DOCS_PACKAGE := little-harness-docs
+
+docs:
+	uv run --directory packages/$(DOCS_PACKAGE) sphinx-build -b html source build
+
+docs-serve:
+	uv run --directory packages/$(DOCS_PACKAGE) sphinx-autobuild -b html source build
 
 mutation:
 	@for pkg in $(CODE_PACKAGES); do \
