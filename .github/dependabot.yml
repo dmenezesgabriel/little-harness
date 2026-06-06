@@ -7,6 +7,13 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
 
+  # Sphinx and doc build dependencies for the docs package.
+  - package-ecosystem: "pip"
+    directory: "/packages/little-harness-docs"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
   # The GitHub Actions used by the CI workflow.
   - package-ecosystem: "github-actions"
     directory: "/"
