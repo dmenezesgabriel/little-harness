@@ -9,6 +9,7 @@ from little_harness_llama_cpp.values import (
     BatchSize,
     ContextSize,
     GpuLayerCount,
+    InferenceSeed,
     ModelPath,
     ThreadCount,
 )
@@ -22,12 +23,15 @@ class TestToSettings:
         settings = to_settings({})
 
         # Assert
-        assert settings.model_path == ModelPath(Path("models/LFM2-8B-A1B-Q4_K_M.gguf"))
+        assert settings.model_path == ModelPath(
+            Path("models/LFM2.5-8B-A1B-Q4_K_M.gguf")
+        )
         assert settings.context_size == ContextSize(8192)
         assert settings.thread_count == ThreadCount(8)
         assert settings.gpu_layer_count == GpuLayerCount(0)
         assert settings.batch_size == BatchSize(512)
         assert settings.flash_attention is True
+        assert settings.seed == InferenceSeed(42)
 
     def test_reads_each_option(self) -> None:
         # Act
@@ -39,6 +43,7 @@ class TestToSettings:
                 "n_gpu_layers": "20",
                 "n_batch": "256",
                 "flash_attn": "false",
+                "seed": "1337",
             }
         )
 
@@ -49,6 +54,7 @@ class TestToSettings:
         assert settings.gpu_layer_count == GpuLayerCount(20)
         assert settings.batch_size == BatchSize(256)
         assert settings.flash_attention is False
+        assert settings.seed == InferenceSeed(1337)
 
     def test_uses_the_generic_model_option_as_the_gguf_path(self) -> None:
         # Act / Assert: --model (the `model` key) is an alias for `model_path`.
@@ -112,3 +118,26 @@ class TestBuild:
 
         # Assert
         assert isinstance(model, LlamaCppChatModel)
+
+    def test_forwards_seed_to_the_native_llama_constructor(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        model_file = tmp_path / "model.gguf"
+        model_file.write_bytes(b"")
+        created: list[FakeLlama] = []
+
+        def capturing_llama(**kwargs: object) -> FakeLlama:
+            instance = FakeLlama(**kwargs)
+            created.append(instance)
+            return instance
+
+        target = "little_harness_llama_cpp.model_factory.Llama"
+        monkeypatch.setattr(target, capturing_llama)
+
+        # Act
+        expected_seed = 1337
+        build({"model_path": str(model_file), "seed": str(expected_seed)})
+
+        # Assert: the seed reaches the native constructor so the sampler is pinned.
+        assert created[0].init_kwargs["seed"] == expected_seed

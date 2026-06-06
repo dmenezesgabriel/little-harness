@@ -39,6 +39,7 @@ class RipgrepTool:
                 "A ripgrep argument line: a regex pattern, then optional paths "
                 "and flags.",
                 ToolExamples(("TODO src", "-i error logs", '"def main" -t py')),
+                {"type": "string"},
             ),
         )
 

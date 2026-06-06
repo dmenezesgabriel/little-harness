@@ -19,7 +19,7 @@ _original_formatter_init = _chat_fmt.Jinja2ChatFormatter.__init__
 
 
 def _formatter_init_without_generation_tags(
-    self: _chat_fmt.Jinja2ChatFormatter,
+    self: object,
     template: str,
     eos_token: str,
     bos_token: str,
@@ -27,7 +27,7 @@ def _formatter_init_without_generation_tags(
     stop_token_ids: list[int] | None = None,
 ) -> None:
     _original_formatter_init(
-        self,
+        self,  # pyright: ignore[reportArgumentType]
         _sanitizer.sanitize(template),
         eos_token,
         bos_token,

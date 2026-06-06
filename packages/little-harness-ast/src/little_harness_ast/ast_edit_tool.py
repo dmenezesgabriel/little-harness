@@ -46,6 +46,17 @@ class AstEditTool:
                 'A JSON object {"path", "language", "query", "replacement"}; the '
                 "query must capture the target node as @match.",
                 ToolExamples((EXAMPLE_INPUT,)),
+                {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "language": {"type": "string"},
+                        "query": {"type": "string"},
+                        "replacement": {"type": "string"},
+                    },
+                    "required": ["path", "language", "query", "replacement"],
+                    "additionalProperties": False,
+                },
             ),
             requires_approval=True,
         )

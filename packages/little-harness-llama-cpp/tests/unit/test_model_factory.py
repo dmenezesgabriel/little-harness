@@ -1,5 +1,7 @@
+# pyright: reportPrivateUsage=false, reportArgumentType=false
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 from typing import cast
 
@@ -68,9 +70,10 @@ class TestGenerationTagPatch:
         ) -> None:
             recorded.append(template)
 
-        import little_harness_llama_cpp.model_factory as mf
-
-        monkeypatch.setattr(mf, "_original_formatter_init", fake_original_init)
+        monkeypatch.setattr(
+            "little_harness_llama_cpp.model_factory._original_formatter_init",
+            fake_original_init,
+        )
 
         # Act
         _formatter_init_without_generation_tags(
@@ -99,9 +102,10 @@ class TestGenerationTagPatch:
         ) -> None:
             recorded.append(template)
 
-        import little_harness_llama_cpp.model_factory as mf
-
-        monkeypatch.setattr(mf, "_original_formatter_init", fake_original_init)
+        monkeypatch.setattr(
+            "little_harness_llama_cpp.model_factory._original_formatter_init",
+            fake_original_init,
+        )
 
         # Act
         _formatter_init_without_generation_tags(
@@ -122,7 +126,7 @@ class TestGenerationTagPatch:
 
         def recording_init(
             _self: object,
-            template: str,
+            _template: str,
             _eos: str,
             _bos: str,
             *_args: object,
@@ -130,9 +134,10 @@ class TestGenerationTagPatch:
         ) -> None:
             recorded_self.append(_self)
 
-        import little_harness_llama_cpp.model_factory as mf
-
-        monkeypatch.setattr(mf, "_original_formatter_init", recording_init)
+        monkeypatch.setattr(
+            "little_harness_llama_cpp.model_factory._original_formatter_init",
+            recording_init,
+        )
         expected_self = object()
 
         # Act
@@ -150,8 +155,6 @@ class TestGenerationTagPatch:
         self,
     ) -> None:
         # Act
-        import inspect
-
         sig = inspect.signature(_formatter_init_without_generation_tags)
 
         # Assert
@@ -162,8 +165,6 @@ class TestGenerationTagPatch:
         self,
     ) -> None:
         # Act
-        import inspect
-
         sig = inspect.signature(_formatter_init_without_generation_tags)
 
         # Assert
@@ -190,9 +191,10 @@ class TestGenerationTagPatch:
             recorded["add_generation_prompt"] = add_generation_prompt
             recorded["stop_token_ids"] = stop_token_ids
 
-        import little_harness_llama_cpp.model_factory as mf
-
-        monkeypatch.setattr(mf, "_original_formatter_init", recording_init)
+        monkeypatch.setattr(
+            "little_harness_llama_cpp.model_factory._original_formatter_init",
+            recording_init,
+        )
 
         # Act
         _formatter_init_without_generation_tags(

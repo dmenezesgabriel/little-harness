@@ -7,7 +7,12 @@ from little_harness.application.ports.chat_model import (
 )
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
-from little_harness.domain.values.numeric_values import MaxTokens, Temperature
+from little_harness.domain.values.numeric_values import (
+    MaxTokens,
+    RepeatPenalty,
+    Temperature,
+    TopP,
+)
 from little_harness.domain.values.role import SYSTEM, USER
 from little_harness.domain.values.text_values import MessageContent
 from little_harness_litellm.chat_model import (
@@ -94,6 +99,7 @@ class TestLiteLLMChatModelStreaming:
         assert completion.kwargs["max_tokens"] == request.max_tokens.value
         assert completion.kwargs["api_base"] == "https://p/v1"
         assert completion.kwargs["api_key"] == "sk-x"
+        assert completion.kwargs["num_retries"] == 0
         assert [message["role"] for message in completion.kwargs["messages"]] == [
             "system",
             "user",
@@ -124,6 +130,102 @@ class TestLiteLLMChatModelStreaming:
             "type": "json_schema",
             "json_schema": {"name": "agent_decision", "schema": schema},
         }
+
+    def test_forwards_top_p_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Arrange
+        completion = RecordingCompletion([content_chunk("ok")])
+        monkeypatch.setattr("litellm.completion", completion)
+        model = LiteLLMChatModel(LiteLLMSettings("gpt-4o"))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.0),
+            MaxTokens(16),
+            top_p=TopP(0.95),
+        )
+
+        # Act
+        list(model.complete_streaming(request))
+
+        # Assert
+        top_p: float = 0.95
+        assert completion.kwargs["top_p"] == top_p
+
+    def test_forwards_repeat_penalty_when_set(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        completion = RecordingCompletion([content_chunk("ok")])
+        monkeypatch.setattr("litellm.completion", completion)
+        model = LiteLLMChatModel(LiteLLMSettings("gpt-4o"))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.0),
+            MaxTokens(16),
+            repeat_penalty=RepeatPenalty(1.1),
+        )
+
+        # Act
+        list(model.complete_streaming(request))
+
+        # Assert
+        repeat_penalty: float = 1.1
+        assert completion.kwargs["repeat_penalty"] == repeat_penalty
+
+    def test_omits_top_p_when_not_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Arrange: when top_p is not on the request it must not be in the kwargs.
+        completion = RecordingCompletion([content_chunk("ok")])
+        monkeypatch.setattr("litellm.completion", completion)
+        model = LiteLLMChatModel(LiteLLMSettings("gpt-4o"))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.0),
+            MaxTokens(16),
+        )
+
+        # Act
+        list(model.complete_streaming(request))
+
+        # Assert
+        assert "top_p" not in completion.kwargs
+
+    def test_omits_repeat_penalty_when_not_set(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: when repeat_penalty is not on the request it must not be in kwargs.
+        completion = RecordingCompletion([content_chunk("ok")])
+        monkeypatch.setattr("litellm.completion", completion)
+        model = LiteLLMChatModel(LiteLLMSettings("gpt-4o"))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.0),
+            MaxTokens(16),
+        )
+
+        # Act
+        list(model.complete_streaming(request))
+
+        # Assert
+        assert "repeat_penalty" not in completion.kwargs
+
+    def test_forwards_the_configured_retry_count(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        retry_budget = 4
+        completion = RecordingCompletion([content_chunk("ok")])
+        monkeypatch.setattr("litellm.completion", completion)
+        model = LiteLLMChatModel(LiteLLMSettings("gpt-4o", num_retries=retry_budget))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.0),
+            MaxTokens(16),
+        )
+
+        # Act
+        list(model.complete_streaming(request))
+
+        # Assert: the adapter hands LiteLLM the retry budget it was configured with.
+        assert completion.kwargs["num_retries"] == retry_budget
 
     def test_rejects_a_non_streaming_response(
         self, monkeypatch: pytest.MonkeyPatch

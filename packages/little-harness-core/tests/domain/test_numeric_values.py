@@ -9,7 +9,9 @@ from little_harness.domain.values.numeric_values import (
     Iteration,
     MaxIterations,
     MaxTokens,
+    RepeatPenalty,
     Temperature,
+    TopP,
 )
 
 
@@ -51,6 +53,32 @@ class TestPositiveIntegerValues:
         # Act / Assert
         with pytest.raises(ValueError, match="is not positive"):
             factory(0)
+
+
+class TestTopP:
+    @pytest.mark.parametrize("value", [0.0, 0.5, 1.0])
+    def test_accepts_values_within_range(self, value: float) -> None:
+        # Act / Assert
+        assert TopP(value).value == value
+
+    @pytest.mark.parametrize("value", [-0.1, 1.1])
+    def test_rejects_values_out_of_range(self, value: float) -> None:
+        # Act / Assert
+        with pytest.raises(ValueError, match="TopP out of range"):
+            TopP(value)
+
+
+class TestRepeatPenalty:
+    @pytest.mark.parametrize("value", [0.0, 1.0, 2.0])
+    def test_accepts_values_within_range(self, value: float) -> None:
+        # Act / Assert
+        assert RepeatPenalty(value).value == value
+
+    @pytest.mark.parametrize("value", [-0.1, 2.1])
+    def test_rejects_values_out_of_range(self, value: float) -> None:
+        # Act / Assert
+        with pytest.raises(ValueError, match="RepeatPenalty out of range"):
+            RepeatPenalty(value)
 
 
 class TestElapsedSeconds:

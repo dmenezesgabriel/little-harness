@@ -40,7 +40,10 @@ little-harness-core = { workspace = true }
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 pythonpath = ["."]
-addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harness_calculator --cov-report=term-missing"
+addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harness_calculator --cov-report=term-missing -m 'not integration'"
+markers = [
+    "integration: end-to-end tests that run the tool through the core (opt-in)",
+]
 
 [tool.mutmut]
 paths_to_mutate = ["src/little_harness_calculator"]

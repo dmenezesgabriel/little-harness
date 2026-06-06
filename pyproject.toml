@@ -23,6 +23,7 @@ dev = [
     "pytest==9.0.3",
     "pytest-bdd==8.1.0",
     "pytest-cov==7.1.0",
+    "pytest-timeout==2.3.1",
     "radon==6.0.1",
     "ruff==0.15.14",
     "semgrep==1.163.0",

@@ -14,7 +14,9 @@ from collections.abc import Sequence
 from little_harness.domain.values.numeric_values import (
     MaxIterations,
     MaxTokens,
+    RepeatPenalty,
     Temperature,
+    TopP,
 )
 from little_harness.domain.values.text_values import Prompt
 from little_harness.presentation.cli.app_config import AppConfig
@@ -57,6 +59,18 @@ def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
 def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--temperature", type=float, default=0.0, help="Sampling temperature."
+    )
+    parser.add_argument(
+        "--top-p",
+        type=float,
+        default=None,
+        help="Nucleus sampling threshold (0.0..1.0). Default lets provider decide.",
+    )
+    parser.add_argument(
+        "--repeat-penalty",
+        type=float,
+        default=None,
+        help="Repetition penalty (0.0..2.0, 1.0 = off). Provider default when unset.",
     )
     parser.add_argument(
         "--max-tokens", type=int, default=512, help="Maximum generated tokens."
@@ -132,6 +146,10 @@ def to_app_config(namespace: argparse.Namespace) -> AppConfig:
         temperature=Temperature(namespace.temperature),
         max_tokens=MaxTokens(namespace.max_tokens),
         max_iterations=MaxIterations(namespace.max_iterations),
+        top_p=TopP(namespace.top_p) if namespace.top_p is not None else None,
+        repeat_penalty=RepeatPenalty(namespace.repeat_penalty)
+        if namespace.repeat_penalty is not None
+        else None,
         provider=namespace.provider,
         provider_options=build_provider_options(namespace.model, namespace.options),
         policy=namespace.policy,

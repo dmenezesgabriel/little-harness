@@ -72,14 +72,14 @@ def tool_call_json(tool_name: str, input_json: str) -> str:
 def build_response_schema(tools: Sequence[ToolSpec]) -> ResponseSchema:
     """A JSON Schema forcing one branch: a final answer, or a known tool call.
 
-    The tool branch's `action` is an enum of the real tool names, so a constrained
-    decoder cannot emit an unknown tool. With no tools, only the final branch
-    remains (an empty enum would be an unsatisfiable grammar).
+    Each tool gets its own branch so constrained decoders can enforce both the
+    tool name and the shape of that tool's input. With no tools, only the final
+    branch remains.
     """
     if len(tools) == 0:
         return ResponseSchema(final_branch())
 
-    return ResponseSchema({"oneOf": [final_branch(), tool_branch(tools)]})
+    return ResponseSchema({"oneOf": [final_branch(), *tool_branches(tools)]})
 
 
 def final_branch() -> Mapping[str, object]:
@@ -91,12 +91,16 @@ def final_branch() -> Mapping[str, object]:
     }
 
 
-def tool_branch(tools: Sequence[ToolSpec]) -> Mapping[str, object]:
+def tool_branches(tools: Sequence[ToolSpec]) -> list[Mapping[str, object]]:
+    return [tool_branch(tool) for tool in tools]
+
+
+def tool_branch(tool: ToolSpec) -> Mapping[str, object]:
     return {
         "type": "object",
         "properties": {
-            "action": {"enum": [tool.name.value for tool in tools]},
-            "input": {},
+            "action": {"const": tool.name.value},
+            "input": tool.input_schema.json_schema or {},
         },
         "required": ["action", "input"],
         "additionalProperties": False,

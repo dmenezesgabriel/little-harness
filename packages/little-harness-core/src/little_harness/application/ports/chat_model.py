@@ -8,7 +8,12 @@ from typing import Protocol
 
 from little_harness.application.ports.closeable import Closeable
 from little_harness.domain.message_history import MessageHistory
-from little_harness.domain.values.numeric_values import MaxTokens, Temperature
+from little_harness.domain.values.numeric_values import (
+    MaxTokens,
+    RepeatPenalty,
+    Temperature,
+    TopP,
+)
 from little_harness.domain.values.text_values import MessageContent
 
 
@@ -34,6 +39,8 @@ class ChatCompletionRequest:
     temperature: Temperature
     max_tokens: MaxTokens
     response_schema: ResponseSchema | None = None
+    top_p: TopP | None = None
+    repeat_penalty: RepeatPenalty | None = None
 
 
 class ChatModel(Closeable, Protocol):

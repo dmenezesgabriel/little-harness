@@ -28,6 +28,15 @@ class WriteFileTool:
             ToolInputSchema(
                 'A JSON object {"path": "...", "content": "..."}.',
                 ToolExamples(('{"path": "notes.txt", "content": "hello"}',)),
+                {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "content": {"type": "string"},
+                    },
+                    "required": ["path", "content"],
+                    "additionalProperties": False,
+                },
             ),
             requires_approval=True,
         )

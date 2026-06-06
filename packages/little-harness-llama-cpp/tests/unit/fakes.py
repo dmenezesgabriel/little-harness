@@ -11,6 +11,7 @@ from little_harness_llama_cpp.values import (
     BatchSize,
     ContextSize,
     GpuLayerCount,
+    InferenceSeed,
     ModelPath,
     ThreadCount,
 )
@@ -36,6 +37,8 @@ class FakeLlama:
         max_tokens: int,
         stream: bool = False,
         response_format: object = None,
+        top_p: float | None = None,
+        repeat_penalty: float | None = None,
     ) -> Iterator[CreateChatCompletionStreamResponse]:
         self.completion_kwargs = {
             "messages": messages,
@@ -43,6 +46,8 @@ class FakeLlama:
             "max_tokens": max_tokens,
             "stream": stream,
             "response_format": response_format,
+            "top_p": top_p,
+            "repeat_penalty": repeat_penalty,
         }
         # First chunk is role-only (no content); the adapter must skip it.
         return iter(
@@ -81,4 +86,5 @@ def make_settings(model_path: Path) -> LlamaCppModelSettings:
         gpu_layer_count=GpuLayerCount(0),
         batch_size=BatchSize(512),
         flash_attention=True,
+        seed=InferenceSeed(42),
     )

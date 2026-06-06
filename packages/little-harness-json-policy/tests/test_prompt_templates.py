@@ -20,11 +20,15 @@ from little_harness_json_policy.prompt_templates import (
 )
 
 
-def tool_spec(name: str, examples: tuple[str, ...] = ()) -> ToolSpec:
+def tool_spec(
+    name: str,
+    examples: tuple[str, ...] = (),
+    json_schema: dict[str, object] | None = None,
+) -> ToolSpec:
     return ToolSpec(
         ToolName(name),
         "Evaluate arithmetic.",
-        ToolInputSchema("A numeric expression", ToolExamples(examples)),
+        ToolInputSchema("A numeric expression", ToolExamples(examples), json_schema),
     )
 
 
@@ -119,13 +123,22 @@ class TestFormatInputExample:
 
 
 class TestBuildResponseSchema:
-    def test_builds_a_oneof_of_final_and_tool_branches(self) -> None:
+    def test_builds_a_oneof_of_final_and_per_tool_branches(self) -> None:
         # Act
         schema = build_response_schema(
-            [tool_spec("calculator"), tool_spec("edit_file")]
+            [
+                tool_spec("calculator", json_schema={"type": "string"}),
+                tool_spec(
+                    "edit_file",
+                    json_schema={
+                        "type": "object",
+                        "required": ["path"],
+                    },
+                ),
+            ]
         )
 
-        # Assert: action is constrained to the real tool names or "final".
+        # Assert: each tool's branch constrains the action and input shape.
         assert schema.value == {
             "oneOf": [
                 {
@@ -140,9 +153,43 @@ class TestBuildResponseSchema:
                 {
                     "type": "object",
                     "properties": {
-                        "action": {"enum": ["calculator", "edit_file"]},
-                        "input": {},
+                        "action": {"const": "calculator"},
+                        "input": {"type": "string"},
                     },
+                    "required": ["action", "input"],
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "action": {"const": "edit_file"},
+                        "input": {"type": "object", "required": ["path"]},
+                    },
+                    "required": ["action", "input"],
+                    "additionalProperties": False,
+                },
+            ]
+        }
+
+    def test_defaults_tool_input_to_unconstrained_when_absent(self) -> None:
+        # Act
+        schema = build_response_schema([tool_spec("echo")])
+
+        # Assert: old tools remain usable until they declare a structured shape.
+        assert schema.value == {
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "action": {"const": "final"},
+                        "answer": {"type": "string"},
+                    },
+                    "required": ["action", "answer"],
+                    "additionalProperties": False,
+                },
+                {
+                    "type": "object",
+                    "properties": {"action": {"const": "echo"}, "input": {}},
                     "required": ["action", "input"],
                     "additionalProperties": False,
                 },

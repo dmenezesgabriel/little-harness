@@ -26,7 +26,9 @@ from little_harness.domain.values.numeric_values import (
     Iteration,
     MaxIterations,
     MaxTokens,
+    RepeatPenalty,
     Temperature,
+    TopP,
 )
 from little_harness.domain.values.role import ASSISTANT, SYSTEM, USER, Role
 from little_harness.domain.values.text_values import MessageContent, Prompt, RunId
@@ -42,6 +44,8 @@ class AgentRuntimeConfig:
     max_iterations: MaxIterations
     temperature: Temperature
     max_tokens: MaxTokens
+    top_p: TopP | None = None
+    repeat_penalty: RepeatPenalty | None = None
 
 
 class SessionDecisionApplier:
@@ -175,6 +179,8 @@ class AgentRuntime:
             self._config.temperature,
             self._config.max_tokens,
             self._dependencies.policy.response_schema(specs),
+            top_p=self._config.top_p,
+            repeat_penalty=self._config.repeat_penalty,
         )
         chunks: list[str] = []
         for chunk in self._dependencies.chat_model.complete_streaming(request):

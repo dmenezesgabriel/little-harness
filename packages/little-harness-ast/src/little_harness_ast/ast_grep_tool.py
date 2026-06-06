@@ -35,6 +35,16 @@ class AstGrepTool:
             ToolInputSchema(
                 'A JSON object {"path": "...", "language": "...", "query": "..."}.',
                 ToolExamples((EXAMPLE_INPUT,)),
+                {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "language": {"type": "string"},
+                        "query": {"type": "string"},
+                    },
+                    "required": ["path", "language", "query"],
+                    "additionalProperties": False,
+                },
             ),
         )
 

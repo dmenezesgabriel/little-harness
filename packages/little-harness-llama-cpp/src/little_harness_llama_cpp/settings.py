@@ -8,6 +8,7 @@ from little_harness_llama_cpp.values import (
     BatchSize,
     ContextSize,
     GpuLayerCount,
+    InferenceSeed,
     ModelPath,
     ThreadCount,
 )
@@ -21,3 +22,4 @@ class LlamaCppModelSettings:
     gpu_layer_count: GpuLayerCount
     batch_size: BatchSize
     flash_attention: bool
+    seed: InferenceSeed

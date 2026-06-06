@@ -43,16 +43,22 @@ class LiteLLMChatModel:
     def complete_streaming(
         self, request: ChatCompletionRequest
     ) -> Iterator[MessageContent]:
-        response = _litellm.completion(
-            model=self._settings.model,
-            messages=[to_litellm_message(message) for message in request.messages],
-            temperature=request.temperature.value,
-            max_tokens=request.max_tokens.value,
-            stream=True,
-            api_base=self._settings.api_base,
-            api_key=self._settings.api_key,
-            response_format=to_response_format(request.response_schema),
-        )
+        completion_kwargs: dict[str, Any] = {
+            "model": self._settings.model,
+            "messages": [to_litellm_message(message) for message in request.messages],
+            "temperature": request.temperature.value,
+            "max_tokens": request.max_tokens.value,
+            "stream": True,
+            "api_base": self._settings.api_base,
+            "api_key": self._settings.api_key,
+            "num_retries": self._settings.num_retries,
+            "response_format": to_response_format(request.response_schema),
+        }
+        if request.top_p is not None:
+            completion_kwargs["top_p"] = request.top_p.value
+        if request.repeat_penalty is not None:
+            completion_kwargs["repeat_penalty"] = request.repeat_penalty.value
+        response = _litellm.completion(**completion_kwargs)
         # `stream=True` yields an iterator, but the SDK's return type unions it with
         # the non-streaming response; reject the non-streaming case at runtime. The
         # check lives in a helper so narrowing stays there and `response` remains `Any`.

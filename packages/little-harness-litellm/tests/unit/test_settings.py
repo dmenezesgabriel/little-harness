@@ -13,6 +13,17 @@ class TestLiteLLMSettings:
         assert settings.model == "gpt-4o"
         assert settings.api_base is None
         assert settings.api_key is None
+        assert settings.num_retries == 0
+
+    def test_keeps_a_non_negative_retry_count(self) -> None:
+        # Act / Assert
+        count = 3
+        assert LiteLLMSettings("gpt-4o", num_retries=count).num_retries == count
+
+    def test_rejects_a_negative_retry_count(self) -> None:
+        # Act / Assert: the message names the offending value.
+        with pytest.raises(ValueError, match="LiteLLM num_retries is negative: -1"):
+            LiteLLMSettings("gpt-4o", num_retries=-1)
 
     def test_keeps_endpoint_fields_when_given(self) -> None:
         # Act

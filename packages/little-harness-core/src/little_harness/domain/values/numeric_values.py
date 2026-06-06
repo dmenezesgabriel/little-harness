@@ -68,6 +68,34 @@ class Iteration:
 
 
 @dataclass(frozen=True)
+class TopP:
+    """Nucleus sampling probability threshold. 1.0 disables truncation.
+
+    Example:
+        top_p = TopP(0.95)
+    """
+
+    value: float
+
+    def __post_init__(self) -> None:
+        require_within(self.value, 0.0, 1.0, "TopP")
+
+
+@dataclass(frozen=True)
+class RepeatPenalty:
+    """Token repetition penalty. 1.0 means no penalty.
+
+    Example:
+        repeat_penalty = RepeatPenalty(1.0)
+    """
+
+    value: float
+
+    def __post_init__(self) -> None:
+        require_within(self.value, 0.0, 2.0, "RepeatPenalty")
+
+
+@dataclass(frozen=True)
 class ElapsedSeconds:
     """Wall-clock duration of an agent run in seconds. Must be >= 0.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 
 from little_harness.application.ports.chat_model import (
     ChatCompletionRequest,
@@ -32,13 +33,18 @@ class LlamaCppChatModel:
     def complete_streaming(
         self, request: ChatCompletionRequest
     ) -> Iterator[MessageContent]:
-        stream = self._llm.create_chat_completion(
-            messages=[to_llama_message(message) for message in request.messages],
-            temperature=request.temperature.value,
-            max_tokens=request.max_tokens.value,
-            stream=True,
-            response_format=to_response_format(request.response_schema),
-        )
+        completion_kwargs: dict[str, Any] = {
+            "messages": [to_llama_message(message) for message in request.messages],
+            "temperature": request.temperature.value,
+            "max_tokens": request.max_tokens.value,
+            "stream": True,
+            "response_format": to_response_format(request.response_schema),
+        }
+        if request.top_p is not None:
+            completion_kwargs["top_p"] = request.top_p.value
+        if request.repeat_penalty is not None:
+            completion_kwargs["repeat_penalty"] = request.repeat_penalty.value
+        stream = self._llm.create_chat_completion(**completion_kwargs)
         # `stream=True` returns an iterator, but the SDK's return type is a union
         # with the non-streaming response; narrow it so chunks are typed.
         if not isinstance(stream, Iterator):

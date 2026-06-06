@@ -33,4 +33,19 @@ def to_settings(options: Mapping[str, str]) -> LiteLLMSettings:
         model=model,
         api_base=options.get("api_base"),
         api_key=options.get("api_key"),
+        num_retries=int_option(options, "num_retries", 0),
     )
+
+
+def int_option(options: Mapping[str, str], key: str, default: int) -> int:
+    raw = options.get(key)
+
+    if raw is None:
+        return default
+
+    try:
+        return int(raw)
+    except ValueError as error:
+        raise ValueError(
+            f"Option {key!r} is not an integer: {raw!r}. Expected a base-10 integer."
+        ) from error

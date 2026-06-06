@@ -33,8 +33,8 @@ jobs:
           enable-cache: true
       - name: Sync workspace
         run: uv sync --all-packages
-      # Hermetic tool integration tests run; llama-cpp scenarios skip without a
-      # local GGUF model.
+      # Hermetic through-core integration tests only. Real provider scenarios are
+      # opt-in e2e targets so CI stays reproducible.
       - name: Run integration tests
         run: make integration
 

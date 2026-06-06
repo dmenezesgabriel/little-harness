@@ -21,16 +21,18 @@ from little_harness_llama_cpp.values import (
     BatchSize,
     ContextSize,
     GpuLayerCount,
+    InferenceSeed,
     ModelPath,
     ThreadCount,
 )
 
-DEFAULT_MODEL_PATH = "models/LFM2-8B-A1B-Q4_K_M.gguf"
+DEFAULT_MODEL_PATH = "models/LFM2.5-8B-A1B-Q4_K_M.gguf"
 DEFAULT_CONTEXT_SIZE = 8192
 DEFAULT_THREAD_COUNT = 8
 DEFAULT_GPU_LAYER_COUNT = 0
 DEFAULT_BATCH_SIZE = 512
 DEFAULT_FLASH_ATTENTION = True
+DEFAULT_SEED = 42
 TRUE_OPTION_VALUES = frozenset({"1", "true", "yes", "on"})
 
 
@@ -53,6 +55,7 @@ def to_settings(options: Mapping[str, str]) -> LlamaCppModelSettings:
         ),
         batch_size=BatchSize(int_option(options, "n_batch", DEFAULT_BATCH_SIZE)),
         flash_attention=bool_option(options, "flash_attn", DEFAULT_FLASH_ATTENTION),
+        seed=InferenceSeed(int_option(options, "seed", DEFAULT_SEED)),
     )
 
 

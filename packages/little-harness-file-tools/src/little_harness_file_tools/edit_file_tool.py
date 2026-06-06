@@ -29,6 +29,16 @@ class EditFileTool:
             ToolInputSchema(
                 'A JSON object {"path": "...", "old": "...", "new": "..."}.',
                 ToolExamples(('{"path": "app.py", "old": "x = 1", "new": "x = 2"}',)),
+                {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "old": {"type": "string"},
+                        "new": {"type": "string"},
+                    },
+                    "required": ["path", "old", "new"],
+                    "additionalProperties": False,
+                },
             ),
             requires_approval=True,
         )

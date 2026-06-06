@@ -24,6 +24,7 @@ class ReadFileTool:
             ToolInputSchema(
                 "A filesystem path to the file to read.",
                 ToolExamples(("README.md", "src/app.py")),
+                {"type": "string"},
             ),
         )
 

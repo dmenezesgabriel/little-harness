@@ -10,7 +10,9 @@ from pathlib import Path
 
 import pytest
 
-MODEL_PATH = Path(__file__).resolve().parents[4] / "models" / "LFM2-8B-A1B-Q4_K_M.gguf"
+MODEL_PATH = (
+    Path(__file__).resolve().parents[4] / "models" / "LFM2.5-8B-A1B-Q4_K_M.gguf"
+)
 
 
 @pytest.fixture

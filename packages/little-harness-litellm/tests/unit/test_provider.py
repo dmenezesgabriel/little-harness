@@ -38,6 +38,21 @@ class TestToSettings:
         assert settings.api_base == "https://p/v1"
         assert settings.api_key == "sk-x"
 
+    def test_defaults_retries_to_zero(self) -> None:
+        # Act / Assert: omitting the option leaves retries disabled.
+        assert to_settings({"model": "gpt-4o"}).num_retries == 0
+
+    def test_reads_the_num_retries_option(self) -> None:
+        # Act / Assert
+        count = 5
+        settings = to_settings({"model": "gpt-4o", "num_retries": str(count)})
+        assert settings.num_retries == count
+
+    def test_rejects_a_non_integer_num_retries(self) -> None:
+        # Act / Assert: the message names the offending key and value.
+        with pytest.raises(ValueError, match="Option 'num_retries' is not an integer"):
+            to_settings({"model": "gpt-4o", "num_retries": "lots"})
+
     def test_requires_a_model_option(self) -> None:
         # Act / Assert: the exact message names the missing option and an example.
         with pytest.raises(ValueError) as err:

@@ -16,6 +16,13 @@ def spec(*, requires_approval: bool) -> ToolSpec:
 
 
 class TestToolSpec:
+    def test_input_schema_can_carry_a_json_schema(self) -> None:
+        # Act
+        input_schema = ToolInputSchema("expr", json_schema={"type": "string"})
+
+        # Assert
+        assert input_schema.json_schema == {"type": "string"}
+
     def test_does_not_require_approval_by_default(self) -> None:
         # Act / Assert: safe tools opt out simply by not declaring danger.
         plain = ToolSpec(

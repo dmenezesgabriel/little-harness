@@ -10,7 +10,12 @@ from little_harness.application.ports.chat_model import (
 )
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
-from little_harness.domain.values.numeric_values import MaxTokens, Temperature
+from little_harness.domain.values.numeric_values import (
+    MaxTokens,
+    RepeatPenalty,
+    Temperature,
+    TopP,
+)
 from little_harness.domain.values.role import SYSTEM, USER
 from little_harness.domain.values.text_values import MessageContent
 from little_harness_llama_cpp.chat_model import (
@@ -132,6 +137,68 @@ class TestLlamaCppChatModelStreaming:
             "type": "json_object",
             "schema": schema,
         }
+
+    def test_forwards_top_p_when_set(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Arrange
+        model_file = tmp_path / "model.gguf"
+        model_file.write_bytes(b"")
+        created: list[FakeLlama] = []
+
+        def fake_llama(**kwargs: Any) -> FakeLlama:
+            instance = FakeLlama(**kwargs)
+            created.append(instance)
+            return instance
+
+        monkeypatch.setattr("little_harness_llama_cpp.model_factory.Llama", fake_llama)
+        chat_model = LlamaCppChatModel(make_settings(model_file))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.2),
+            MaxTokens(64),
+            top_p=TopP(0.95),
+        )
+
+        # Act
+        list(chat_model.complete_streaming(request))
+
+        # Assert
+        top_p: float = 0.95
+        assert created[0].completion_kwargs["top_p"] == top_p
+
+    def test_forwards_repeat_penalty_when_set(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Arrange
+        model_file = tmp_path / "model.gguf"
+        model_file.write_bytes(b"")
+        created: list[FakeLlama] = []
+
+        def fake_llama(**kwargs: Any) -> FakeLlama:
+            instance = FakeLlama(**kwargs)
+            created.append(instance)
+            return instance
+
+        monkeypatch.setattr("little_harness_llama_cpp.model_factory.Llama", fake_llama)
+        chat_model = LlamaCppChatModel(make_settings(model_file))
+        request = ChatCompletionRequest(
+            MessageHistory().with_message(ChatMessage(USER, MessageContent("hi"))),
+            Temperature(0.2),
+            MaxTokens(64),
+            repeat_penalty=RepeatPenalty(1.1),
+        )
+
+        # Act
+        list(chat_model.complete_streaming(request))
+
+        # Assert
+        repeat_penalty: float = 1.1
+        assert created[0].completion_kwargs["repeat_penalty"] == repeat_penalty
 
     def test_close_releases_the_native_model(
         self,

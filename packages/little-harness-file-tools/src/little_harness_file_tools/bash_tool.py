@@ -43,6 +43,7 @@ class BashTool:
             ToolInputSchema(
                 "A shell command line to execute.",
                 ToolExamples(("ls -la", "grep -rn TODO src")),
+                {"type": "string"},
             ),
             requires_approval=True,
         )

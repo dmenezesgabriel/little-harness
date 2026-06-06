@@ -13,7 +13,9 @@ from dataclasses import dataclass, field
 from little_harness.domain.values.numeric_values import (
     MaxIterations,
     MaxTokens,
+    RepeatPenalty,
     Temperature,
+    TopP,
 )
 from little_harness.domain.values.text_values import Prompt
 
@@ -38,5 +40,8 @@ class AppConfig:
     enable_streaming: bool = False
     # None means "every installed tool"; a tuple limits discovery to those names.
     tool_selection: tuple[str, ...] | None = None
+    # None means the provider uses its own default.
+    top_p: TopP | None = None
+    repeat_penalty: RepeatPenalty | None = None
     # Skip interactive approval prompts and allow every sensitive tool to run.
     approve_all: bool = False

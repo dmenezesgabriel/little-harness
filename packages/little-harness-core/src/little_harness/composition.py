@@ -155,6 +155,8 @@ def to_runtime_config(config: AppConfig) -> AgentRuntimeConfig:
         max_iterations=config.max_iterations,
         temperature=config.temperature,
         max_tokens=config.max_tokens,
+        top_p=config.top_p,
+        repeat_penalty=config.repeat_penalty,
     )
 
 

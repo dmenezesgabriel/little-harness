@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 
 from little_harness.domain.values.text_values import ToolName
@@ -47,6 +47,7 @@ class ToolInputSchema:
 
     description: str
     examples: ToolExamples = field(default_factory=ToolExamples)
+    json_schema: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True)

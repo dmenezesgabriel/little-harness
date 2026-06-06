@@ -92,3 +92,17 @@ class GpuLayerCount:
 
     def __post_init__(self) -> None:
         require_non_negative_int(self.value, "GpuLayerCount")
+
+
+@dataclass(frozen=True)
+class InferenceSeed:
+    """Sampler seed. A fixed value pins bit-identical outputs at temperature 0.
+
+    Example:
+        seed = InferenceSeed(42)
+    """
+
+    value: int
+
+    def __post_init__(self) -> None:
+        require_non_negative_int(self.value, "InferenceSeed")

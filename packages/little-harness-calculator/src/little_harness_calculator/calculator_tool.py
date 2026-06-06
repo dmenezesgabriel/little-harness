@@ -29,6 +29,7 @@ class CalculatorTool:
             ToolInputSchema(
                 "A numeric expression using +, -, *, /, //, %, **",
                 ToolExamples(("144 / 12", "2 ** 8", "(10 + 5) * 3")),
+                {"type": "string"},
             ),
         )
 
