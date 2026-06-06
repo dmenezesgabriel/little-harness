@@ -32,7 +32,9 @@ from little_harness.domain.values.numeric_values import (
     Iteration,
     MaxIterations,
     MaxTokens,
+    RepeatPenalty,
     Temperature,
+    TopP,
 )
 from little_harness.domain.values.text_values import (
     MessageContent,
@@ -395,6 +397,10 @@ class TestRuntimeConfig:
                 "hi",
                 "--temperature",
                 "0.5",
+                "--top-p",
+                "0.9",
+                "--repeat-penalty",
+                "1.2",
                 "--max-tokens",
                 "99",
                 "--max-iterations",
@@ -407,6 +413,8 @@ class TestRuntimeConfig:
             max_iterations=MaxIterations(7),
             temperature=Temperature(0.5),
             max_tokens=MaxTokens(99),
+            top_p=TopP(0.9),
+            repeat_penalty=RepeatPenalty(1.2),
         )
 
 

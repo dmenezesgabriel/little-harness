@@ -63,13 +63,11 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--top-p",
         type=float,
-        default=None,
         help="Nucleus sampling threshold (0.0..1.0). Default lets provider decide.",
     )
     parser.add_argument(
         "--repeat-penalty",
         type=float,
-        default=None,
         help="Repetition penalty (0.0..2.0, 1.0 = off). Provider default when unset.",
     )
     parser.add_argument(

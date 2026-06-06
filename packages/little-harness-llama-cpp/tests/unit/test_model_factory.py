@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 from little_harness_llama_cpp.model_factory import (
+    _ADD_GENERATION_PROMPT_DEFAULT,
     _formatter_init_without_generation_tags,
     create_llama_model,
 )
@@ -151,15 +152,11 @@ class TestGenerationTagPatch:
         # Assert
         assert recorded_self == [expected_self]
 
-    def test_patched_init_default_add_generation_prompt_is_true(
-        self,
-    ) -> None:
-        # Act
-        sig = inspect.signature(_formatter_init_without_generation_tags)
-
-        # Assert
-        param = sig.parameters["add_generation_prompt"]
-        assert param.default is True
+    def test_add_generation_prompt_defaults_to_true(self) -> None:
+        # _ADD_GENERATION_PROMPT_DEFAULT is a module-level constant (not a
+        # function-parameter literal), so mutmut evaluates its True→False mutant
+        # at import time — outside any trampoline.  A direct assertion kills it.
+        assert _ADD_GENERATION_PROMPT_DEFAULT is True
 
     def test_patched_init_default_stop_token_ids_is_none(
         self,

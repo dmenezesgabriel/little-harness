@@ -17,13 +17,18 @@ from little_harness_llama_cpp.settings import LlamaCppModelSettings
 _sanitizer = ChatTemplateSanitizerFactory.create_default()
 _original_formatter_init = _chat_fmt.Jinja2ChatFormatter.__init__
 
+# Mirrors the original Jinja2ChatFormatter.__init__ default so callers that
+# omit add_generation_prompt continue to get generation prompts, same as before
+# the monkey-patch.  Named constant so the value is independently testable.
+_ADD_GENERATION_PROMPT_DEFAULT: bool = True
+
 
 def _formatter_init_without_generation_tags(
     self: object,
     template: str,
     eos_token: str,
     bos_token: str,
-    add_generation_prompt: bool = True,
+    add_generation_prompt: bool = _ADD_GENERATION_PROMPT_DEFAULT,
     stop_token_ids: list[int] | None = None,
 ) -> None:
     _original_formatter_init(

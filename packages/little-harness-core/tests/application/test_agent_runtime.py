@@ -20,7 +20,9 @@ from little_harness.domain.values.numeric_values import (
     Iteration,
     MaxIterations,
     MaxTokens,
+    RepeatPenalty,
     Temperature,
+    TopP,
 )
 from little_harness.domain.values.role import ASSISTANT, SYSTEM, USER
 from little_harness.domain.values.text_values import (
@@ -55,6 +57,8 @@ def create_runtime(
     max_iterations: int = 3,
     token_sink: RecordingTokenSink | None = None,
     hooks: LifecycleHook | None = None,
+    top_p: TopP | None = None,
+    repeat_penalty: RepeatPenalty | None = None,
 ) -> AgentRuntime:
     dependencies = AgentDependencies(
         chat_model=chat_model,
@@ -68,6 +72,8 @@ def create_runtime(
         max_iterations=MaxIterations(max_iterations),
         temperature=Temperature(0.0),
         max_tokens=MaxTokens(128),
+        top_p=top_p,
+        repeat_penalty=repeat_penalty,
     )
     return AgentRuntime(dependencies, config)
 
@@ -96,6 +102,27 @@ class TestAgentRuntimeFinalAnswer:
         assert chat_model.requests[0].messages == expected_messages
         assert chat_model.requests[0].temperature == Temperature(0.0)
         assert chat_model.requests[0].max_tokens == MaxTokens(128)
+        assert chat_model.requests[0].top_p is None
+        assert chat_model.requests[0].repeat_penalty is None
+
+    def test_forwards_top_p_and_repeat_penalty_to_the_chat_request(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        runtime = create_runtime(
+            chat_model,
+            [],
+            policy,
+            top_p=TopP(0.5),
+            repeat_penalty=RepeatPenalty(1.1),
+        )
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert
+        assert chat_model.requests[0].top_p == TopP(0.5)
+        assert chat_model.requests[0].repeat_penalty == RepeatPenalty(1.1)
 
     def test_forwards_the_policy_schema_built_from_the_registered_tools(self) -> None:
         # Arrange: the policy derives its schema from the registry's specs.
