@@ -1,0 +1,44 @@
+[project]
+name = "little-harness-docs"
+version = "0.1.0"
+description = "Documentation for little-harness"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "little-harness-core",
+    "sphinx>=8.2",
+    "myst-parser>=4",
+    "furo>=2024.8",
+    "sphinx-autodoc-typehints>=3.1",
+    "sphinx-copybutton>=0.5",
+    "sphinx-design>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
+
+[tool.uv.sources]
+little-harness-core = { workspace = true }
+little-harness-llama-cpp = { workspace = true }
+little-harness-calculator = { workspace = true }
+little-harness-litellm = { workspace = true }
+little-harness-file-tools = { workspace = true }
+little-harness-ripgrep = { workspace = true }
+little-harness-ast = { workspace = true }
+little-harness-json-policy = { workspace = true }
+little-harness-logging = { workspace = true }
+
+[tool.pyright]
+include = ["source"]
+typeCheckingMode = "basic"
+pythonVersion = "3.12"
+venvPath = "../.."
+venv = ".venv"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [".git", ".venv", "__pycache__", "build"]
