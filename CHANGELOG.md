@@ -11,8 +11,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `write_file`, `edit_file`, and `bash` — pure-stdlib plugins. `bash` runs behind
   an injectable `DangerousCommandGuardrail` (blocks `rm -rf`, fork bombs, `dd` to
   a device, `mkfs`, `shutdown`, …) with a timeout.
-- **Ripgrep search tool** (`little-harness[ripgrep]`): the `ripgrep` plugin wraps
-  the `rg` binary behind a boundary, run without a shell.
+- **Ripgrep search tool** (`little-harness[ripgrep]`): a pure-Python search plugin offering a ripgrep-style query interface without system binary dependencies.
 - **Tree-sitter AST tools** (`little-harness[ast]`): `ast_grep` (structural
   search) and `ast_edit` (structure-aware replace of the unique `@match` node),
   built on `py-tree-sitter` (python + javascript out of the box).
@@ -32,6 +31,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `.env.example` documenting provider keys.
 
 ### Changed
+- Replaced the external `rg` binary dependency in the `ripgrep` search tool with a pure-Python grep search implementation.
+- Hardened the core-vs-extension boundary by specifying precise signatures on `NullHook` and `NullObserver` instead of variadic arguments.
 - Adopted the `src/` layout across all workspace packages.
 - The CLI default provider now resolves to the sole installed provider via
   discovery instead of a hardcoded `llama_cpp`; the default prompt is

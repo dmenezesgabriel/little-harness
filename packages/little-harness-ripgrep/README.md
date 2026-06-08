@@ -1,21 +1,13 @@
 # little-harness-ripgrep
 
 A fast content-search tool plugin for [little-harness](https://github.com/dmenezesgabriel/little-harness),
-backed by [ripgrep](https://github.com/BurntSushi/ripgrep).
+offering a pure-Python search backend that mimics the interface of [ripgrep](https://github.com/BurntSushi/ripgrep).
 
 | Tool | Input | Approval |
 | --- | --- | --- |
-| `ripgrep` | a ripgrep argument line (pattern, paths, flags) | no (read-only) |
+| `ripgrep` | a ripgrep-style argument line (pattern, paths, flags) | no (read-only) |
 
-The input is split with shell rules but executed **without a shell** (`rg` is
-invoked directly), so there is no shell-injection surface. ripgrep's exit codes
-are interpreted for the agent: matches (0) and "no matches" (1) are both
-successes; a real error (2+) is a failure, as is an absent binary or a timeout.
-
-## Requirements
-
-The `rg` binary must be installed and on `PATH` (e.g. `apt install ripgrep`,
-`brew install ripgrep`). It is a system dependency, not a Python package.
+The input is parsed into a structured grep query and executed entirely in standard Python. Search results are formatted to match ripgrep's default format, interpreting standard exit codes: matches (0), "no matches" (1), and errors (2).
 
 ## Install
 
