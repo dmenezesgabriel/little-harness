@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from little_harness.presentation.cli.interactive_console import InteractiveRunner
+from little_harness_rich.console import RichInteractiveConsole
 from little_harness_rich.provider import build
 
 
@@ -30,3 +31,8 @@ class TestBuild:
         # Assert: it has a start method
         assert hasattr(runner, "start")
         assert callable(runner.start)
+
+        # Verify that dependencies are correctly passed and stored
+        assert isinstance(runner, RichInteractiveConsole)
+        assert runner._app is app
+        assert runner._registry is registry
