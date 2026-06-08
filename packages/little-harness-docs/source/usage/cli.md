@@ -10,7 +10,7 @@ little-harness [OPTIONS]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `-p, --prompt` | `str` | `"What is 144 divided by 12?…"` | Prompt to send to the model |
+| `-p, --prompt` | `str` | `None` | Prompt to send to the model; omit for interactive REPL |
 | `--provider` | `str` | auto-detected | Provider plugin name; defaults to the sole installed provider |
 | `--policy` | `str` | auto-detected | Agent policy plugin name; defaults to the sole installed policy |
 | `-m, --model` | `str` | `None` | Model name or path; shorthand for `-o model=…` |
@@ -25,6 +25,25 @@ little-harness [OPTIONS]
 | `--observer` | `str` | `None` | Observer plugin name (e.g. `logging`) |
 | `--tools` | `str` | all installed | Comma-separated tool names to enable |
 | `--yes` | flag | `False` | Auto-approve every sensitive tool without prompting |
+
+## Interactive REPL
+
+When `-p` / `--prompt` is omitted, `little-harness` starts an interactive
+read-eval-print loop:
+
+```bash
+little-harness --provider llama_cpp --model models/LFM2.5-8B-A1B-Q4_K_M.gguf
+```
+
+Type prompts directly and see responses. Slash commands are available:
+
+| Command       | Description                              |
+|---------------|------------------------------------------|
+| `/exit`       | Exit the REPL                            |
+| `/quit`       | Exit the REPL (alias)                    |
+| `/clear`      | Clear conversation history               |
+| `/help`       | Show available commands                  |
+| `/history`    | Show the number of turns in this session |
 
 ## Examples
 

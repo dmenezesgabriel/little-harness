@@ -2,9 +2,17 @@
 
 ## CLI
 
+One-shot mode (requires `-p`):
+
 ```bash
 little-harness --model models/LFM2.5-8B-A1B-Q4_K_M.gguf \
   -p "What is 144 divided by 12? Then tell me if the result is even or odd."
+```
+
+Interactive REPL mode (omit `-p`):
+
+```bash
+little-harness --model models/LFM2.5-8B-A1B-Q4_K_M.gguf
 ```
 
 With a remote provider:
