@@ -18,10 +18,10 @@ from little_harness.presentation.cli.repl_command import (
     ClearCommand,
     CommandRegistry,
     ExitCommand,
+    ExitReplError,
     HelpCommand,
     HistoryCommand,
     ReplCommand,
-    _ExitReplError,
     build_default_registry,
 )
 
@@ -238,7 +238,7 @@ class TestExitCommand:
 
     def test_execute_raises_exit_repl_error(self) -> None:
         console = FakeReplConsole()
-        with pytest.raises(_ExitReplError):
+        with pytest.raises(ExitReplError):
             ExitCommand().execute(console)
 
 

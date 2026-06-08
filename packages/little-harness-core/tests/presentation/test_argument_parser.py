@@ -102,6 +102,13 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
         False,
         None,
     ),
+    (
+        "ui",
+        ["--ui"],
+        "Interactive UI plugin to use (e.g. 'rich', 'default').",
+        "default",
+        None,
+    ),
 ]
 
 
@@ -151,7 +158,12 @@ class TestArgumentParser:
             provider=None,
             provider_options={},
             enable_streaming=False,
+            ui="default",
         )
+
+    def test_reads_the_ui_override(self) -> None:
+        # Act / Assert
+        assert ArgumentParser().parse(["--ui", "rich"]).ui == "rich"
 
     def test_log_flag_is_shorthand_for_the_logging_observer(self) -> None:
         # Act / Assert

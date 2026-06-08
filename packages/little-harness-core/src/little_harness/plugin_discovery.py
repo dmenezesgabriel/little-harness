@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from importlib.metadata import EntryPoint, entry_points
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.agent_policy import AgentPolicy
@@ -27,14 +27,23 @@ from little_harness.domain.errors import (
     UnknownPolicyError,
     UnknownProviderError,
     UnknownToolError,
+    UnknownUiError,
 )
 from little_harness.presentation.cli.repl_command import ReplCommand
+
+if TYPE_CHECKING:
+    from little_harness.composition import Application
+    from little_harness.presentation.cli.repl_command import CommandRegistry
 
 PROVIDER_GROUP = "little_harness.chat_model_providers"
 TOOL_GROUP = "little_harness.tools"
 POLICY_GROUP = "little_harness.agent_policies"
 OBSERVER_GROUP = "little_harness.observers"
 REPL_COMMAND_GROUP = "little_harness.repl_commands"
+UI_GROUP = "little_harness.uis"
+
+# A UI builder takes Application and CommandRegistry, returning a runner.
+UiBuilder = Callable[["Application", "CommandRegistry"], Any]
 
 # A provider plugin exposes this: build a ready ChatModel from its own options.
 ChatModelBuilder = Callable[[Mapping[str, str]], ChatModel]
@@ -76,6 +85,15 @@ def discover_repl_commands() -> Sequence[ReplCommand]:
     """
     points = entry_points(group=REPL_COMMAND_GROUP)
     return [point.load()() for point in points]
+
+
+def discover_ui(name: str) -> UiBuilder:
+    """Build the UI plugin registered under `name`.
+
+    Example:
+        ui_builder = discover_ui("rich")
+    """
+    return resolve_builder(UI_GROUP, name, UnknownUiError, "UI")
 
 
 def resolve_builder(

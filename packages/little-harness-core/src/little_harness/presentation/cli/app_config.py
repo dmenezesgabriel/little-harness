@@ -46,3 +46,5 @@ class AppConfig:
     repeat_penalty: RepeatPenalty | None = None
     # Skip interactive approval prompts and allow every sensitive tool to run.
     approve_all: bool = False
+    # Interactive UI plugin to use (e.g. 'rich', 'default').
+    ui: str = "default"

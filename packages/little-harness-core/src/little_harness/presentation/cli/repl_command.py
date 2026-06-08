@@ -90,7 +90,7 @@ class ReplCommand(Protocol):
     def execute(self, console: ReplConsole, /) -> None: ...
 
 
-class _ExitReplError(Exception):
+class ExitReplError(Exception):
     """Signal to exit the REPL loop cleanly.
 
     Raised by ExitCommand.execute and caught by InteractiveConsole.start.
@@ -115,7 +115,7 @@ class ExitCommand:
     description = "Exit the interactive session"
 
     def execute(self, _console: ReplConsole, /) -> None:
-        raise _ExitReplError()
+        raise ExitReplError()
 
 
 class HelpCommand:

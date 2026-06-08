@@ -100,6 +100,11 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
         dest="approve_all",
         help="Approve every sensitive tool without prompting (non-interactive runs).",
     )
+    parser.add_argument(
+        "--ui",
+        default="default",
+        help="Interactive UI plugin to use (e.g. 'rich', 'default').",
+    )
 
 
 def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
@@ -155,6 +160,7 @@ def to_app_config(namespace: argparse.Namespace) -> AppConfig:
         enable_streaming=namespace.stream,
         tool_selection=parse_tool_selection(namespace.tools),
         approve_all=namespace.approve_all,
+        ui=namespace.ui,
     )
 
 

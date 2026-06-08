@@ -35,6 +35,7 @@ from little_harness.plugin_discovery import (
     discover_policy,
     discover_repl_commands,
     discover_tools,
+    discover_ui,
     load_chat_model_builder,
 )
 from little_harness.presentation.cli.app_config import AppConfig
@@ -195,5 +196,8 @@ def run_cli(argv: Sequence[str] | None = None) -> str:
     with build_application(config, build_observer(config)) as app:
         if config.prompt is None:
             registry = build_command_registry()
-            return InteractiveConsole(app, registry=registry).start()
+            if config.ui == "default":
+                return InteractiveConsole(app, registry=registry).start()
+            ui_builder = discover_ui(config.ui)
+            return ui_builder(app, registry).start()
         return app.run(config.prompt)

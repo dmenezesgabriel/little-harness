@@ -18,6 +18,7 @@ members = [
     "little-harness-litellm",
     "little-harness-llama-cpp",
     "little-harness-logging",
+    "little-harness-rich",
     "little-harness-ripgrep",
 ]
 
@@ -34,6 +35,7 @@ dev = [
     { name = "little-harness-litellm", editable = "packages/little-harness-litellm" },
     { name = "little-harness-llama-cpp", editable = "packages/little-harness-llama-cpp" },
     { name = "little-harness-logging", editable = "packages/little-harness-logging" },
+    { name = "little-harness-rich", editable = "packages/little-harness-rich" },
     { name = "little-harness-ripgrep", editable = "packages/little-harness-ripgrep" },
     { name = "mutmut", specifier = "==3.5.0" },
     { name = "pre-commit", specifier = "==4.6.0" },
@@ -881,6 +883,7 @@ all = [
     { name = "little-harness-litellm" },
     { name = "little-harness-llama-cpp" },
     { name = "little-harness-logging" },
+    { name = "little-harness-rich" },
     { name = "little-harness-ripgrep" },
 ]
 ast = [
@@ -904,13 +907,16 @@ llama-cpp = [
 logging = [
     { name = "little-harness-logging" },
 ]
+rich = [
+    { name = "little-harness-rich" },
+]
 ripgrep = [
     { name = "little-harness-ripgrep" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "little-harness", extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging"], marker = "extra == 'all'" },
+    { name = "little-harness", extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging", "rich"], marker = "extra == 'all'" },
     { name = "little-harness-ast", marker = "extra == 'ast'", editable = "packages/little-harness-ast" },
     { name = "little-harness-calculator", marker = "extra == 'calculator'", editable = "packages/little-harness-calculator" },
     { name = "little-harness-core", editable = "packages/little-harness-core" },
@@ -919,9 +925,10 @@ requires-dist = [
     { name = "little-harness-litellm", marker = "extra == 'litellm'", editable = "packages/little-harness-litellm" },
     { name = "little-harness-llama-cpp", marker = "extra == 'llama-cpp'", editable = "packages/little-harness-llama-cpp" },
     { name = "little-harness-logging", marker = "extra == 'logging'", editable = "packages/little-harness-logging" },
+    { name = "little-harness-rich", marker = "extra == 'rich'", editable = "packages/little-harness-rich" },
     { name = "little-harness-ripgrep", marker = "extra == 'ripgrep'", editable = "packages/little-harness-ripgrep" },
 ]
-provides-extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging", "all"]
+provides-extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging", "rich", "all"]
 
 [[package]]
 name = "little-harness-ast"
@@ -1045,6 +1052,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "little-harness-core", editable = "packages/little-harness-core" }]
+
+[[package]]
+name = "little-harness-rich"
+version = "0.1.0"
+source = { editable = "packages/little-harness-rich" }
+dependencies = [
+    { name = "little-harness-core" },
+    { name = "rich" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "little-harness-core", editable = "packages/little-harness-core" },
+    { name = "rich", specifier = ">=13.0.0" },
+]
 
 [[package]]
 name = "little-harness-ripgrep"

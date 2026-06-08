@@ -25,8 +25,9 @@ ripgrep = ["little-harness-ripgrep"]
 ast = ["little-harness-ast"]
 json-policy = ["little-harness-json-policy"]
 logging = ["little-harness-logging"]
+rich = ["little-harness-rich"]
 all = [
-    "little-harness[llama-cpp,litellm,calculator,file-tools,ripgrep,ast,json-policy,logging]",
+    "little-harness[llama-cpp,litellm,calculator,file-tools,ripgrep,ast,json-policy,logging,rich]",
 ]
 
 [build-system]
@@ -47,6 +48,7 @@ little-harness-ripgrep = { workspace = true }
 little-harness-ast = { workspace = true }
 little-harness-json-policy = { workspace = true }
 little-harness-logging = { workspace = true }
+little-harness-rich = { workspace = true }
 
 # The umbrella ships no importable code, so it has no coverage/mutation/typecheck
 # gate. Its only tests are the opt-in end-to-end suite that drives every plugin

@@ -25,3 +25,7 @@ class UnknownPolicyError(ValueError):
 
 class UnknownObserverError(ValueError):
     """Raised when `--observer` names an observer no installed plugin registers."""
+
+
+class UnknownUiError(ValueError):
+    """Raised when `--ui` names a UI no installed plugin registers."""

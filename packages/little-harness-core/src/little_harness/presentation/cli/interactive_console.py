@@ -18,7 +18,7 @@ from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.text_values import Prompt
 from little_harness.presentation.cli.repl_command import (
     CommandRegistry,
-    _ExitReplError,
+    ExitReplError,
     build_default_registry,
 )
 
@@ -37,6 +37,14 @@ class Application(Protocol):
         prompt: Prompt,
         messages: MessageHistory,
     ) -> tuple[AgentResult, MessageHistory]: ...
+
+
+class InteractiveRunner(Protocol):
+    """Protocol defining an interactive UI runner."""
+
+    def start(self) -> str:
+        """Starts the interactive session, returns when the session finishes."""
+        ...
 
 
 class InteractiveConsole:
@@ -81,7 +89,7 @@ class InteractiveConsole:
     def start(self) -> str:
         readline.get_history_length()
 
-        with contextlib.suppress(_ExitReplError):
+        with contextlib.suppress(ExitReplError):
             self._loop()
 
         return ""

@@ -13,8 +13,8 @@ from little_harness.domain.values.numeric_values import ElapsedSeconds
 from little_harness.domain.values.role import ASSISTANT, SYSTEM, USER
 from little_harness.domain.values.text_values import MessageContent, Prompt
 from little_harness.presentation.cli.interactive_console import (
+    ExitReplError,
     InteractiveConsole,
-    _ExitReplError,
 )
 
 SYSTEM_MSG = ChatMessage(SYSTEM, MessageContent("System prompt"))
@@ -70,13 +70,13 @@ class TestInteractiveConsoleSlashCommands:
     def test_process_exit_raises_exit_repl(self) -> None:
         console, _ = console_with()
 
-        with pytest.raises(_ExitReplError):
+        with pytest.raises(ExitReplError):
             console._process_command("/exit")
 
     def test_process_quit_raises_exit_repl(self) -> None:
         console, _ = console_with()
 
-        with pytest.raises(_ExitReplError):
+        with pytest.raises(ExitReplError):
             console._process_command("/quit")
 
     def test_clear_resets_history_to_system_message(self) -> None:

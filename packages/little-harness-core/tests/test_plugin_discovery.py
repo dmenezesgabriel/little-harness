@@ -12,6 +12,7 @@ from little_harness.domain.errors import (
     UnknownPolicyError,
     UnknownProviderError,
     UnknownToolError,
+    UnknownUiError,
 )
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
@@ -22,6 +23,7 @@ from little_harness.plugin_discovery import (
     PROVIDER_GROUP,
     REPL_COMMAND_GROUP,
     TOOL_GROUP,
+    UI_GROUP,
     ChatModelBuilder,
     default_policy_name,
     default_provider_name,
@@ -29,6 +31,7 @@ from little_harness.plugin_discovery import (
     discover_policy,
     discover_repl_commands,
     discover_tools,
+    discover_ui,
     installed_providers,
     installed_tools,
     load_chat_model_builder,
@@ -405,3 +408,37 @@ class TestDiscoverReplCommands:
         commands = discover_repl_commands()
         assert len(commands) == 1
         assert commands[0].name == "custom"
+
+
+class TestDiscoverUi:
+    def test_builds_the_ui_registered_under_the_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        def fake_builder(_app: object, _reg: object) -> str:
+            return "fake_ui"
+
+        install_entry_points(
+            monkeypatch, {UI_GROUP: [FakeEntryPoint("rich", fake_builder)]}
+        )
+
+        # Act / Assert
+        assert discover_ui("rich") is fake_builder
+
+    def test_rejects_an_unknown_ui_and_lists_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        def fake_builder(_app: object, _reg: object) -> str:
+            return "fake_ui"
+
+        install_entry_points(
+            monkeypatch, {UI_GROUP: [FakeEntryPoint("rich", fake_builder)]}
+        )
+
+        # Act / Assert: the message names the offending value and what is installed.
+        with pytest.raises(UnknownUiError) as err:
+            discover_ui("mystery")
+        assert str(err.value) == (
+            "Unknown UI: 'mystery'. Installed UI plugins: ['rich']."
+        )

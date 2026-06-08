@@ -424,6 +424,37 @@ class TestRunCliInteractive:
 
         assert SpyingInteractiveConsole.received_app is built_app
 
+    def test_starts_custom_ui_when_selected(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        passed_args: list[tuple[object, object]] = []
+
+        class FakeCustomUi:
+            def __init__(self, app: object, registry: object) -> None:
+                passed_args.append((app, registry))
+
+            def start(self) -> str:
+                return "custom_started"
+
+        built_app = FakeApplication()
+        monkeypatch.setattr(
+            "little_harness.composition.build_application",
+            lambda _config, _observer: built_app,
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_observer", lambda _config: None
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.discover_ui",
+            lambda name: FakeCustomUi if name == "custom" else None,
+        )
+
+        result = run_cli(["--ui", "custom"])
+
+        assert result == "custom_started"
+        assert len(passed_args) == 1
+        assert passed_args[0][0] is built_app
+
 
 class TestProviderSelection:
     def test_builds_the_selected_provider_via_discovery(
