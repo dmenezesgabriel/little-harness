@@ -227,15 +227,18 @@ class TestPythonGrepSearchSafety:
         assert ".hidden_dir" not in outcome.stdout
 
     def test_hidden_files_are_skipped(self, tmp_path: Path) -> None:
-        file_a = _write(tmp_path, "a.py", "TODO visible a\n")
-        _write(tmp_path, ".hidden.py", "TODO hidden\n")
-        file_z = _write(tmp_path, "z.py", "TODO visible z\n")
+        _write(tmp_path, ".hidden.py", "TODO match\n")
+        visible_path = _write(tmp_path, "visible.py", "TODO match\n")
 
-        outcome = _search.run(["TODO", str(tmp_path)], 30.0)
+        # Mock os.walk to deterministically yield the hidden file FIRST,
+        # then the visible file.
+        with patch(
+            "os.walk", return_value=[(str(tmp_path), [], [".hidden.py", "visible.py"])]
+        ):
+            outcome = _search.run(["TODO", str(tmp_path)], 30.0)
 
         assert outcome.exit_code == MATCH_EXIT_CODE
-        expected = sorted([f"{file_a}:1:TODO visible a", f"{file_z}:1:TODO visible z"])
-        assert sorted(outcome.stdout.splitlines()) == expected
+        assert outcome.stdout == f"{visible_path}:1:TODO match\n"
 
     def test_git_directory_is_skipped(self, tmp_path: Path) -> None:
         git_dir = tmp_path / ".git"
