@@ -176,6 +176,20 @@ def ask_ripgrep(run_agent: RunAgent, term: str) -> str:
 
 
 @when(
+    parsers.parse(
+        'the agent is asked to search the workspace including hidden files for "{term}"'
+    ),
+    target_fixture="answer",
+)
+def ask_ripgrep_hidden(run_agent: RunAgent, term: str) -> str:
+    return run_agent(
+        f"Call exactly the ripgrep tool once with input "
+        f"'--hidden \"{term}\" .'. Then answer with the matching line.",
+        "ripgrep",
+    )
+
+
+@when(
     parsers.parse('the agent is asked to find print calls in the Python file "{name}"'),
     target_fixture="answer",
 )

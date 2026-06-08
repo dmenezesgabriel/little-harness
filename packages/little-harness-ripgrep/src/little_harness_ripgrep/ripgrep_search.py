@@ -58,6 +58,7 @@ class GrepRequest:
     paths: tuple[Path, ...]
     file_extensions: frozenset[str] | None
     max_results_per_file: int | None
+    hidden: bool = False
 
 
 class _GrepParseError(Exception):
@@ -80,6 +81,7 @@ class _ParsedArguments:
     ignore_case: bool = False
     file_type: str | None = None
     max_count_str: str | None = None
+    hidden: bool = False
     positionals: list[str] = field(default_factory=_string_list)
 
 
@@ -125,18 +127,23 @@ class GrepArgumentParser:
     def _handle_flag(
         self, flag: str, index: int, arguments: Sequence[str], parsed: _ParsedArguments
     ) -> int | RipgrepOutcome:
+        if flag == "--hidden":
+            parsed.hidden = True
+            return index
         if flag in ("-i", "--ignore-case"):
             parsed.ignore_case = True
             return index
-        if flag in ("-t", "--type"):
-            return self._handle_type_flag(index, arguments, parsed)
-        if flag in ("-m", "--max-count"):
-            return self._handle_max_count_flag(index, arguments, parsed)
-        return RipgrepOutcome(
+
+        res: int | RipgrepOutcome = RipgrepOutcome(
             exit_code=2,
             stdout="",
             stderr=f"Error: unknown flag {flag}",
         )
+        if flag in ("-t", "--type"):
+            res = self._handle_type_flag(index, arguments, parsed)
+        if flag in ("-m", "--max-count"):
+            res = self._handle_max_count_flag(index, arguments, parsed)
+        return res
 
     def _handle_type_flag(
         self, index: int, arguments: Sequence[str], parsed: _ParsedArguments
@@ -171,7 +178,7 @@ class GrepArgumentParser:
         extensions = self._resolve_extensions(parsed.file_type)
         limit = self._resolve_max_results(parsed.max_count_str)
         paths = self._resolve_paths(parsed.positionals[1:])
-        return GrepRequest(pattern, paths, extensions, limit)
+        return GrepRequest(pattern, paths, extensions, limit, parsed.hidden)
 
     def _compile_pattern(self, pattern_str: str, ignore_case: bool) -> re.Pattern[str]:
         flags = re.IGNORECASE if ignore_case else 0
@@ -259,7 +266,7 @@ class PythonGrepSearch:
         deadline = time.monotonic() + timeout_seconds
         all_matches: list[str] = []
         for path in request.paths:
-            for file_path in self._walk_files(path):
+            for file_path in self._walk_files(path, request.hidden):
                 if time.monotonic() > deadline:
                     break
                 if self._should_skip(file_path, request.file_extensions):
@@ -274,14 +281,19 @@ class PythonGrepSearch:
                 break
         return self._format_results(all_matches)
 
-    def _walk_files(self, path: Path) -> Iterator[Path]:
+    def _walk_files(self, path: Path, hidden: bool | None = None) -> Iterator[Path]:
+        is_hidden = False if hidden is None else bool(hidden)
         if path.is_file():
             yield path
             return
         for root, dirs, files in os.walk(path):
-            dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+            dirs[:] = [
+                d
+                for d in dirs
+                if (is_hidden or not d.startswith(".")) and d != "__pycache__"
+            ]
             for file in files:
-                if file.startswith("."):
+                if not is_hidden and file.startswith("."):
                     continue
                 yield Path(root) / file
 

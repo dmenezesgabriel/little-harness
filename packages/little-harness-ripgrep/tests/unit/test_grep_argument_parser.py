@@ -132,6 +132,20 @@ class TestGrepArgumentParserSuccess:
         assert isinstance(result, GrepRequest)
         assert result.pattern.pattern == "-"
 
+    def test_hidden_flag_sets_hidden_to_true(self, tmp_path: Path) -> None:
+        result = parse(["--hidden", "TODO", str(tmp_path)], tmp_path)
+
+        assert isinstance(result, GrepRequest)
+        assert result.hidden is True
+        assert result.pattern.pattern == "TODO"
+        assert result.paths == (tmp_path,)
+
+    def test_no_hidden_flag_leaves_hidden_as_false(self, tmp_path: Path) -> None:
+        result = parse(["TODO", str(tmp_path)], tmp_path)
+
+        assert isinstance(result, GrepRequest)
+        assert result.hidden is False
+
 
 class TestGrepArgumentParserErrors:
     def test_invalid_regex_returns_exit_code_2(self, tmp_path: Path) -> None:

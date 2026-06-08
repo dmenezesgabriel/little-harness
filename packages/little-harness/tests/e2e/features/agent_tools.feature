@@ -31,6 +31,11 @@ Feature: A real provider drives every installed tool through the agent core
     When the agent is asked to search the workspace for "needle"
     Then the answer contains "needle"
 
+  Scenario: ripgrep finds a match in a hidden file
+    Given a workspace file ".hidden_haystack.txt" containing "find the hidden needle"
+    When the agent is asked to search the workspace including hidden files for "hidden needle"
+    Then the answer contains "hidden needle"
+
   Scenario: ast_grep finds a structural match
     Given a workspace file "sample.py" containing "print('hi')"
     When the agent is asked to find print calls in the Python file "sample.py"

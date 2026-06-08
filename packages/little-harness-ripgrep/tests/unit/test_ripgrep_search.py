@@ -262,6 +262,50 @@ class TestPythonGrepSearchSafety:
 
         assert "__pycache__" not in outcome.stdout
 
+    def test_pycache_directory_is_skipped_even_with_hidden_flag(
+        self, tmp_path: Path
+    ) -> None:
+        cache = tmp_path / "__pycache__"
+        cache.mkdir()
+        (cache / "cached.pyc").write_text("TODO cached\n", encoding="utf-8")
+
+        outcome = _search.run(["--hidden", "TODO", str(tmp_path)], 30.0)
+
+        assert "__pycache__" not in outcome.stdout
+
+    def test_walk_files_defaults_to_non_hidden(self, tmp_path: Path) -> None:
+        _write(tmp_path, ".hidden.py", "TODO match\n")
+        visible = _write(tmp_path, "visible.py", "TODO match\n")
+
+        # Call the private helper _walk_files directly with default arguments
+        files = list(_search._walk_files(tmp_path))  # pyright: ignore[reportPrivateUsage]
+
+        assert visible in files
+        assert (tmp_path / ".hidden.py") not in files
+
+    def test_hidden_directories_are_searched_when_hidden_flag_passed(
+        self, tmp_path: Path
+    ) -> None:
+        hidden = tmp_path / ".hidden_dir"
+        hidden.mkdir()
+        path = hidden / "secret.py"
+        path.write_text("TODO secret\n", encoding="utf-8")
+
+        outcome = _search.run(["--hidden", "TODO", str(tmp_path)], 30.0)
+
+        assert outcome.exit_code == MATCH_EXIT_CODE
+        assert outcome.stdout == f"{path}:1:TODO secret\n"
+
+    def test_hidden_files_are_searched_when_hidden_flag_passed(
+        self, tmp_path: Path
+    ) -> None:
+        path = _write(tmp_path, ".hidden.py", "TODO match\n")
+
+        outcome = _search.run(["--hidden", "TODO", str(tmp_path)], 30.0)
+
+        assert outcome.exit_code == MATCH_EXIT_CODE
+        assert outcome.stdout == f"{path}:1:TODO match\n"
+
     def test_timeout_stops_execution_and_returns_partial_results(
         self, tmp_path: Path
     ) -> None:
