@@ -60,11 +60,6 @@ known_first_party = ["little_harness_ripgrep"]
 paths = ["src/little_harness_ripgrep", "tests"]
 min_confidence = 80
 
-[tool.bandit]
-# This plugin's whole purpose is to invoke the `rg` binary: B404 (import
-# subprocess) and B603 (subprocess without shell) are the feature. It is run
-# without a shell and with a fixed binary, so command injection does not apply.
-skips = ["B404", "B603"]
 
 [tool.importlinter]
 root_packages = ["little_harness_ripgrep", "little_harness"]

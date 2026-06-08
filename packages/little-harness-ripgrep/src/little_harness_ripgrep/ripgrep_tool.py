@@ -27,11 +27,21 @@ class RipgrepTool:
     def __init__(
         self, search: RipgrepSearch, timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
     ) -> None:
+        """Initialize the RipgrepTool with a search backend and timeout.
+
+        Example:
+            tool = RipgrepTool(search, timeout_seconds=15.0)
+        """
         self._search = search
         self._timeout_seconds = timeout_seconds
 
     @property
     def spec(self) -> ToolSpec:
+        """The tool's schema, name, and examples.
+
+        Example:
+            spec = tool.spec
+        """
         return ToolSpec(
             ToolName("ripgrep"),
             "Search file contents with ripgrep and return matching lines.",
@@ -44,6 +54,11 @@ class RipgrepTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Run the ripgrep search tool against the local filesystem.
+
+        Example:
+            result = tool.run(ToolRunRequest(ToolName("ripgrep"), ToolInput("TODO")))
+        """
         try:
             arguments = shlex.split(request.raw_input.value)
         except ValueError as error:

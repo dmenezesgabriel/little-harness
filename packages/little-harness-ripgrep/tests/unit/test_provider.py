@@ -17,9 +17,8 @@ class TestBuild:
         assert tool.spec.requires_approval is False
 
     def test_built_tool_runs_through_a_real_search_backend(self) -> None:
-        # A real SubprocessRipgrepSearch is wired in: running returns a result
-        # (rather than crashing on a None search). The outcome depends on whether
-        # rg is installed, so only the wiring — a ripgrep result — is asserted.
+        # A real PythonGrepSearch is wired in: running returns a result
+        # (rather than crashing on a None search).
         request = ToolRunRequest(ToolName("ripgrep"), ToolInput("--version"))
 
         result = build().run(request)

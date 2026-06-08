@@ -15,7 +15,6 @@ Resolvers skip — never fail — when a prerequisite is missing: the local GGUF
 from __future__ import annotations
 
 import os
-import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -169,8 +168,6 @@ def ask_calculator(run_agent: RunAgent, question: str) -> str:
     target_fixture="answer",
 )
 def ask_ripgrep(run_agent: RunAgent, term: str) -> str:
-    if shutil.which("rg") is None:
-        pytest.skip("rg (ripgrep) is not installed; skipping ripgrep e2e scenario.")
     return run_agent(
         f"Call exactly the ripgrep tool once with input '{term} .'. Then answer "
         "with the matching line.",

@@ -11,9 +11,14 @@ from __future__ import annotations
 
 from little_harness.application.ports.agent_tool import AgentTool
 
-from little_harness_ripgrep.ripgrep_search import SubprocessRipgrepSearch
+from little_harness_ripgrep.ripgrep_search import PythonGrepSearch
 from little_harness_ripgrep.ripgrep_tool import RipgrepTool
 
 
 def build() -> AgentTool:
-    return RipgrepTool(SubprocessRipgrepSearch())
+    """Build and return a RipgrepTool instance with a PythonGrepSearch backend.
+
+    Example:
+        tool = build()
+    """
+    return RipgrepTool(PythonGrepSearch())

@@ -98,10 +98,7 @@ convention = "google"
 # raising, so it omits `check`. An explicit `check=False` (what PLW1510 wants)
 # only adds an *equivalent* mutant the zero-survivor mutation gate cannot kill,
 # so the two gates conflict here; the runners are covered by their own tests.
-# `ripgrep_search.py` is the same case: it reports rg's exit code (0/1/2) rather
-# than raising, so `check` is deliberately omitted.
 "**/shell_command_runner.py" = ["PLW1510"]
-"**/ripgrep_search.py" = ["PLW1510"]
 
 # Docstrings not yet added to existing packages.
 # Remove the corresponding line as each package gets documented.
@@ -110,7 +107,6 @@ convention = "google"
 "packages/little-harness-calculator/src/**" = ["D"]
 "packages/little-harness-litellm/src/**" = ["D"]
 "packages/little-harness-file-tools/src/**" = ["D"]
-"packages/little-harness-ripgrep/src/**" = ["D"]
 "packages/little-harness-ast/src/**" = ["D"]
 "packages/little-harness-json-policy/src/**" = ["D"]
 "packages/little-harness-logging/src/**" = ["D"]
