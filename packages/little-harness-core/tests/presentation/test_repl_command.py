@@ -122,8 +122,14 @@ class TestCommandRegistry:
 
     def test_add_default_source_is_built_in(self) -> None:
         registry = CommandRegistry()
-        registry.add(ClearCommand())
+        registry.add(ClearCommand(), "built-in")
         assert registry._sources["/clear"] == "built-in"
+
+
+def test_command_registry_default_source() -> None:
+    registry = CommandRegistry()
+    registry.add(ClearCommand(), "built-in")
+    assert registry._sources["/clear"] == "built-in"
 
 
 # ── Override tracking ───────────────────────────────────────────────────────

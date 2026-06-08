@@ -9,6 +9,7 @@ from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
+from little_harness.application.ports.permission_requester import PermissionRequester
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.composition import (
     build_application,
@@ -25,7 +26,11 @@ from little_harness.composition import (
     to_runtime_config,
 )
 from little_harness.domain.decision import FinalAnswer, ToolCall
-from little_harness.domain.errors import UnknownPolicyError, UnknownProviderError
+from little_harness.domain.errors import (
+    UnknownPermissionRequesterError,
+    UnknownPolicyError,
+    UnknownProviderError,
+)
 from little_harness.domain.hook_decision import Proceed
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
@@ -394,6 +399,7 @@ class TestRunCliInteractive:
     ) -> None:
         class SpyingInteractiveConsole:
             received_app: object = None
+            received_registry: object = None
 
             def __init__(
                 self,
@@ -403,6 +409,7 @@ class TestRunCliInteractive:
                 registry: object = None,
             ) -> None:
                 SpyingInteractiveConsole.received_app = app
+                SpyingInteractiveConsole.received_registry = registry
 
             def start(self) -> str:
                 return ""
@@ -423,6 +430,7 @@ class TestRunCliInteractive:
         run_cli([])
 
         assert SpyingInteractiveConsole.received_app is built_app
+        assert SpyingInteractiveConsole.received_registry is not None
 
     def test_starts_custom_ui_when_selected(
         self, monkeypatch: pytest.MonkeyPatch
@@ -454,6 +462,23 @@ class TestRunCliInteractive:
         assert result == "custom_started"
         assert len(passed_args) == 1
         assert passed_args[0][0] is built_app
+        assert passed_args[0][1] is not None
+
+    def test_build_command_registry_includes_discovered_repl_commands_with_source(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class FakeReplCommand:
+            name = "customcmd"
+            aliases = ()
+
+        monkeypatch.setattr(
+            "little_harness.composition.discover_repl_commands",
+            lambda: [FakeReplCommand()],
+        )
+
+        registry = build_command_registry()
+        assert "/customcmd" in registry._index
+        assert registry._sources["/customcmd"] == f"plugin:{FakeReplCommand.__module__}"
 
 
 class TestProviderSelection:
@@ -706,10 +731,47 @@ class TestPermissionRequesterSelection:
         config = ArgumentParser().parse(["--prompt", "hi"])
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
 
-        # Act / Assert
         assert isinstance(
             build_permission_requester(config), InteractivePermissionRequester
         )
+
+    def test_resolves_ui_specific_requester_when_available(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class FakeUiRequester(PermissionRequester):
+            def request_approval(self, call: ToolCall, /) -> bool:
+                return True
+
+        config = ArgumentParser().parse(["--prompt", "hi", "--ui", "custom"])
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+
+        def fake_discover(name: str) -> PermissionRequester:
+            if name == "custom":
+                return FakeUiRequester()
+            raise Exception("Unexpected UI")
+
+        monkeypatch.setattr(
+            "little_harness.composition.discover_permission_requester", fake_discover
+        )
+
+        requester = build_permission_requester(config)
+        assert isinstance(requester, FakeUiRequester)
+
+    def test_falls_back_when_ui_requester_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        config = ArgumentParser().parse(["--prompt", "hi", "--ui", "custom"])
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+
+        def fake_discover(name: str) -> PermissionRequester:
+            raise UnknownPermissionRequesterError()
+
+        monkeypatch.setattr(
+            "little_harness.composition.discover_permission_requester", fake_discover
+        )
+
+        requester = build_permission_requester(config)
+        assert isinstance(requester, InteractivePermissionRequester)
 
 
 class TestCommandRegistryComposition:

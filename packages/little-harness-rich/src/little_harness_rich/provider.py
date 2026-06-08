@@ -10,6 +10,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from little_harness.application.ports.permission_requester import (
+        PermissionRequester,
+    )
     from little_harness.presentation.cli.interactive_console import (
         Application,
         InteractiveRunner,
@@ -17,6 +20,7 @@ if TYPE_CHECKING:
     from little_harness.presentation.cli.repl_command import CommandRegistry
 
 from little_harness_rich.console import RichInteractiveConsole
+from little_harness_rich.permission import RichPermissionRequester
 
 
 def build(
@@ -33,3 +37,12 @@ def build(
         An InteractiveRunner instance.
     """
     return RichInteractiveConsole(application, registry)
+
+
+def build_permission_requester() -> PermissionRequester:
+    """Builds a RichPermissionRequester instance.
+
+    Returns:
+        A PermissionRequester instance.
+    """
+    return RichPermissionRequester()

@@ -22,8 +22,10 @@ from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.agent_policy import AgentPolicy
 from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
+from little_harness.application.ports.permission_requester import PermissionRequester
 from little_harness.domain.errors import (
     UnknownObserverError,
+    UnknownPermissionRequesterError,
     UnknownPolicyError,
     UnknownProviderError,
     UnknownToolError,
@@ -41,6 +43,7 @@ POLICY_GROUP = "little_harness.agent_policies"
 OBSERVER_GROUP = "little_harness.observers"
 REPL_COMMAND_GROUP = "little_harness.repl_commands"
 UI_GROUP = "little_harness.uis"
+PERMISSION_REQUESTER_GROUP = "little_harness.ui_permission_requesters"
 
 # A UI builder takes Application and CommandRegistry, returning a runner.
 UiBuilder = Callable[["Application", "CommandRegistry"], Any]
@@ -94,6 +97,20 @@ def discover_ui(name: str) -> UiBuilder:
         ui_builder = discover_ui("rich")
     """
     return resolve_builder(UI_GROUP, name, UnknownUiError, "UI")
+
+
+def discover_permission_requester(name: str) -> PermissionRequester:
+    """Build the permission requester plugin registered under `name`.
+
+    Example:
+        requester = discover_permission_requester("rich")
+    """
+    return resolve_builder(
+        PERMISSION_REQUESTER_GROUP,
+        name,
+        UnknownPermissionRequesterError,
+        "permission requester",
+    )()
 
 
 def resolve_builder(

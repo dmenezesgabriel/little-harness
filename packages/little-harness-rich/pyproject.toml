@@ -19,6 +19,9 @@ Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
 [project.entry-points."little_harness.uis"]
 rich = "little_harness_rich.provider:build"
 
+[project.entry-points."little_harness.ui_permission_requesters"]
+rich = "little_harness_rich.provider:build_permission_requester"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

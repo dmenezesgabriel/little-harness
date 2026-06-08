@@ -58,6 +58,7 @@ The Rich UI features:
 * **Formatted Panels**: Assistant output is wrapped in clean panels.
 * **Markdown Rendering**: Streaming text is rendered on the fly as formatted markdown.
 * **Thinking Spinner**: Shows a visual loading status spinner while the agent or tools are executing.
+* **Interactive Tool Approvals**: Seamlessly prompts the operator to approve sensitive tool calls using a clear, styled confirmation prompt.
 
 ## Examples
 

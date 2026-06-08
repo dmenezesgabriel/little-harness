@@ -26,7 +26,7 @@ class CommandRegistry:
         self._sources: dict[str, str] = {}
         self._overrides: dict[str, str] = {}
 
-    def add(self, command: ReplCommand, source: str = "built-in") -> None:
+    def add(self, command: ReplCommand, source: str) -> None:
         """Register *command* under its name and each alias."""
         for alias in (command.name, *command.aliases):
             self._register_alias(alias, command, source)
@@ -151,5 +151,5 @@ def build_default_registry() -> CommandRegistry:
     """Create a CommandRegistry with all built-in commands registered."""
     registry = CommandRegistry()
     for command in builtin_commands():
-        registry.add(command)
+        registry.add(command, "built-in")
     return registry

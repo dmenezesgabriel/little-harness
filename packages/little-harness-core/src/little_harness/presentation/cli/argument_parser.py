@@ -49,7 +49,6 @@ def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "-p",
         "--prompt",
-        default=None,
         help="Prompt to send to the model.",
     )
 

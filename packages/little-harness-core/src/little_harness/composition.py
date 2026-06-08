@@ -20,6 +20,7 @@ from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.ports.permission_requester import PermissionRequester
 from little_harness.application.ports.token_sink import TokenSink
 from little_harness.application.tool_registry import ToolRegistry
+from little_harness.domain.errors import UnknownPermissionRequesterError
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.text_values import Prompt
@@ -32,6 +33,7 @@ from little_harness.plugin_discovery import (
     default_policy_name,
     default_provider_name,
     discover_observer,
+    discover_permission_requester,
     discover_policy,
     discover_repl_commands,
     discover_tools,
@@ -146,6 +148,12 @@ def build_permission_requester(config: AppConfig) -> PermissionRequester:
     # run unattended, so they auto-approve and rely on each tool's guardrails.
     if config.approve_all or not sys.stdin.isatty():
         return AutoApprovePermissionRequester()
+
+    if config.ui != "default":
+        try:
+            return discover_permission_requester(config.ui)
+        except UnknownPermissionRequesterError:
+            pass
 
     return InteractivePermissionRequester()
 

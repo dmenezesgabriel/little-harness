@@ -323,3 +323,17 @@ class TestInteractiveConsolePublicApi:
         text = output.getvalue()
         assert "Turns: 1" in text
         assert "User: hello" in text
+
+    def test_show_history_truncates_long_messages(self) -> None:
+        console, output = console_with()
+        console._turn_count = 1
+        long_content = "a" * 250
+        console._messages = MessageHistory().with_message(
+            ChatMessage(USER, MessageContent(long_content))
+        )
+
+        console.show_history()
+
+        text = output.getvalue()
+        expected_content = "a" * 200
+        assert f"User: {expected_content}\n" in text

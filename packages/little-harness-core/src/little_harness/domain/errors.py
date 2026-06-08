@@ -29,3 +29,7 @@ class UnknownObserverError(ValueError):
 
 class UnknownUiError(ValueError):
     """Raised when `--ui` names a UI no installed plugin registers."""
+
+
+class UnknownPermissionRequesterError(ValueError):
+    """Raised when a UI plugin does not register a permission requester."""
