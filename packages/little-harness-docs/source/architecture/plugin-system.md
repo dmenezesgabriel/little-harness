@@ -32,6 +32,11 @@ json = "little_harness_json_policy.provider:build"
 logging = "little_harness_logging.provider:build"
 ```
 
+```toml
+[project.entry-points."little_harness.uis"]
+rich = "little_harness_rich.provider:build"
+```
+
 ## Discovery
 
 The discovery module (`little_harness/plugin_discovery.py`) is the single
@@ -68,5 +73,6 @@ All ports are `typing.Protocol` classes:
 | `AgentObserver` | `on_run_started()`, `on_model_completed()`, … | AgentRuntime |
 | `TokenSink` | `emit(chunk)` | AgentRuntime |
 | `LifecycleHook` | `on_session_start()`, `on_pre_tool_use()`, … | Application |
+| `InteractiveRunner` | `start() -> str` | CLI / Composition |
 
 See {doc}`../plugins/creating-provider` for implementing each port.

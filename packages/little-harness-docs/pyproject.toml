@@ -30,6 +30,7 @@ little-harness-ripgrep = { workspace = true }
 little-harness-ast = { workspace = true }
 little-harness-json-policy = { workspace = true }
 little-harness-logging = { workspace = true }
+little-harness-rich = { workspace = true }
 
 [tool.pyright]
 include = ["source"]

@@ -43,6 +43,7 @@ uv pip install "little-harness[llama-cpp,calculator]"
 | `ast` | `little-harness-ast` | `tools` |
 | `json-policy` | `little-harness-json-policy` | `agent_policies` |
 | `logging` | `little-harness-logging` | `observers` |
+| `rich` | `little-harness-rich` | `uis` |
 | `all` | All of the above | — |
 
 The extras are a curated shorthand. All distributions are independently

@@ -31,6 +31,7 @@ plugins/creating-provider
 plugins/creating-tool
 plugins/creating-policy
 plugins/creating-observer
+plugins/creating-ui
 ```
 
 ```{toctree}

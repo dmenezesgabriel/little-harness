@@ -75,6 +75,7 @@ All dynamic imports happen in `little_harness/plugin_discovery.py` via
 | `little_harness.tools` | Agent tools | `build() -> AgentTool` |
 | `little_harness.agent_policies` | Agent policies | `build() -> AgentPolicy` |
 | `little_harness.observers` | Observers | `build() -> AgentObserver` |
+| `little_harness.uis` | Interactive UIs | `build(app: Application, registry: CommandRegistry) -> InteractiveRunner` |
 
 A plugin's vendor SDK is imported **only when the plugin is selected**
 (lazy loading).

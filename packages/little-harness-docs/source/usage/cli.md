@@ -24,6 +24,7 @@ little-harness [OPTIONS]
 | `--log` | flag | `False` | Shorthand for `--observer logging` |
 | `--observer` | `str` | `None` | Observer plugin name (e.g. `logging`) |
 | `--tools` | `str` | all installed | Comma-separated tool names to enable |
+| `--ui` | `str` | `"default"` | Interactive UI plugin to use (e.g. `rich`, `default`) |
 | `--yes` | flag | `False` | Auto-approve every sensitive tool without prompting |
 
 ## Interactive REPL
@@ -44,6 +45,19 @@ Type prompts directly and see responses. Slash commands are available:
 | `/clear`      | Clear conversation history               |
 | `/help`       | Show available commands                  |
 | `/history`    | Show the number of turns in this session |
+
+### UI Plugins
+
+By default, the REPL uses a standard terminal plain text interface (`--ui default`). If you install the `rich` plugin (`pip install "little-harness[rich]"`), you can run with a beautiful, enhanced Terminal User Interface (TUI) by specifying `--ui rich`:
+
+```bash
+little-harness --ui rich
+```
+
+The Rich UI features:
+* **Formatted Panels**: Assistant output is wrapped in clean panels.
+* **Markdown Rendering**: Streaming text is rendered on the fly as formatted markdown.
+* **Thinking Spinner**: Shows a visual loading status spinner while the agent or tools are executing.
 
 ## Examples
 
