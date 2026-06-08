@@ -130,13 +130,17 @@ class TestPythonGrepSearchFlags:
         assert outcome.exit_code == NO_MATCH_EXIT_CODE
 
     def test_type_flag_restricts_to_python_files(self, tmp_path: Path) -> None:
-        path = _write(tmp_path, "match.py", "TODO in py file\n")
+        match_path = _write(tmp_path, "match.py", "TODO in py file\n")
         _write(tmp_path, "no_match.txt", "TODO in txt file\n")
 
-        outcome = _search.run(["-t", "py", "TODO", str(tmp_path)], 30.0)
+        # Mock os.walk to return the wrong extension FIRST, then the matching file.
+        with patch(
+            "os.walk", return_value=[(str(tmp_path), [], ["no_match.txt", "match.py"])]
+        ):
+            outcome = _search.run(["-t", "py", "TODO", str(tmp_path)], 30.0)
 
         assert outcome.exit_code == MATCH_EXIT_CODE
-        assert outcome.stdout == f"{path}:1:TODO in py file\n"
+        assert outcome.stdout == f"{match_path}:1:TODO in py file\n"
 
 
 class TestPythonGrepSearchSafety:
