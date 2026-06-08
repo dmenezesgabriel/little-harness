@@ -6,7 +6,11 @@ import sys
 from collections.abc import Sequence
 
 from little_harness.application.agent_dependencies import AgentDependencies
-from little_harness.application.agent_runtime import AgentRuntime, AgentRuntimeConfig
+from little_harness.application.agent_runtime import (
+    AgentResult,
+    AgentRuntime,
+    AgentRuntimeConfig,
+)
 from little_harness.application.hook_chain import HookChain
 from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.agent_policy import AgentPolicy
@@ -16,6 +20,8 @@ from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.ports.permission_requester import PermissionRequester
 from little_harness.application.ports.token_sink import TokenSink
 from little_harness.application.tool_registry import ToolRegistry
+from little_harness.domain.message import ChatMessage
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.text_values import Prompt
 from little_harness.infrastructure.hooks.approval_hook import ApprovalHook
 from little_harness.infrastructure.observability.null_observer import NullObserver
@@ -32,6 +38,7 @@ from little_harness.plugin_discovery import (
 )
 from little_harness.presentation.cli.app_config import AppConfig
 from little_harness.presentation.cli.argument_parser import ArgumentParser
+from little_harness.presentation.cli.interactive_console import InteractiveConsole
 from little_harness.presentation.cli.permission_prompt import (
     InteractivePermissionRequester,
 )
@@ -59,6 +66,14 @@ class Application:
 
     def run(self, prompt: Prompt) -> str:
         return self._renderer.render(self._runtime.run(prompt))
+
+    def build_system_message(self) -> ChatMessage:
+        return self._runtime.build_system_message()
+
+    def run_turn(
+        self, prompt: Prompt, messages: MessageHistory
+    ) -> tuple[AgentResult, MessageHistory]:
+        return self._runtime.run_turn(prompt, messages)
 
     def __enter__(self) -> Application:
         return self
@@ -163,4 +178,6 @@ def to_runtime_config(config: AppConfig) -> AgentRuntimeConfig:
 def run_cli(argv: Sequence[str] | None = None) -> str:
     config = ArgumentParser().parse(argv)
     with build_application(config, build_observer(config)) as app:
+        if config.prompt is None:
+            return InteractiveConsole(app).start()
         return app.run(config.prompt)

@@ -15,7 +15,9 @@ Resolvers skip — never fail — when a prerequisite is missing: the local GGUF
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Callable
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -23,6 +25,9 @@ from pytest_bdd import given, parsers, then, when
 
 # A provider-bound runner: (prompt, comma-separated tool names) -> printed answer.
 RunAgent = Callable[[str, str], str]
+
+# A REPL runner: (list of prompts, argv) -> captured stdout.
+RunRepl = Callable[[list[str], list[str]], str]
 
 # tests/e2e/conftest.py -> e2e -> tests -> little-harness -> packages -> repo root.
 MODELS_DIRECTORY = Path(__file__).resolve().parents[4] / "models"
@@ -98,6 +103,34 @@ def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """
     monkeypatch.chdir(tmp_path)
     return tmp_path
+
+
+@pytest.fixture
+def run_repl() -> RunRepl:
+    """Return a callable that drives the REPL with injected stdin/stdout.
+
+    Each prompt in the list is sent as a separate line. An implicit ``/exit``
+    is appended so the loop terminates cleanly. The captured stdout text is
+    returned for assertion.
+    """
+
+    def _run(prompts: list[str], argv: list[str]) -> str:
+        inputs = "\n".join(prompts) + "\n/exit\n"
+        output = StringIO()
+        old_stdin, old_stdout = sys.stdin, sys.stdout
+        sys.stdin = StringIO(inputs)
+        sys.stdout = output
+        try:
+            from little_harness.composition import (  # noqa: PLC0415
+                run_cli,
+            )
+
+            run_cli(argv)
+        finally:
+            sys.stdin, sys.stdout = old_stdin, old_stdout
+        return output.getvalue()
+
+    return _run
 
 
 @given(parsers.parse('a workspace file "{name}" containing "{content}"'))
@@ -228,3 +261,40 @@ def answer_contains(answer: str, text: str) -> None:
 def workspace_file_contains(workspace: Path, name: str, content: str) -> None:
     actual = (workspace / name).read_text(encoding="utf-8")
     assert content in actual, f"expected {content!r} in {name}, got: {actual!r}"
+
+
+@when("I run the repl with prompts", target_fixture="repl_output")
+def ask_repl(
+    docstring: str,
+    run_repl: RunRepl,
+    local_llama_options: list[str],
+) -> str:
+    """Run the interactive REPL with prompts from the Gherkin docstring.
+
+    Lines are stripped; blank lines are ignored. An implicit ``/exit`` is
+    appended by the ``run_repl`` fixture.
+    """
+    prompts = [p.strip() for p in docstring.strip().split("\n") if p.strip()]
+    provider_options = [
+        item for option in local_llama_options for item in ("-o", option)
+    ]
+    argv = [
+        "--provider",
+        "llama_cpp",
+        *provider_options,
+        "--tools",
+        "calculator,read_file",
+        "--yes",
+        "--max-tokens",
+        "512",
+        "--max-iterations",
+        "4",
+    ]
+    return run_repl(prompts, argv)
+
+
+@then(parsers.parse('the repl output contains "{text}"'))
+def repl_output_contains(repl_output: str, text: str) -> None:
+    assert text in repl_output, (
+        f"expected {text!r} in repl output, got: {repl_output!r}"
+    )

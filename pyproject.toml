@@ -110,7 +110,15 @@ convention = "google"
 "packages/little-harness-ast/src/**" = ["D"]
 "packages/little-harness-json-policy/src/**" = ["D"]
 "packages/little-harness-logging/src/**" = ["D"]
-"**/tests/**" = ["D"]
+"**/tests/**" = [
+    "D",
+    # ARG (unused args): common for pytest fixture injection where the fixture
+    # is pulled in by name (side-effect) and not referenced in the test body.
+    "ARG",
+    # PLR2004 (magic-value comparison): acceptable in test assertions
+    # where constants like 2, 3, 8 are self-evident.
+    "PLR2004",
+]
 "packages/little-harness-docs/**" = ["D"]
 
 [tool.ruff.lint.mccabe]

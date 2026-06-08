@@ -26,10 +26,11 @@ def _no_options() -> dict[str, str]:
 
 @dataclass(frozen=True)
 class AppConfig:
-    prompt: Prompt
     temperature: Temperature
     max_tokens: MaxTokens
     max_iterations: MaxIterations
+    # None means interactive mode (REPL); a Prompt means one-shot execution.
+    prompt: Prompt | None = None
     # None means "no provider chosen"; the composition root resolves the default.
     provider: str | None = None
     provider_options: Mapping[str, str] = field(default_factory=_no_options)

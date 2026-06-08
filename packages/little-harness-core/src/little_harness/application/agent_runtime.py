@@ -85,23 +85,39 @@ class AgentRuntime:
         self._dependencies = dependencies
         self._config = config
 
+    def build_system_message(self) -> ChatMessage:
+        specs = self._dependencies.tool_registry.specs()
+        return ChatMessage(SYSTEM, self._dependencies.policy.system_prompt(specs))
+
     def run(self, prompt: Prompt) -> AgentResult:
+        initial_history = MessageHistory().with_message(self.build_system_message())
+        result, _ = self.run_turn(prompt, initial_history)
+        return result
+
+    def run_turn(
+        self, prompt: Prompt, messages: MessageHistory
+    ) -> tuple[AgentResult, MessageHistory]:
         run_id = RunId(uuid4().hex)
         self._dependencies.observer.on_run_started(run_id, prompt)
         started_at = time.perf_counter()
-        state = AgentLoopState(self._initial_messages(prompt))
+        user_message = ChatMessage(USER, MessageContent(prompt.value))
+        next_messages = messages.with_message(user_message)
+        state = AgentLoopState(next_messages)
 
         blocked = self._begin_session(run_id, prompt, state)
         if blocked is not None:
-            return self._finish(run_id, started_at, blocked, state.steps)
+            result = self._finish(run_id, started_at, blocked, state.steps)
+            return result, state.messages
 
         for index in range(1, self._config.max_iterations.value + 1):
             answer = self._run_iteration(run_id, state, prompt, Iteration(index))
 
             if answer is not None:
-                return self._finish(run_id, started_at, answer, state.steps)
+                result = self._finish(run_id, started_at, answer, state.steps)
+                return result, state.messages
 
-        return self._finish(run_id, started_at, FALLBACK_ANSWER, state.steps)
+        result = self._finish(run_id, started_at, FALLBACK_ANSWER, state.steps)
+        return result, state.messages
 
     def _begin_session(
         self, run_id: RunId, prompt: Prompt, state: AgentLoopState
@@ -151,12 +167,6 @@ class AgentRuntime:
             state.record_step(AgentStep(iteration, output, None, message.content))
             state.append_message(message)
             return None
-
-    def _initial_messages(self, prompt: Prompt) -> MessageHistory:
-        specs = self._dependencies.tool_registry.specs()
-        system = ChatMessage(SYSTEM, self._dependencies.policy.system_prompt(specs))
-        user = ChatMessage(USER, MessageContent(prompt.value))
-        return MessageHistory().with_message(system).with_message(user)
 
     def _complete_timed(
         self,

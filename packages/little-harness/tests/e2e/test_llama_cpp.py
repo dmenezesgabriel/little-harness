@@ -18,6 +18,7 @@ from tests.e2e.conftest import RunAgent
 pytestmark = [pytest.mark.integration, pytest.mark.local_model]
 
 scenarios("features/agent_tools.feature")
+scenarios("features/interactive.feature")
 
 
 @pytest.fixture

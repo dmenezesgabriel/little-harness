@@ -26,6 +26,7 @@ from little_harness.composition import (
 from little_harness.domain.decision import FinalAnswer, ToolCall
 from little_harness.domain.errors import UnknownPolicyError, UnknownProviderError
 from little_harness.domain.hook_decision import Proceed
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.numeric_values import (
@@ -36,6 +37,7 @@ from little_harness.domain.values.numeric_values import (
     Temperature,
     TopP,
 )
+from little_harness.domain.values.role import SYSTEM
 from little_harness.domain.values.text_values import (
     MessageContent,
     Prompt,
@@ -120,6 +122,29 @@ class TestComposition:
         assert observer.events[0] == "run_started:hi"
         assert observer.events[-1] == "run_finished"
         assert len(observer.finished) == 1
+
+    def test_build_system_message_returns_message_with_system_role(
+        self, created_models: list[FakeChatModel]
+    ) -> None:
+        config = ArgumentParser().parse(["--prompt", "hi"])
+        app = build_application(config)
+
+        message = app.build_system_message()
+
+        assert message.role == SYSTEM
+
+    def test_run_turn_delegates_to_runtime_and_returns_updated_history(
+        self, created_models: list[FakeChatModel]
+    ) -> None:
+        config = ArgumentParser().parse(["--prompt", "hi"])
+        app = build_application(config)
+        system = app.build_system_message()
+        history = MessageHistory().with_message(system)
+
+        result, updated = app.run_turn(Prompt("hello"), history)
+
+        assert "hello from the agent" in result.answer.value
+        assert len(list(updated)) == 3
 
 
 class TestModelLifecycle:
@@ -284,6 +309,110 @@ class TestCompositionThreadsConfigThroughTheStack:
         # Assert: the built observer reaches the application, and its run renders.
         assert output == "rendered"
         assert received == [sentinel]
+
+
+class TestRunCliInteractive:
+    def test_returns_empty_string_and_starts_interactive_console_when_no_prompt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        started: list[bool] = []
+
+        def fake_start(_self: object) -> str:
+            started.append(True)
+            return ""
+
+        monkeypatch.setattr(
+            "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
+            fake_start,
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_application",
+            lambda _config, _observer: FakeApplication(),
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_observer", lambda _config: None
+        )
+
+        result = run_cli([])
+
+        assert result == ""
+        assert started == [True]
+
+    def test_invokes_build_application_when_no_prompt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        built: list[object] = []
+
+        def fake_build(_config: AppConfig, _observer: AgentObserver) -> FakeApplication:
+            built.append(_config)
+            return FakeApplication()
+
+        monkeypatch.setattr(
+            "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
+            lambda _self: "",
+        )
+        monkeypatch.setattr("little_harness.composition.build_application", fake_build)
+        monkeypatch.setattr(
+            "little_harness.composition.build_observer", lambda _config: None
+        )
+
+        run_cli([])
+
+        assert len(built) == 1
+
+    def test_invokes_build_observer_when_no_prompt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        built: list[object] = []
+
+        def fake_build(_config: AppConfig) -> AgentObserver:
+            built.append(_config)
+            return RecordingObserver()
+
+        monkeypatch.setattr(
+            "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
+            lambda _self: "",
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_application",
+            lambda _config, _observer: FakeApplication(),
+        )
+        monkeypatch.setattr("little_harness.composition.build_observer", fake_build)
+
+        run_cli([])
+
+        assert len(built) == 1
+
+    def test_passes_built_application_to_interactive_console(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class SpyingInteractiveConsole:
+            received_app: object = None
+
+            def __init__(
+                self, app: object, output: object = None, source: object = None
+            ) -> None:
+                SpyingInteractiveConsole.received_app = app
+
+            def start(self) -> str:
+                return ""
+
+        built_app = FakeApplication()
+        monkeypatch.setattr(
+            "little_harness.composition.build_application",
+            lambda _config, _observer: built_app,
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_observer", lambda _config: None
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.InteractiveConsole",
+            SpyingInteractiveConsole,
+        )
+
+        run_cli([])
+
+        assert SpyingInteractiveConsole.received_app is built_app
 
 
 class TestProviderSelection:

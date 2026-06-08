@@ -21,8 +21,6 @@ from little_harness.domain.values.numeric_values import (
 from little_harness.domain.values.text_values import Prompt
 from little_harness.presentation.cli.app_config import AppConfig
 
-# Provider-agnostic default: exercises tool calling without naming any provider.
-DEFAULT_PROMPT = "What is 144 divided by 12? Then tell me if the result is even or odd."
 OPTION_SEPARATOR = "="
 TOOL_SEPARATOR = ","
 
@@ -51,7 +49,7 @@ def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "-p",
         "--prompt",
-        default=DEFAULT_PROMPT,
+        default=None,
         help="Prompt to send to the model.",
     )
 
@@ -139,8 +137,10 @@ def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
 def to_app_config(namespace: argparse.Namespace) -> AppConfig:
     # argparse already applied each argument's `type=`/`action`; value objects then
     # validate ranges, and the provider validates its own options downstream.
+    # prompt=None means interactive mode (REPL); a value means one-shot execution.
+    prompt = Prompt(namespace.prompt) if namespace.prompt is not None else None
     return AppConfig(
-        prompt=Prompt(namespace.prompt),
+        prompt=prompt,
         temperature=Temperature(namespace.temperature),
         max_tokens=MaxTokens(namespace.max_tokens),
         max_iterations=MaxIterations(namespace.max_iterations),

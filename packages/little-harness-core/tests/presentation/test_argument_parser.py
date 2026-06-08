@@ -15,16 +15,12 @@ from little_harness.presentation.cli.argument_parser import (
     build_parser,
 )
 
-DEFAULT_PROMPT_TEXT = (
-    "What is 144 divided by 12? Then tell me if the result is even or odd."
-)
-
 EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
     (
         "prompt",
         ["-p", "--prompt"],
         "Prompt to send to the model.",
-        DEFAULT_PROMPT_TEXT,
+        None,
         None,
     ),
     ("temperature", ["--temperature"], "Sampling temperature.", 0.0, float),
@@ -148,7 +144,7 @@ class TestArgumentParser:
 
         # Assert
         assert config == AppConfig(
-            prompt=Prompt(DEFAULT_PROMPT_TEXT),
+            prompt=None,
             temperature=Temperature(0.0),
             max_tokens=MaxTokens(512),
             max_iterations=MaxIterations(5),

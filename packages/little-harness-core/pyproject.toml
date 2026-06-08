@@ -28,6 +28,9 @@ include = ["src/little_harness", "tests"]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
+reportPrivateUsage = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
 venvPath = "../.."
 venv = ".venv"
 

@@ -78,6 +78,18 @@ def create_runtime(
     return AgentRuntime(dependencies, config)
 
 
+class TestAgentRuntimeBuildSystemMessage:
+    def test_returns_a_system_message_with_the_policy_prompt(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy)
+
+        message = runtime.build_system_message()
+
+        assert message.role == SYSTEM
+        assert message.content == MessageContent("Tools: 1")
+
+
 class TestAgentRuntimeFinalAnswer:
     def test_returns_final_answer_without_using_tools(self) -> None:
         # Arrange
@@ -575,3 +587,151 @@ class TestAgentRuntimeObservability:
         assert observer.model_elapsed and observer.tool_elapsed
         assert all(0.0 <= e.value < upper_bound_seconds for e in observer.model_elapsed)
         assert all(0.0 <= e.value < upper_bound_seconds for e in observer.tool_elapsed)
+
+
+class TestAgentRuntimeMultiTurn:
+    def test_run_turn_executes_single_turn_and_updates_history(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["final1"])
+        policy = DecisionQueuePolicy([final_decision("answer1")])
+        runtime = create_runtime(chat_model, [], policy)
+
+        system_message = ChatMessage(SYSTEM, MessageContent("Tools: 0"))
+        initial_history = MessageHistory().with_message(system_message)
+
+        # Act
+        result, updated_history = runtime.run_turn(Prompt("question1"), initial_history)
+
+        # Assert
+        assert result.answer == MessageContent("answer1")
+        assert result.steps is not None
+        expected_history = initial_history.with_message(
+            ChatMessage(USER, MessageContent("question1"))
+        ).with_message(ChatMessage(ASSISTANT, MessageContent("final1")))
+        assert list(updated_history) == list(expected_history)
+        assert len(chat_model.requests) == 1
+        expected_request_messages = initial_history.with_message(
+            ChatMessage(USER, MessageContent("question1"))
+        )
+        assert chat_model.requests[0].messages == expected_request_messages
+
+    def test_run_turn_preserves_accumulated_history_across_turns(self) -> None:
+        # Arrange
+        chat_model = RecordingChatModel(["final1", "final2"])
+        policy = DecisionQueuePolicy(
+            [final_decision("answer1"), final_decision("answer2")]
+        )
+        runtime = create_runtime(chat_model, [], policy)
+
+        system_message = ChatMessage(SYSTEM, MessageContent("Tools: 0"))
+        initial_history = MessageHistory().with_message(system_message)
+
+        # Act - Turn 1
+        result1, history1 = runtime.run_turn(Prompt("question1"), initial_history)
+
+        # Act - Turn 2
+        result2, history2 = runtime.run_turn(Prompt("question2"), history1)
+
+        # Assert
+        assert result1.answer == MessageContent("answer1")
+        assert result2.answer == MessageContent("answer2")
+
+        expected_history1 = initial_history.with_message(
+            ChatMessage(USER, MessageContent("question1"))
+        ).with_message(ChatMessage(ASSISTANT, MessageContent("final1")))
+        expected_history2 = expected_history1.with_message(
+            ChatMessage(USER, MessageContent("question2"))
+        ).with_message(ChatMessage(ASSISTANT, MessageContent("final2")))
+        assert list(history1) == list(expected_history1)
+        assert list(history2) == list(expected_history2)
+        expected_request1 = initial_history.with_message(
+            ChatMessage(USER, MessageContent("question1"))
+        )
+        expected_request2 = expected_history1.with_message(
+            ChatMessage(USER, MessageContent("question2"))
+        )
+        assert len(chat_model.requests) == 2
+        assert chat_model.requests[0].messages == expected_request1
+        assert chat_model.requests[1].messages == expected_request2
+
+    def test_run_turn_records_run_id_on_observer(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        observer = RecordingObserver()
+        runtime = create_runtime(chat_model, [], policy, observer=observer)
+
+        runtime.run_turn(Prompt("q"), MessageHistory())
+
+        for run_id in observer.run_ids:
+            assert isinstance(run_id, RunId)
+
+    def test_run_turn_returns_blocked_answer_when_session_blocked(self) -> None:
+        chat_model = RecordingChatModel(["unused"])
+        policy = DecisionQueuePolicy([final_decision("unused")])
+        hook = ScriptedHook(session_start=Block(MessageContent("blocked-reason")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        result, _ = runtime.run_turn(Prompt("q"), MessageHistory())
+
+        assert result.answer == MessageContent("blocked-reason")
+        assert result.steps is not None
+        assert len(hook.run_ids) >= 1
+        for run_id in hook.run_ids:
+            assert isinstance(run_id, RunId)
+        assert len(hook.prompts) >= 1
+        assert hook.prompts[0] == Prompt("q")
+
+    def test_run_turn_returns_fallback_when_iterations_exhausted(self) -> None:
+        chat_model = RecordingChatModel(["invalid"])
+        policy = DecisionQueuePolicy([final_decision("unused")])
+        observer = RecordingObserver()
+        runtime = create_runtime(
+            chat_model, [], policy, max_iterations=1, observer=observer
+        )
+
+        result, _ = runtime.run_turn(Prompt("q"), MessageHistory())
+
+        assert result.answer == FALLBACK_ANSWER
+        assert result.steps is not None
+        assert isinstance(observer.run_ids[-1], RunId)
+
+    def test_run_turn_exhausts_all_available_iterations(self) -> None:
+        chat_model = RecordingChatModel(["invalid", "invalid", "invalid"])
+        policy = DecisionQueuePolicy([final_decision("unused")])
+        observer = RecordingObserver()
+        runtime = create_runtime(
+            chat_model, [], policy, max_iterations=3, observer=observer
+        )
+
+        result, _ = runtime.run_turn(Prompt("q"), MessageHistory())
+
+        assert result.answer == FALLBACK_ANSWER
+        assert isinstance(observer.run_ids[-1], RunId)
+        # 3 iterations: each triggers model_completed + repair = 2 events
+        # Plus run_started + run_finished = 2 more
+        assert len(observer.events) >= 8
+
+    def test_run_turn_sends_correct_iteration_to_observer(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        observer = RecordingObserver()
+        runtime = create_runtime(chat_model, [], policy, observer=observer)
+
+        runtime.run_turn(Prompt("q"), MessageHistory())
+
+        assert len(observer.model_outputs) == 1
+        assert observer.model_outputs[0][0] == Iteration(1)
+
+    def test_run_turn_injected_context_uses_state(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(session_start=InjectContext(MessageContent("ctx")))
+        observer = RecordingObserver()
+        runtime = create_runtime(chat_model, [], policy, observer=observer, hooks=hook)
+
+        result, _ = runtime.run_turn(Prompt("q"), MessageHistory())
+
+        assert result.answer == MessageContent("done")
+        assert ChatMessage(SYSTEM, MessageContent("ctx")) in list(
+            chat_model.requests[0].messages
+        )

@@ -82,7 +82,7 @@ class TestGrepArgumentParserSuccess:
         result = parse(["-m", "5", "TODO", str(tmp_path)], tmp_path)
 
         assert isinstance(result, GrepRequest)
-        assert result.max_results_per_file == 5  # noqa: PLR2004
+        assert result.max_results_per_file == 5
         assert result.pattern.pattern == "TODO"
         assert result.paths == (tmp_path,)
 
@@ -90,7 +90,7 @@ class TestGrepArgumentParserSuccess:
         result = parse(["TODO", "-m", "5"], tmp_path)
 
         assert isinstance(result, GrepRequest)
-        assert result.max_results_per_file == 5  # noqa: PLR2004
+        assert result.max_results_per_file == 5
         assert result.pattern.pattern == "TODO"
         assert result.paths == (Path(),)
 
@@ -98,7 +98,7 @@ class TestGrepArgumentParserSuccess:
         result = parse(["--max-count", "3", "TODO", str(tmp_path)], tmp_path)
 
         assert isinstance(result, GrepRequest)
-        assert result.max_results_per_file == 3  # noqa: PLR2004
+        assert result.max_results_per_file == 3
         assert result.pattern.pattern == "TODO"
         assert result.paths == (tmp_path,)
 
