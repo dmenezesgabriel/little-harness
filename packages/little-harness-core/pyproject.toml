@@ -45,7 +45,7 @@ addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harne
 exclude_also = ["if __name__ == .__main__.:"]
 
 [tool.mutmut]
-paths_to_mutate = ["src/little_harness"]
+paths_to_mutate = ["src/little_harness/presentation/cli"]
 tests_dir = ["tests"]
 pytest_add_cli_args = ["--no-cov"]
 

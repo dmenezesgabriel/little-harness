@@ -28,11 +28,13 @@ from little_harness.domain.errors import (
     UnknownProviderError,
     UnknownToolError,
 )
+from little_harness.presentation.cli.repl_command import ReplCommand
 
 PROVIDER_GROUP = "little_harness.chat_model_providers"
 TOOL_GROUP = "little_harness.tools"
 POLICY_GROUP = "little_harness.agent_policies"
 OBSERVER_GROUP = "little_harness.observers"
+REPL_COMMAND_GROUP = "little_harness.repl_commands"
 
 # A provider plugin exposes this: build a ready ChatModel from its own options.
 ChatModelBuilder = Callable[[Mapping[str, str]], ChatModel]
@@ -60,6 +62,20 @@ def discover_observer(name: str) -> AgentObserver:
         observer = discover_observer("logging")
     """
     return resolve_builder(OBSERVER_GROUP, name, UnknownObserverError, "observer")()
+
+
+def discover_repl_commands() -> Sequence[ReplCommand]:
+    """Instantiate every registered REPL command plugin.
+
+    Each entry point must be a zero-argument callable that returns a
+    ``ReplCommand``-conforming object.  Non-callable or broken entry points
+    fail with the import error so they are caught at startup.
+
+    Example:
+        commands = discover_repl_commands()
+    """
+    points = entry_points(group=REPL_COMMAND_GROUP)
+    return [point.load()() for point in points]
 
 
 def resolve_builder(

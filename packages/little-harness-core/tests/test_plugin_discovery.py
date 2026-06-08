@@ -20,12 +20,14 @@ from little_harness.plugin_discovery import (
     OBSERVER_GROUP,
     POLICY_GROUP,
     PROVIDER_GROUP,
+    REPL_COMMAND_GROUP,
     TOOL_GROUP,
     ChatModelBuilder,
     default_policy_name,
     default_provider_name,
     discover_observer,
     discover_policy,
+    discover_repl_commands,
     discover_tools,
     installed_providers,
     installed_tools,
@@ -381,3 +383,25 @@ class TestDiscoverObserver:
         assert str(err.value) == (
             "Unknown observer: 'mystery'. Installed observer plugins: ['logging']."
         )
+
+
+class TestDiscoverReplCommands:
+    def test_discover_repl_commands_loads_all_registered(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class FakeCommand:
+            name = "custom"
+            aliases = ()
+            description = "Custom test command"
+
+            def execute(self, console: object, /) -> None:
+                pass
+
+        install_entry_points(
+            monkeypatch,
+            {REPL_COMMAND_GROUP: [FakeEntryPoint("custom_cmd", FakeCommand)]},
+        )
+
+        commands = discover_repl_commands()
+        assert len(commands) == 1
+        assert commands[0].name == "custom"

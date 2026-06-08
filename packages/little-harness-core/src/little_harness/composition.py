@@ -33,6 +33,7 @@ from little_harness.plugin_discovery import (
     default_provider_name,
     discover_observer,
     discover_policy,
+    discover_repl_commands,
     discover_tools,
     load_chat_model_builder,
 )
@@ -41,6 +42,10 @@ from little_harness.presentation.cli.argument_parser import ArgumentParser
 from little_harness.presentation.cli.interactive_console import InteractiveConsole
 from little_harness.presentation.cli.permission_prompt import (
     InteractivePermissionRequester,
+)
+from little_harness.presentation.cli.repl_command import (
+    CommandRegistry,
+    build_default_registry,
 )
 from little_harness.presentation.cli.result_renderer import ResultRenderer
 from little_harness.presentation.cli.token_sinks import NullTokenSink, StdoutTokenSink
@@ -165,6 +170,16 @@ def build_token_sink(config: AppConfig) -> TokenSink:
     return StdoutTokenSink()
 
 
+def build_command_registry() -> CommandRegistry:
+    """Build the command registry from built-ins and installed plugins."""
+    registry = build_default_registry()
+
+    for command in discover_repl_commands():
+        registry.add(command, f"plugin:{type(command).__module__}")
+
+    return registry
+
+
 def to_runtime_config(config: AppConfig) -> AgentRuntimeConfig:
     return AgentRuntimeConfig(
         max_iterations=config.max_iterations,
@@ -179,5 +194,6 @@ def run_cli(argv: Sequence[str] | None = None) -> str:
     config = ArgumentParser().parse(argv)
     with build_application(config, build_observer(config)) as app:
         if config.prompt is None:
-            return InteractiveConsole(app).start()
+            registry = build_command_registry()
+            return InteractiveConsole(app, registry=registry).start()
         return app.run(config.prompt)

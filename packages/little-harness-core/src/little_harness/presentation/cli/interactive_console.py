@@ -16,6 +16,11 @@ if TYPE_CHECKING:
 
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.text_values import Prompt
+from little_harness.presentation.cli.repl_command import (
+    CommandRegistry,
+    _ExitReplError,
+    build_default_registry,
+)
 
 
 class Application(Protocol):
@@ -34,26 +39,44 @@ class Application(Protocol):
     ) -> tuple[AgentResult, MessageHistory]: ...
 
 
-HELP_TEXT = """Available commands:
-  /exit    - Exit the interactive session
-  /quit    - Exit the interactive session
-  /clear   - Clear conversation history
-  /help    - Show this help message
-  /history - Show conversation history"""
-
-
 class InteractiveConsole:
     def __init__(
         self,
         application: Application,
         output: TextIO | None = None,
         source: TextIO | None = None,
+        registry: CommandRegistry | None = None,
     ) -> None:
         self._app = application
         self._output = output if output is not None else sys.stdout
         self._source = source if source is not None else sys.stdin
         self._messages: MessageHistory | None = None
         self._turn_count = 0
+        self._registry: CommandRegistry = (
+            registry if registry is not None else build_default_registry()
+        )
+
+    @property
+    def registry(self) -> CommandRegistry:
+        return self._registry
+
+    def clear_history(self) -> None:
+        self._messages = None
+        self._turn_count = 0
+
+    def show_history(self) -> None:
+        self._output.write(f"Turns: {self._turn_count}\n")
+        if self._messages is None:
+            self._output.flush()
+            return
+        for message in self._messages:
+            role = message.role.name.capitalize()
+            self._output.write(f"  {role}: {message.content.value[:200]}\n")
+        self._output.flush()
+
+    def write(self, text: str) -> None:
+        self._output.write(text)
+        self._output.flush()
 
     def start(self) -> str:
         readline.get_history_length()
@@ -94,49 +117,15 @@ class InteractiveConsole:
         if not line.startswith("/"):
             return False
 
-        command = line.lower()
+        command = self._registry.get(line)
 
-        if command in ("/exit", "/quit"):
-            raise _ExitReplError()
-
-        handlers = {
-            "/clear": self._handle_clear,
-            "/help": self._handle_help,
-            "/history": self._handle_history,
-        }
-
-        handler = handlers.get(command)
-        if handler is None:
+        if command is None:
             self._output.write(f"Unknown command: {line}. Try /help.\n")
             self._output.flush()
             return True
 
-        handler()
+        command.execute(self)
         return True
-
-    def _handle_clear(self) -> None:
-        self._messages = None
-        self._turn_count = 0
-
-    def _handle_help(self) -> None:
-        self._output.write(HELP_TEXT + "\n")
-        self._output.flush()
-
-    def _handle_history(self) -> None:
-        self._show_history()
-
-    def _show_history(self) -> None:
-        self._output.write(f"Turns: {self._turn_count}\n")
-
-        if self._messages is None:
-            self._output.flush()
-            return
-
-        for message in self._messages:
-            role = message.role.name.capitalize()
-            self._output.write(f"  {role}: {message.content.value[:200]}\n")
-
-        self._output.flush()
 
     def _run_turn(self, text: str) -> None:
         history = self._system_messages()
@@ -145,11 +134,3 @@ class InteractiveConsole:
         self._turn_count += 1
         self._output.write(result.answer.value + "\n")
         self._output.flush()
-
-
-class _ExitReplError(Exception):
-    """Signal to exit the REPL loop cleanly.
-
-    Raised inside ``_process_command`` on ``/exit`` or ``/quit`` and caught
-    by ``contextlib.suppress`` in ``start``.
-    """

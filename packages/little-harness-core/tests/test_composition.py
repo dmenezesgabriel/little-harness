@@ -13,6 +13,7 @@ from little_harness.application.tool_registry import ToolRegistry
 from little_harness.composition import (
     build_application,
     build_chat_model,
+    build_command_registry,
     build_dependencies,
     build_hook_list,
     build_hooks,
@@ -51,7 +52,12 @@ from little_harness.infrastructure.observability.null_observer import NullObserv
 from little_harness.infrastructure.permissions.auto_approve_requester import (
     AutoApprovePermissionRequester,
 )
-from little_harness.plugin_discovery import OBSERVER_GROUP, POLICY_GROUP, PROVIDER_GROUP
+from little_harness.plugin_discovery import (
+    OBSERVER_GROUP,
+    POLICY_GROUP,
+    PROVIDER_GROUP,
+    REPL_COMMAND_GROUP,
+)
 from little_harness.presentation.cli.app_config import AppConfig
 from little_harness.presentation.cli.argument_parser import ArgumentParser
 from little_harness.presentation.cli.permission_prompt import (
@@ -390,7 +396,11 @@ class TestRunCliInteractive:
             received_app: object = None
 
             def __init__(
-                self, app: object, output: object = None, source: object = None
+                self,
+                app: object,
+                output: object = None,
+                source: object = None,
+                registry: object = None,
             ) -> None:
                 SpyingInteractiveConsole.received_app = app
 
@@ -669,3 +679,34 @@ class TestPermissionRequesterSelection:
         assert isinstance(
             build_permission_requester(config), InteractivePermissionRequester
         )
+
+
+class TestCommandRegistryComposition:
+    def test_builds_registry_with_built_ins(self) -> None:
+        registry = build_command_registry()
+        assert registry.get("/exit") is not None
+        assert registry.get("/clear") is not None
+
+    def test_builds_registry_including_plugins(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class FakePluginCommand:
+            name = "plugged"
+            aliases = ()
+            description = "Plugin command"
+
+            def execute(self, console: object, /) -> None:
+                pass
+
+        install_entry_points(
+            monkeypatch,
+            {
+                REPL_COMMAND_GROUP: [
+                    FakeEntryPoint("plugged_builder", FakePluginCommand)
+                ]
+            },
+        )
+
+        registry = build_command_registry()
+        assert registry.get("/plugged") is not None
+        assert registry.get("/exit") is not None

@@ -13,7 +13,6 @@ from little_harness.domain.values.numeric_values import ElapsedSeconds
 from little_harness.domain.values.role import ASSISTANT, SYSTEM, USER
 from little_harness.domain.values.text_values import MessageContent, Prompt
 from little_harness.presentation.cli.interactive_console import (
-    HELP_TEXT,
     InteractiveConsole,
     _ExitReplError,
 )
@@ -122,7 +121,8 @@ class TestInteractiveConsoleSlashCommands:
 
         console.start()
 
-        assert HELP_TEXT + "\n" in output.getvalue()
+        text = output.getvalue()
+        assert "Available commands:\n" in text
 
     def test_process_help_returns_true(self) -> None:
         console, _ = console_with()
@@ -286,8 +286,40 @@ class TestInteractiveConsoleEdgeCases:
         )
         console._turn_count = 1
 
-        console._show_history()
+        console.show_history()
 
         text = output.getvalue()
         assert "x" * 200 in text
         assert "x" * 201 not in text
+
+
+class TestInteractiveConsolePublicApi:
+    def test_clear_history_resets_state(self) -> None:
+        console, _ = console_with()
+        console._messages = MessageHistory().with_message(SYSTEM_MSG)
+        console._turn_count = 5
+
+        console.clear_history()
+
+        assert console._messages is None
+        assert console._turn_count == 0
+
+    def test_write_writes_to_output(self) -> None:
+        console, output = console_with()
+        console.write("hello world")
+        assert output.getvalue() == "hello world"
+
+    def test_show_history_prints_turns_and_messages(self) -> None:
+        console, output = console_with()
+        console._turn_count = 1
+        console._messages = (
+            MessageHistory()
+            .with_message(SYSTEM_MSG)
+            .with_message(ChatMessage(USER, MessageContent("hello")))
+        )
+
+        console.show_history()
+
+        text = output.getvalue()
+        assert "Turns: 1" in text
+        assert "User: hello" in text
