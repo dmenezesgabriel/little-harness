@@ -7,8 +7,10 @@ from collections.abc import Callable, Mapping
 import pytest
 from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
+from little_harness.application.ports.permission_requester import PermissionRequester
 from little_harness.domain.errors import (
     UnknownObserverError,
+    UnknownPermissionRequesterError,
     UnknownPolicyError,
     UnknownProviderError,
     UnknownToolError,
@@ -19,6 +21,7 @@ from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.text_values import ToolName, ToolOutput
 from little_harness.plugin_discovery import (
     OBSERVER_GROUP,
+    PERMISSION_REQUESTER_GROUP,
     POLICY_GROUP,
     PROVIDER_GROUP,
     REPL_COMMAND_GROUP,
@@ -28,6 +31,7 @@ from little_harness.plugin_discovery import (
     default_policy_name,
     default_provider_name,
     discover_observer,
+    discover_permission_requester,
     discover_policy,
     discover_repl_commands,
     discover_tools,
@@ -442,3 +446,45 @@ class TestDiscoverUi:
         assert str(err.value) == (
             "Unknown UI: 'mystery'. Installed UI plugins: ['rich']."
         )
+
+
+class TestDiscoverPermissionRequester:
+    def test_builds_the_requester_registered_under_the_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        class FakeRequester(PermissionRequester):
+            def request_approval(self, call: object, /) -> bool:
+                return True
+
+        def fake_builder() -> PermissionRequester:
+            return FakeRequester()
+
+        install_entry_points(
+            monkeypatch,
+            {PERMISSION_REQUESTER_GROUP: [FakeEntryPoint("rich", fake_builder)]},
+        )
+
+        # Act / Assert
+        assert isinstance(discover_permission_requester("rich"), FakeRequester)
+
+    def test_rejects_an_unknown_requester_and_lists_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange
+        def fake_builder() -> object:
+            return object()
+
+        install_entry_points(
+            monkeypatch,
+            {PERMISSION_REQUESTER_GROUP: [FakeEntryPoint("rich", fake_builder)]},
+        )
+
+        # Act / Assert
+        with pytest.raises(UnknownPermissionRequesterError) as err:
+            discover_permission_requester("mystery")
+        expected = (
+            "Unknown permission requester: 'mystery'. "
+            "Installed permission requester plugins: ['rich']."
+        )
+        assert str(err.value) == expected
