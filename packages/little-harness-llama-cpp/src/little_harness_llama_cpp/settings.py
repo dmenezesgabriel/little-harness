@@ -16,6 +16,8 @@ from little_harness_llama_cpp.values import (
 
 @dataclass(frozen=True)
 class LlamaCppModelSettings:
+    """Settings for constructing a llama.cpp model."""
+
     model_path: ModelPath
     context_size: ContextSize
     thread_count: ThreadCount

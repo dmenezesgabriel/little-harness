@@ -22,6 +22,7 @@ class RipgrepTool:
 
     Example:
         RipgrepTool(search).run(request)  # raw_input = "TODO src"
+
     """
 
     def __init__(
@@ -31,6 +32,7 @@ class RipgrepTool:
 
         Example:
             tool = RipgrepTool(search, timeout_seconds=15.0)
+
         """
         self._search = search
         self._timeout_seconds = timeout_seconds
@@ -41,6 +43,7 @@ class RipgrepTool:
 
         Example:
             spec = tool.spec
+
         """
         return ToolSpec(
             ToolName("ripgrep"),
@@ -58,6 +61,7 @@ class RipgrepTool:
 
         Example:
             result = tool.run(ToolRunRequest(ToolName("ripgrep"), ToolInput("TODO")))
+
         """
         try:
             arguments = shlex.split(request.raw_input.value)

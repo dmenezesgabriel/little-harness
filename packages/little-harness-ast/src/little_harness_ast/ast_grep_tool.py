@@ -22,13 +22,16 @@ class AstGrepTool:
 
     Example:
         AstGrepTool(engine).run(request)  # raw_input = '{"path","language","query"}'
+
     """
 
     def __init__(self, engine: SyntaxEngine) -> None:
+        """See class docstring for argument descriptions."""
         self._engine = engine
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool's specification: name, description, JSON schema."""
         return ToolSpec(
             ToolName("ast_grep"),
             "Search a file's syntax tree with a tree-sitter query (capture @match).",
@@ -49,6 +52,7 @@ class AstGrepTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Execute an AST grep: parse input, run query, format matches."""
         try:
             return self._search(request)
         except (OSError, ValueError) as error:
@@ -71,6 +75,7 @@ class AstGrepTool:
 
 
 def format_matches(matches: Sequence[StructuralMatch], path: str) -> str:
+    """Render matches as `path:line: text` lines, or a no-match message."""
     if not matches:
         return NO_MATCHES_MESSAGE
 

@@ -14,10 +14,11 @@ class RichPermissionRequester(PermissionRequester):
     """Prompts the operator to approve a sensitive tool call using Rich."""
 
     def __init__(self, console: Console | None = None) -> None:
-        """Initializes the permission requester.
+        """Initialize the permission requester.
 
         Args:
             console: The Rich console to use for prompting.
+
         """
         self._console = console or Console()
 
@@ -29,6 +30,7 @@ class RichPermissionRequester(PermissionRequester):
 
         Returns:
             True if the operator approved the call, False otherwise.
+
         """
         status = get_active_status()
         if status is not None:

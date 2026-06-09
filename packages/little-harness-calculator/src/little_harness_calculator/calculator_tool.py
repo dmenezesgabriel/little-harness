@@ -16,13 +16,16 @@ class CalculatorTool:
 
     Example:
         result = CalculatorTool().run(ToolRunRequest(name, ToolInput("2 + 2")))
+
     """
 
     def __init__(self) -> None:
+        """See class docstring."""
         self._evaluator = ExpressionEvaluator()
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool specification."""
         return ToolSpec(
             ToolName("calculator"),
             "Evaluate safe arithmetic and numeric expressions.",
@@ -34,6 +37,7 @@ class CalculatorTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Run the calculator tool with the given request."""
         try:
             result = self._evaluator.evaluate(request.raw_input.value)
             output = ToolOutput(result.formatted())

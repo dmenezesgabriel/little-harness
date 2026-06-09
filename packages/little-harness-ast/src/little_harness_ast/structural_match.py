@@ -16,6 +16,7 @@ class StructuralMatch:
 
     Example:
         match = StructuralMatch(2, 2, 6, 17, "print('hi')")
+
     """
 
     start_line: int
@@ -25,6 +26,7 @@ class StructuralMatch:
     text: str
 
     def location(self) -> str:
+        """Return a human-readable line reference (e.g. ``line 3`` or ``lines 3-5``)."""
         if self.start_line == self.end_line:
             return f"line {self.start_line}"
 

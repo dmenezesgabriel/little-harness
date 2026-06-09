@@ -32,13 +32,16 @@ class AstEditTool:
 
     Example:
         AstEditTool(engine).run(request)  # '{"path","language","query","replacement"}'
+
     """
 
     def __init__(self, engine: SyntaxEngine) -> None:
+        """See class docstring for argument descriptions."""
         self._engine = engine
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool's specification: name, description, JSON schema."""
         return ToolSpec(
             ToolName("ast_edit"),
             "Replace the unique tree-sitter @match node in a file with new text.",
@@ -62,6 +65,7 @@ class AstEditTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Execute an AST edit: parse input, find match, splice replacement."""
         try:
             return self._edit(request)
         except (OSError, ValueError) as error:
@@ -92,6 +96,7 @@ class AstEditTool:
 def require_single_match(
     matches: Sequence[StructuralMatch], query: str, path: Path
 ) -> StructuralMatch:
+    """Return the sole match or raise ValueError (zero or many matches)."""
     if len(matches) == 0:
         raise ValueError(
             f"No match for query {query!r} in {path}. Expected exactly one match."
@@ -107,6 +112,7 @@ def require_single_match(
 
 
 def splice(source: str, match: StructuralMatch, replacement: str) -> str:
+    """Replace the byte span of `match` in `source` with `replacement`."""
     source_bytes = source.encode()
     edited = (
         source_bytes[: match.start_byte]

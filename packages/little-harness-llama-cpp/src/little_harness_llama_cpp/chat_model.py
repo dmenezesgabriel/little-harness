@@ -25,14 +25,17 @@ class LlamaCppChatModel:
 
     Example:
         chunks = LlamaCppChatModel(settings).complete_streaming(request)
+
     """
 
     def __init__(self, settings: LlamaCppModelSettings) -> None:
+        """See class docstring for argument descriptions."""
         self._llm = create_llama_model(settings)
 
     def complete_streaming(
         self, request: ChatCompletionRequest
     ) -> Iterator[MessageContent]:
+        """Stream completion chunks for the given request."""
         completion_kwargs: dict[str, Any] = {
             "messages": [to_llama_message(message) for message in request.messages],
             "temperature": request.temperature.value,
@@ -56,6 +59,7 @@ class LlamaCppChatModel:
                 yield MessageContent(content)
 
     def close(self) -> None:
+        """Close the underlying model."""
         self._llm.close()
 
 
@@ -77,6 +81,7 @@ def to_response_format(
 
 
 def extract_chunk_content(chunk: CreateChatCompletionStreamResponse) -> str | None:
+    """Extract text content from a streaming chunk, or return None."""
     choices = chunk["choices"]
 
     if len(choices) == 0:

@@ -31,11 +31,13 @@ class TreeSitterEngine:
 
     Example:
         TreeSitterEngine().find_matches("print(1)", "python", "(call) @match")
+
     """
 
     def find_matches(
         self, source: str, language: str, query: str
     ) -> Sequence[StructuralMatch]:
+        """Return `@match` captures from running `query` on `source`."""
         ts_language = load_language(language)
         source_bytes = source.encode()
         tree = Parser(ts_language).parse(source_bytes)
@@ -44,6 +46,7 @@ class TreeSitterEngine:
 
 
 def load_language(language: str) -> Language:
+    """Load a tree-sitter ``Language`` by name, raising ``ValueError`` if unknown."""
     factory = LANGUAGE_FACTORIES.get(language)
 
     if factory is None:
@@ -56,6 +59,7 @@ def load_language(language: str) -> Language:
 
 
 def run_query(ts_language: Language, query: str, root: Node) -> Sequence[Node]:
+    """Compile and execute a tree-sitter query, raising ``ValueError`` on bad syntax."""
     try:
         compiled = Query(ts_language, query)
     except QueryError as error:
@@ -68,6 +72,7 @@ def run_query(ts_language: Language, query: str, root: Node) -> Sequence[Node]:
 
 
 def to_match(node: Node, source_bytes: bytes) -> StructuralMatch:
+    """Convert a tree-sitter ``Node`` into a vendor-free ``StructuralMatch``."""
     text = source_bytes[node.start_byte : node.end_byte].decode()
     # tree-sitter rows are 0-based; tools and humans count lines from 1.
     return StructuralMatch(

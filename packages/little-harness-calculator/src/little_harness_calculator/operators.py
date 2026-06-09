@@ -12,6 +12,7 @@ UnaryOperation = Callable[[Number], Number]
 
 
 def binary_operations() -> dict[type[ast.operator], BinaryOperation]:
+    """Return a mapping of AST binary operator types to ``Number`` operations."""
     return {
         ast.Add: Number.add,
         ast.Sub: Number.subtract,
@@ -24,6 +25,7 @@ def binary_operations() -> dict[type[ast.operator], BinaryOperation]:
 
 
 def unary_operations() -> dict[type[ast.unaryop], UnaryOperation]:
+    """Return a mapping of AST unary operator types to ``Number`` operations."""
     return {
         ast.UAdd: Number.positive,
         ast.USub: Number.negated,

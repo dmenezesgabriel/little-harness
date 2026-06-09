@@ -18,10 +18,12 @@ class EditFileTool:
 
     Example:
         EditFileTool().run(request)  # raw_input = '{"path","old","new"}'
+
     """
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool specification for the edit_file tool."""
         return ToolSpec(
             ToolName("edit_file"),
             "Replace a unique text snippet inside a file that already exists. "
@@ -44,6 +46,7 @@ class EditFileTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Replace the unique occurrence of `old` with `new` in the file at `path`."""
         try:
             return self._edit(request)
         except (OSError, ValueError) as error:
@@ -69,6 +72,7 @@ class EditFileTool:
 
 
 def replace_unique(text: str, old: str, new: str, path: Path) -> str:
+    """Replace exactly one `old` with `new`; error if zero or multiple matches."""
     count = text.count(old)
 
     if count == 0:

@@ -24,6 +24,7 @@ PLACEHOLDER_TOOL_INPUT = "tool input"
 
 
 def render_system_prompt(tools: Sequence[ToolSpec]) -> MessageContent:
+    """Render the full system prompt including available tool descriptions."""
     rendered_tools = "\n".join(render_tool_spec(tool) for tool in tools)
     return MessageContent(
         system_prompt_text(rendered_tools, build_tool_call_example(tools))
@@ -31,6 +32,7 @@ def render_system_prompt(tools: Sequence[ToolSpec]) -> MessageContent:
 
 
 def render_tool_spec(tool: ToolSpec) -> str:
+    """Render a tool's name, description, and input schema for the system prompt."""
     examples = tool.input_schema.examples
     examples_text = (
         "" if examples.is_empty() else f" Examples: {examples.joined(', ')}."
@@ -57,6 +59,7 @@ def build_tool_call_example(tools: Sequence[ToolSpec]) -> str:
 
 
 def format_input_example(example: str) -> str:
+    """Format an input example as valid JSON, quoting bare strings."""
     try:
         json.loads(example)
     except json.JSONDecodeError:
@@ -66,11 +69,12 @@ def format_input_example(example: str) -> str:
 
 
 def tool_call_json(tool_name: str, input_json: str) -> str:
+    """Render a tool call example as a JSON object string."""
     return f'{{"action": "{tool_name}", "input": {input_json}}}'
 
 
 def build_response_schema(tools: Sequence[ToolSpec]) -> ResponseSchema:
-    """A JSON Schema forcing one branch: a final answer, or a known tool call.
+    """Force one branch in the JSON Schema: a final answer or a known tool call.
 
     Each tool gets its own branch so constrained decoders can enforce both the
     tool name and the shape of that tool's input. With no tools, only the final
@@ -83,6 +87,7 @@ def build_response_schema(tools: Sequence[ToolSpec]) -> ResponseSchema:
 
 
 def final_branch() -> Mapping[str, object]:
+    """Build a JSON Schema branch for a final answer decision."""
     return {
         "type": "object",
         "properties": {"action": {"const": FINAL_ACTION}, "answer": {"type": "string"}},
@@ -92,10 +97,12 @@ def final_branch() -> Mapping[str, object]:
 
 
 def tool_branches(tools: Sequence[ToolSpec]) -> list[Mapping[str, object]]:
+    """Build JSON Schema branches for all available tools."""
     return [tool_branch(tool) for tool in tools]
 
 
 def tool_branch(tool: ToolSpec) -> Mapping[str, object]:
+    """Build a JSON Schema branch for a single tool."""
     return {
         "type": "object",
         "properties": {
@@ -111,6 +118,7 @@ def render_tool_observation(
     original_prompt: Prompt,
     tool_result: ToolRunResult,
 ) -> MessageContent:
+    """Render a user message reporting a tool's observation back to the model."""
     status = "succeeded" if tool_result.succeeded else "failed"
     return MessageContent(
         f"Original user question:\n{original_prompt.value}\n\n"
@@ -122,6 +130,7 @@ def render_tool_observation(
 
 
 def render_repair_request(original_prompt: Prompt, error: Exception) -> MessageContent:
+    """Render a user message asking the model to fix its previous invalid response."""
     return MessageContent(
         f"Your previous response was invalid. Error: {error}\n\n"
         f"Original user question:\n{original_prompt.value}\n\n"
@@ -135,6 +144,7 @@ def render_repair_request(original_prompt: Prompt, error: Exception) -> MessageC
 
 
 def system_prompt_text(rendered_tools: str, tool_call_example: str) -> str:
+    """Render the raw system prompt template with tool descriptions and examples."""
     return f"""
 You are an agent that answers a user's question through a loop of tool calls.
 

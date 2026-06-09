@@ -24,11 +24,13 @@ class ModelPath:
 
     Example:
         model_path = ModelPath(Path("models/model.gguf"))
+
     """
 
     value: Path
 
     def __post_init__(self) -> None:
+        """Validate the path ends with ``.gguf``."""
         if self.value.suffix == GGUF_SUFFIX:
             return
 
@@ -44,11 +46,13 @@ class ContextSize:
 
     Example:
         context_size = ContextSize(8192)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate the context size is positive."""
         require_positive_int(self.value, "ContextSize")
 
 
@@ -58,11 +62,13 @@ class ThreadCount:
 
     Example:
         thread_count = ThreadCount(8)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate the thread count is positive."""
         require_positive_int(self.value, "ThreadCount")
 
 
@@ -72,11 +78,13 @@ class BatchSize:
 
     Example:
         batch_size = BatchSize(512)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate the batch size is positive."""
         require_positive_int(self.value, "BatchSize")
 
 
@@ -86,11 +94,13 @@ class GpuLayerCount:
 
     Example:
         gpu_layer_count = GpuLayerCount(0)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate the GPU layer count is non-negative."""
         require_non_negative_int(self.value, "GpuLayerCount")
 
 
@@ -100,9 +110,11 @@ class InferenceSeed:
 
     Example:
         seed = InferenceSeed(42)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate the seed is non-negative."""
         require_non_negative_int(self.value, "InferenceSeed")

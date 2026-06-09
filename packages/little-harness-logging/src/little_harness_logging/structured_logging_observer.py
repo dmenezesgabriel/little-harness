@@ -18,12 +18,15 @@ class StructuredLoggingObserver:
 
     Example:
         observer = StructuredLoggingObserver(create_structured_logger("agent"))
+
     """
 
     def __init__(self, logger: StructuredLogger) -> None:
+        """See class docstring for argument descriptions."""
         self._logger = logger
 
     def on_run_started(self, run_id: RunId, prompt: Prompt) -> None:
+        """Log a run_started event with the prompt text."""
         self._logger.log(
             "run_started", {"run_id": run_id.value, "prompt": prompt.value}
         )
@@ -35,6 +38,7 @@ class StructuredLoggingObserver:
         output: MessageContent,
         elapsed: ElapsedSeconds,
     ) -> None:
+        """Log a model_completed event with output length and timing."""
         self._logger.log(
             "model_completed",
             {
@@ -48,6 +52,7 @@ class StructuredLoggingObserver:
     def on_decision_parsed(
         self, run_id: RunId, iteration: Iteration, decision: AgentDecision
     ) -> None:
+        """Log a decision_parsed event with the decision type."""
         self._logger.log(
             "decision_parsed",
             {
@@ -64,6 +69,7 @@ class StructuredLoggingObserver:
         result: ToolRunResult,
         elapsed: ElapsedSeconds,
     ) -> None:
+        """Log a tool_invoked event with the tool name and success status."""
         self._logger.log(
             "tool_invoked",
             {
@@ -76,12 +82,14 @@ class StructuredLoggingObserver:
         )
 
     def on_repair(self, run_id: RunId, iteration: Iteration, error: Exception) -> None:
+        """Log a repair event with the error message."""
         self._logger.log(
             "repair",
             {"run_id": run_id.value, "iteration": iteration.value, "error": str(error)},
         )
 
     def on_run_finished(self, run_id: RunId, result: AgentResult) -> None:
+        """Log a run_finished event with elapsed time and step count."""
         self._logger.log(
             "run_finished",
             {

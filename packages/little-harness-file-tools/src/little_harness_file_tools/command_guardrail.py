@@ -25,11 +25,14 @@ DEFAULT_DANGEROUS_PATTERNS: tuple[str, ...] = (
 
 
 class CommandGuardrail(Protocol):
+    """Interface for rejecting destructive shell commands before execution."""
+
     def rejection_reason(self, command: str, /) -> str | None:
         """Return why a command is blocked, or None if it is allowed.
 
         Example:
             reason = guardrail.rejection_reason("rm -rf /")
+
         """
         ...
 
@@ -39,14 +42,17 @@ class DangerousCommandGuardrail:
 
     Example:
         DangerousCommandGuardrail().rejection_reason("rm -rf /")  # a reason
+
     """
 
     def __init__(self, patterns: Sequence[str] = DEFAULT_DANGEROUS_PATTERNS) -> None:
+        """See class docstring for argument descriptions."""
         self._patterns = tuple(
             re.compile(pattern, re.IGNORECASE) for pattern in patterns
         )
 
     def rejection_reason(self, command: str) -> str | None:
+        """Return why `command` is blocked, or None if it is allowed."""
         for pattern in self._patterns:
             if pattern.search(command):
                 return (

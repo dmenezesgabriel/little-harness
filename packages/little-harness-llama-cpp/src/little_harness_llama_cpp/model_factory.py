@@ -45,6 +45,7 @@ _chat_fmt.Jinja2ChatFormatter.__init__ = _formatter_init_without_generation_tags
 
 
 def create_llama_model(settings: LlamaCppModelSettings) -> Llama:
+    """Create and return a configured `Llama` instance."""
     path = settings.model_path.value
 
     if not path.exists():

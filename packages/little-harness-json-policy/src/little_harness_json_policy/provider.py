@@ -6,6 +6,7 @@ composition root calls `build()` once and injects the result as the runtime's
 
 Example:
     policy = build()
+
 """
 
 from __future__ import annotations
@@ -16,4 +17,5 @@ from little_harness_json_policy.json_agent_policy import JsonAgentPolicy
 
 
 def build() -> AgentPolicy:
+    """Build the strict-JSON agent policy adapter."""
     return JsonAgentPolicy()

@@ -93,6 +93,7 @@ class GrepArgumentParser:
 
         Example:
             request = parser.parse(["TODO", "."])
+
         """
         try:
             parsed_flags = self._parse_flags(arguments)
@@ -246,6 +247,7 @@ class PythonGrepSearch:
 
         Example:
             search = PythonGrepSearch()
+
         """
         self._parser = parser or GrepArgumentParser()
 
@@ -254,6 +256,7 @@ class PythonGrepSearch:
 
         Example:
             outcome = search.run(["TODO", "src"], 30.0)
+
         """
         request = self._parser.parse(arguments)
         if isinstance(request, RipgrepOutcome):

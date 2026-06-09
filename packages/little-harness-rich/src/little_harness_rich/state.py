@@ -12,18 +12,20 @@ _state = threading.local()
 
 
 def get_active_status() -> Status | None:
-    """Gets the currently active status spinner, if any.
+    """Get the currently active status spinner, if any.
 
     Returns:
         The active Status, or None if no status is active.
+
     """
     return getattr(_state, "status", None)
 
 
 def set_active_status(status: Status | None) -> None:
-    """Sets the currently active status spinner.
+    """Set the currently active status spinner.
 
     Args:
         status: The Status object, or None to clear.
+
     """
     _state.status = status

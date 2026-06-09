@@ -21,19 +21,23 @@ RoleMessageBuilder = Callable[[str], ChatCompletionRequestMessage]
 
 
 def to_llama_message(message: ChatMessage) -> ChatCompletionRequestMessage:
+    """Map a domain `ChatMessage` to a llama.cpp message type."""
     builder = ROLE_MESSAGE_BUILDERS[message.role]
     return builder(message.content.value)
 
 
 def build_system_message(content: str) -> ChatCompletionRequestMessage:
+    """Build a system message for llama.cpp."""
     return ChatCompletionRequestSystemMessage(role="system", content=content)
 
 
 def build_user_message(content: str) -> ChatCompletionRequestMessage:
+    """Build a user message for llama.cpp."""
     return ChatCompletionRequestUserMessage(role="user", content=content)
 
 
 def build_assistant_message(content: str) -> ChatCompletionRequestMessage:
+    """Build an assistant message for llama.cpp."""
     return ChatCompletionRequestAssistantMessage(role="assistant", content=content)
 
 

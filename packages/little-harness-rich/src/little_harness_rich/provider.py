@@ -27,7 +27,7 @@ def build(
     application: Application,
     registry: CommandRegistry,
 ) -> InteractiveRunner:
-    """Builds a RichInteractiveConsole instance.
+    """Build a RichInteractiveConsole instance.
 
     Args:
         application: The agent application runner.
@@ -35,14 +35,16 @@ def build(
 
     Returns:
         An InteractiveRunner instance.
+
     """
     return RichInteractiveConsole(application, registry)
 
 
 def build_permission_requester() -> PermissionRequester:
-    """Builds a RichPermissionRequester instance.
+    """Build a RichPermissionRequester instance.
 
     Returns:
         A PermissionRequester instance.
+
     """
     return RichPermissionRequester()

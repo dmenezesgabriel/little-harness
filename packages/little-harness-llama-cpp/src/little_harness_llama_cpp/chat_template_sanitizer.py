@@ -9,6 +9,7 @@ picks the right one for the model in use.
 Example:
     sanitizer = ChatTemplateSanitizerFactory.create_default()
     safe = sanitizer.sanitize("{% generation %}assistant{% endgeneration %}")
+
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ class StripGenerationTagsSanitizer(ChatTemplateSanitizer):
     _GENERATION_PATTERN = re.compile(r"\{%-?\s*(?:end)?generation\s*-?%\}")
 
     def sanitize(self, template: str) -> str:
+        """Strip generation tags from the template."""
         return self._GENERATION_PATTERN.sub("", template)
 
 
@@ -44,6 +46,7 @@ class NoOpSanitizer(ChatTemplateSanitizer):
     """Pass-through strategy — no sanitization needed."""
 
     def sanitize(self, template: str) -> str:
+        """Return the template unchanged."""
         return template
 
 

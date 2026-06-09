@@ -6,6 +6,7 @@ the `ChatModel` port.
 
 Example:
     chunks = LiteLLMChatModel(settings).complete_streaming(request)
+
 """
 
 from __future__ import annotations
@@ -35,14 +36,17 @@ class LiteLLMChatModel:
 
     Example:
         model = LiteLLMChatModel(LiteLLMSettings("gpt-4o"))
+
     """
 
     def __init__(self, settings: LiteLLMSettings) -> None:
+        """See class docstring for argument descriptions."""
         self._settings = settings
 
     def complete_streaming(
         self, request: ChatCompletionRequest
     ) -> Iterator[MessageContent]:
+        """Stream completion chunks from the configured LiteLLM backend."""
         completion_kwargs: dict[str, Any] = {
             "model": self._settings.model,
             "messages": [to_litellm_message(message) for message in request.messages],
@@ -91,11 +95,13 @@ def to_response_format(
 
 
 def reject_non_streaming(response: object) -> None:
+    """Raise if the LiteLLM response is not an iterator (streaming was requested)."""
     if not isinstance(response, Iterator):
         raise TypeError(f"Expected a streaming response, got: {type(response)}")
 
 
 def extract_delta_content(chunk: object) -> str | None:
+    """Extract the text delta from a LiteLLM streaming chunk, or None if finished."""
     choices = getattr(chunk, "choices", None)
 
     if not choices:

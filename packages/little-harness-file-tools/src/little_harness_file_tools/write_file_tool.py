@@ -17,10 +17,12 @@ class WriteFileTool:
 
     Example:
         WriteFileTool().run(request)  # request.raw_input = '{"path","content"}'
+
     """
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool specification for the write_file tool."""
         return ToolSpec(
             ToolName("write_file"),
             "Create a new file (or overwrite an existing one) with the given text, "
@@ -42,6 +44,7 @@ class WriteFileTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Write `content` to `path` (overwriting), creating parent dirs as needed."""
         try:
             return self._write(request)
         except (OSError, ValueError) as error:

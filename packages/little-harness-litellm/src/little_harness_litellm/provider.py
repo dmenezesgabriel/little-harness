@@ -4,6 +4,7 @@ Registered under the `little_harness.chat_model_providers` group as `litellm`.
 
 Example:
     model = build({"model": "gpt-4o", "api_base": "https://proxy/v1"})
+
 """
 
 from __future__ import annotations
@@ -17,10 +18,12 @@ from little_harness_litellm.settings import LiteLLMSettings
 
 
 def build(options: Mapping[str, str]) -> ChatModel:
+    """Build a LiteLLM-backed ChatModel from provider options."""
     return LiteLLMChatModel(to_settings(options))
 
 
 def to_settings(options: Mapping[str, str]) -> LiteLLMSettings:
+    """Parse provider options into a validated LiteLLMSettings, requiring a model."""
     model = options.get("model")
 
     if model is None:
@@ -38,6 +41,7 @@ def to_settings(options: Mapping[str, str]) -> LiteLLMSettings:
 
 
 def int_option(options: Mapping[str, str], key: str, default: int) -> int:
+    """Extract an integer option from a string-keyed mapping, or return the default."""
     raw = options.get(key)
 
     if raw is None:

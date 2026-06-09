@@ -12,16 +12,20 @@ class StdlibStructuredLogger:
 
     Example:
         StdlibStructuredLogger(logging.getLogger("agent")).log("started", {})
+
     """
 
     def __init__(self, logger: logging.Logger) -> None:
+        """See class docstring for argument descriptions."""
         self._logger = logger
 
     def log(self, event: str, fields: Mapping[str, object]) -> None:
+        """Emit a JSON log record for a named event with structured fields."""
         self._logger.info(json.dumps({"event": event, **fields}, default=str))
 
 
 def create_structured_logger(name: str) -> StdlibStructuredLogger:
+    """Create a StdlibStructuredLogger configured to emit JSON to stderr."""
     logger = logging.getLogger(name)
     configure_stderr_emission(logger)
     return StdlibStructuredLogger(logger)

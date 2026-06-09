@@ -7,6 +7,7 @@ loop, so observability is added without any core edit.
 
 Example:
     observer = build()
+
 """
 
 from __future__ import annotations
@@ -21,4 +22,5 @@ LOGGER_NAME = "agent"
 
 
 def build() -> AgentObserver:
+    """Build a structured-logging observer that emits JSON records to stderr."""
     return StructuredLoggingObserver(create_structured_logger(LOGGER_NAME))

@@ -5,6 +5,7 @@ Both share a single tree-sitter engine implementation.
 
 Example:
     tool = build_ast_grep()
+
 """
 
 from __future__ import annotations
@@ -17,8 +18,10 @@ from little_harness_ast.tree_sitter_engine import TreeSitterEngine
 
 
 def build_ast_grep() -> AgentTool:
+    """Build a read-only AST search tool backed by tree-sitter."""
     return AstGrepTool(TreeSitterEngine())
 
 
 def build_ast_edit() -> AgentTool:
+    """Build a structure-aware AST edit tool backed by tree-sitter."""
     return AstEditTool(TreeSitterEngine())

@@ -29,13 +29,16 @@ class JsonDecisionParser:
 
     Example:
         decision = JsonDecisionParser().parse(MessageContent('{"action":...}'))
+
     """
 
     def parse(self, output: MessageContent) -> AgentDecision:
+        """Parse a model output string into an AgentDecision."""
         return build_decision(extract_first_json_object(output.value))
 
 
 def build_decision(parsed: Mapping[str, object]) -> AgentDecision:
+    """Convert a parsed JSON object into a typed AgentDecision."""
     action = parsed.get("action")
 
     if action == FINAL_ACTION:
@@ -55,7 +58,7 @@ def build_decision(parsed: Mapping[str, object]) -> AgentDecision:
 
 
 def resolve_tool_name(parsed: Mapping[str, object], action: str) -> str:
-    # `action == "tool"` is the older nested protocol; the name lives elsewhere.
+    """Extract the tool name from either the action field or a legacy nested form."""
     if action == LEGACY_TOOL_ACTION:
         return require_string_field(parsed, "tool_name")
 
@@ -63,6 +66,7 @@ def resolve_tool_name(parsed: Mapping[str, object], action: str) -> str:
 
 
 def resolve_tool_input(parsed: Mapping[str, object]) -> ToolInput:
+    """Resolve a tool's input from a dedicated field or inline top-level keys."""
     raw = parsed.get("input", parsed.get("tool_input"))
 
     if isinstance(raw, str):
@@ -100,6 +104,7 @@ def tool_input_from_top_level(parsed: Mapping[str, object]) -> ToolInput:
 
 
 def require_string_field(parsed: Mapping[str, object], field_name: str) -> str:
+    """Require a field to be a non-null string, or raise AgentProtocolError."""
     value = parsed.get(field_name)
 
     if isinstance(value, str):
@@ -111,6 +116,7 @@ def require_string_field(parsed: Mapping[str, object], field_name: str) -> str:
 
 
 def to_tool_name(value: str) -> ToolName:
+    """Parse and validate a tool name string, raising AgentProtocolError on failure."""
     try:
         return ToolName(value)
     except ValueError as error:

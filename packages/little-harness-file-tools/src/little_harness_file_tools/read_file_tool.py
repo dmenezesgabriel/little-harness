@@ -14,10 +14,12 @@ class ReadFileTool:
 
     Example:
         ReadFileTool().run(ToolRunRequest(ToolName("read_file"), ToolInput("a.txt")))
+
     """
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool specification for the read_file tool."""
         return ToolSpec(
             ToolName("read_file"),
             "Read a UTF-8 text file and return its full contents.",
@@ -29,6 +31,7 @@ class ReadFileTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Read the file at the path in `request.raw_input` and return its contents."""
         # `read_text()` uses the default text encoding (UTF-8 on the supported
         # platforms). ValueError covers an embedded null byte in the path.
         try:

@@ -5,6 +5,7 @@ root calls `build()` once and registers the result in the `ToolRegistry`.
 
 Example:
     tool = build()
+
 """
 
 from __future__ import annotations
@@ -20,5 +21,6 @@ def build() -> AgentTool:
 
     Example:
         tool = build()
+
     """
     return RipgrepTool(PythonGrepSearch())

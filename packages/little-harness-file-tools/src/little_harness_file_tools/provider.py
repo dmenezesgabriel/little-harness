@@ -6,6 +6,7 @@ and registers the result in the `ToolRegistry`.
 
 Example:
     tool = build_read_file()
+
 """
 
 from __future__ import annotations
@@ -21,16 +22,20 @@ from little_harness_file_tools.write_file_tool import WriteFileTool
 
 
 def build_read_file() -> AgentTool:
+    """Build and return the read_file tool."""
     return ReadFileTool()
 
 
 def build_write_file() -> AgentTool:
+    """Build and return the write_file tool."""
     return WriteFileTool()
 
 
 def build_edit_file() -> AgentTool:
+    """Build and return the edit_file tool."""
     return EditFileTool()
 
 
 def build_bash() -> AgentTool:
+    """Build the bash tool with a subprocess runner and dangerous-command guardrail."""
     return BashTool(SubprocessShellRunner(), DangerousCommandGuardrail())

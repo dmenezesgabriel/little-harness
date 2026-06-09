@@ -6,6 +6,7 @@ the llama.cpp-specific option keys and constructs the adapter.
 
 Example:
     model = build({"model_path": "models/m.gguf", "n_ctx": "8192"})
+
 """
 
 from __future__ import annotations
@@ -37,10 +38,12 @@ TRUE_OPTION_VALUES = frozenset({"1", "true", "yes", "on"})
 
 
 def build(options: Mapping[str, str]) -> ChatModel:
+    """Build a llama.cpp chat model from provider options."""
     return LlamaCppChatModel(to_settings(options))
 
 
 def to_settings(options: Mapping[str, str]) -> LlamaCppModelSettings:
+    """Convert raw provider options into model settings."""
     # The GGUF path is the model here, so accept the generic `model` key (set by
     # --model) as an alias for the explicit `model_path` option.
     model_path = options.get("model_path") or options.get("model") or DEFAULT_MODEL_PATH
@@ -60,6 +63,7 @@ def to_settings(options: Mapping[str, str]) -> LlamaCppModelSettings:
 
 
 def bool_option(options: Mapping[str, str], key: str, default: bool) -> bool:
+    """Parse a string option as a boolean."""
     raw = options.get(key)
 
     if raw is None:
@@ -69,6 +73,7 @@ def bool_option(options: Mapping[str, str], key: str, default: bool) -> bool:
 
 
 def int_option(options: Mapping[str, str], key: str, default: int) -> int:
+    """Parse a string option as an integer."""
     raw = options.get(key)
 
     if raw is None:

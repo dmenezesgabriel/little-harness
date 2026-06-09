@@ -41,11 +41,12 @@ class RichInteractiveConsole:
         application: Application,
         registry: CommandRegistry | None = None,
     ) -> None:
-        """Initializes the console runner.
+        """Initialize the console runner.
 
         Args:
             application: The agent application runner.
             registry: Registry of slash commands.
+
         """
         self._app = application
         self._console = Console()
@@ -61,13 +62,13 @@ class RichInteractiveConsole:
         return self._registry
 
     def clear_history(self) -> None:
-        """Clears the message history and resets turn counts."""
+        """Clear the message history and reset turn counts."""
         self._messages = None
         self._turn_count = 0
         self._console.print("[yellow]History cleared.[/yellow]")
 
     def show_history(self) -> None:
-        """Prints the conversation history in rich formatting."""
+        """Print the conversation history in rich formatting."""
         self._console.print(f"Turns: {self._turn_count}")
         if self._messages is None:
             return
@@ -85,14 +86,15 @@ class RichInteractiveConsole:
             self._console.print()
 
     def write(self, text: str) -> None:
-        """Prints text to the terminal."""
+        """Print text to the terminal."""
         self._console.print(text)
 
     def start(self) -> str:
-        """Starts the interactive session loop.
+        """Start the interactive session loop.
 
         Returns:
             An empty string representing normal termination.
+
         """
         self._console.print(
             Panel(

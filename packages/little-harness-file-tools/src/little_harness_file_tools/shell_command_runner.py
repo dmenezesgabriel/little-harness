@@ -14,12 +14,13 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class CommandOutcome:
-    """The result of running a command: its streams, exit code, and timeout flag.
+    r"""The result of running a command: its streams, exit code, and timeout flag.
 
     `exit_code` is None when the command was killed for exceeding its timeout.
 
     Example:
         outcome = CommandOutcome(0, "hi\n", "", timed_out=False)
+
     """
 
     exit_code: int | None
@@ -29,11 +30,14 @@ class CommandOutcome:
 
 
 class ShellCommandRunner(Protocol):
+    """Interface for running a shell command and capturing its outcome."""
+
     def run(self, command: str, timeout_seconds: float, /) -> CommandOutcome:
         """Run a command line and capture its outcome.
 
         Example:
             outcome = runner.run("echo hi", 30.0)
+
         """
         ...
 
@@ -43,9 +47,11 @@ class SubprocessShellRunner:
 
     Example:
         SubprocessShellRunner().run("echo hi", 30.0)
+
     """
 
     def run(self, command: str, timeout_seconds: float) -> CommandOutcome:
+        """Run via system shell; return output, exit code, and timeout flag."""
         try:
             # check defaults to False: a non-zero exit is reported, not raised.
             completed = subprocess.run(

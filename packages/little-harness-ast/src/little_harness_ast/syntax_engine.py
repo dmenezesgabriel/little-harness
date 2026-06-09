@@ -9,6 +9,8 @@ from little_harness_ast.structural_match import StructuralMatch
 
 
 class SyntaxEngine(Protocol):
+    """Port for querying source code by its syntax tree, library-independent."""
+
     def find_matches(
         self, source: str, language: str, query: str, /
     ) -> Sequence[StructuralMatch]:
@@ -16,5 +18,6 @@ class SyntaxEngine(Protocol):
 
         Example:
             matches = engine.find_matches("print(1)", "python", "(call) @match")
+
         """
         ...

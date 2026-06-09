@@ -23,6 +23,7 @@ class BashTool:
 
     Example:
         BashTool(runner, guardrail).run(request)  # raw_input = "ls -la"
+
     """
 
     def __init__(
@@ -31,12 +32,14 @@ class BashTool:
         guardrail: CommandGuardrail,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
+        """See class docstring for argument descriptions."""
         self._runner = runner
         self._guardrail = guardrail
         self._timeout_seconds = timeout_seconds
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool specification for the bash tool."""
         return ToolSpec(
             ToolName("bash"),
             "Run a shell command line and return its output and exit code.",
@@ -49,6 +52,7 @@ class BashTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Run a command through the guardrail and runner; return output/success."""
         command = request.raw_input.value
         reason = self._guardrail.rejection_reason(command)
 
@@ -70,6 +74,7 @@ class BashTool:
 
 
 def format_outcome(outcome: CommandOutcome) -> str:
+    """Format a `CommandOutcome` into a human-readable multi-line string."""
     sections = [f"exit code: {outcome.exit_code}"]
 
     if outcome.stdout != "":

@@ -21,6 +21,7 @@ class LiteLLMSettings:
 
     Example:
         settings = LiteLLMSettings("gpt-4o", api_base="https://proxy/v1")
+
     """
 
     model: str
@@ -29,6 +30,7 @@ class LiteLLMSettings:
     num_retries: int = 0
 
     def __post_init__(self) -> None:
+        """Validate and normalize model and retry count after construction."""
         normalized = require_non_empty_text(self.model, "LiteLLM model")
         object.__setattr__(self, "model", normalized)
         require_non_negative_int(self.num_retries, "LiteLLM num_retries")

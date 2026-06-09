@@ -6,6 +6,7 @@ result in the `ToolRegistry`.
 
 Example:
     tool = build()
+
 """
 
 from __future__ import annotations
@@ -16,4 +17,5 @@ from little_harness_calculator.calculator_tool import CalculatorTool
 
 
 def build() -> AgentTool:
+    """Build and return the calculator ``AgentTool``."""
     return CalculatorTool()
