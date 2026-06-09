@@ -4,15 +4,17 @@
 
 ```
 little-harness (umbrella, no code)
-  └── little-harness-core       # provider-agnostic, zero deps
-        ├── little-harness-llama-cpp   (chat_model_providers)
-        ├── little-harness-litellm     (chat_model_providers)
-        ├── little-harness-calculator  (tools)
-        ├── little-harness-file-tools  (tools)
-        ├── little-harness-ripgrep     (tools)
-        ├── little-harness-ast         (tools)
-        ├── little-harness-json-policy (agent_policies)
-        └── little-harness-logging     (observers)
+  └── little-harness-core             # provider-agnostic, zero deps
+        ├── little-harness-llama-cpp       (chat_model_providers)
+        ├── little-harness-litellm         (chat_model_providers)
+        ├── little-harness-calculator      (tools)
+        ├── little-harness-file-tools      (tools)
+        ├── little-harness-ripgrep         (tools)
+        ├── little-harness-ast             (tools)
+        ├── little-harness-json-policy     (agent_policies)
+        ├── little-harness-logging         (observers)
+        ├── little-harness-rich            (uis, ui_permission_requesters)
+        └── little-harness-session-jsonl   (session_plugins)
 ```
 
 All plugin packages depend on `little-harness-core` only. No plugin depends
@@ -75,7 +77,10 @@ All dynamic imports happen in `little_harness/plugin_discovery.py` via
 | `little_harness.tools` | Agent tools | `build() -> AgentTool` |
 | `little_harness.agent_policies` | Agent policies | `build() -> AgentPolicy` |
 | `little_harness.observers` | Observers | `build() -> AgentObserver` |
-| `little_harness.uis` | Interactive UIs | `build(app: Application, registry: CommandRegistry) -> InteractiveRunner` |
+| `little_harness.uis` | Interactive UIs | `build(app, registry) -> InteractiveRunner` |
+| `little_harness.ui_permission_requesters` | UI-styled approval prompts | `build() -> PermissionRequester` |
+| `little_harness.repl_commands` | Slash commands for the REPL | Zero-arg callable `-> ReplCommand` |
+| `little_harness.session_plugins` | Durable session recording/loading | `build_plugin() -> SessionPlugin` |
 
 A plugin's vendor SDK is imported **only when the plugin is selected**
 (lazy loading).

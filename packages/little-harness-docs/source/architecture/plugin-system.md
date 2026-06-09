@@ -37,6 +37,21 @@ logging = "little_harness_logging.provider:build"
 rich = "little_harness_rich.provider:build"
 ```
 
+```toml
+[project.entry-points."little_harness.ui_permission_requesters"]
+rich = "little_harness_rich.provider:build_permission_requester"
+```
+
+```toml
+[project.entry-points."little_harness.repl_commands"]
+# No built-in plugin commands; packages may register their own.
+```
+
+```toml
+[project.entry-points."little_harness.session_plugins"]
+jsonl = "little_harness_session_jsonl.plugin:build_plugin"
+```
+
 ## Discovery
 
 The discovery module (`little_harness/plugin_discovery.py`) is the single
@@ -48,6 +63,9 @@ from little_harness.plugin_discovery import (
     discover_tools,
     discover_policy,
     discover_observer,
+    discover_ui,
+    discover_permission_requester,
+    discover_repl_commands,
     installed_providers,
     installed_tools,
 )
@@ -73,6 +91,9 @@ All ports are `typing.Protocol` classes:
 | `AgentObserver` | `on_run_started()`, `on_model_completed()`, … | AgentRuntime |
 | `TokenSink` | `emit(chunk)` | AgentRuntime |
 | `LifecycleHook` | `on_session_start()`, `on_pre_tool_use()`, … | Application |
+| `PermissionRequester` | `request_approval(call) -> bool` | ApprovalHook |
+| `SessionPlugin` | `observer()`, `repository()` | Application / CLI |
+| `SessionRepository` | `load(session_id) -> MessageHistory` | InteractiveConsole |
 | `InteractiveRunner` | `start() -> str` | CLI / Composition |
 
 See {doc}`../plugins/creating-provider` for implementing each port.
