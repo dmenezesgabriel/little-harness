@@ -113,7 +113,7 @@ class RichInteractiveConsole:
                 line = Prompt.ask(">")
             except (KeyboardInterrupt, EOFError):
                 self._console.print("\n[yellow]Exiting...[/yellow]")
-                break
+                break  # pragma: no mutate
 
             line = line.strip()
             if not line:

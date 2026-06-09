@@ -731,6 +731,14 @@ class TestPermissionRequesterSelection:
         config = ArgumentParser().parse(["--prompt", "hi"])
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
 
+        def assert_not_called(name: str) -> None:
+            raise AssertionError(f"Should not try to discover {name}")
+
+        monkeypatch.setattr(
+            "little_harness.composition.discover_permission_requester",
+            assert_not_called,
+        )
+
         assert isinstance(
             build_permission_requester(config), InteractivePermissionRequester
         )
