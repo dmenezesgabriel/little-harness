@@ -41,6 +41,8 @@ FALLBACK_ANSWER = MessageContent(
 
 @dataclass(frozen=True)
 class AgentRuntimeConfig:
+    """Agent loop configuration: iteration cap, temperature, sampling params."""
+
     max_iterations: MaxIterations
     temperature: Temperature
     max_tokens: MaxTokens
@@ -56,17 +58,21 @@ class SessionDecisionApplier:
     """
 
     def __init__(self, state: AgentLoopState, role: Role) -> None:
+        """See class docstring for argument descriptions."""
         self._state = state
         self._role = role
 
     def visit_proceed(self, _decision: Proceed) -> MessageContent | None:
+        """Continue without injecting or blocking."""
         return None
 
     def visit_inject_context(self, decision: InjectContext) -> MessageContent | None:
+        """Inject the context message under the configured role."""
         self._state.append_message(ChatMessage(self._role, decision.content))
         return None
 
     def visit_block(self, decision: Block) -> MessageContent | None:
+        """Abort the run with the block reason."""
         return decision.reason
 
 
@@ -75,6 +81,7 @@ class AgentRuntime:
 
     Example:
         result = AgentRuntime(dependencies, config).run(Prompt("2 + 2?"))
+
     """
 
     def __init__(
@@ -82,14 +89,17 @@ class AgentRuntime:
         dependencies: AgentDependencies,
         config: AgentRuntimeConfig,
     ) -> None:
+        """See class docstring for argument descriptions."""
         self._dependencies = dependencies
         self._config = config
 
     def build_system_message(self) -> ChatMessage:
+        """Build the system message from the policy and tool specs."""
         specs = self._dependencies.tool_registry.specs()
         return ChatMessage(SYSTEM, self._dependencies.policy.system_prompt(specs))
 
     def run(self, prompt: Prompt) -> AgentResult:
+        """Run a single-turn session from prompt to result."""
         initial_history = MessageHistory().with_message(self.build_system_message())
         result, _ = self.run_turn(prompt, initial_history)
         return result
@@ -97,6 +107,7 @@ class AgentRuntime:
     def run_turn(
         self, prompt: Prompt, messages: MessageHistory
     ) -> tuple[AgentResult, MessageHistory]:
+        """Run a multi-turn session and return the result along with final messages."""
         run_id = RunId(uuid4().hex)
         self._dependencies.observer.on_run_started(run_id, prompt)
         started_at = time.perf_counter()

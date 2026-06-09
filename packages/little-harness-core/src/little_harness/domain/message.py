@@ -14,6 +14,7 @@ class ChatMessage:
 
     Example:
         message = ChatMessage(USER, MessageContent("What is 2 + 2?"))
+
     """
 
     role: Role

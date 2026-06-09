@@ -47,16 +47,19 @@ class LoopDecisionVisitor:
         dependencies: AgentDependencies,
         context: IterationContext,
     ) -> None:
+        """See class docstring for argument descriptions."""
         self._dependencies = dependencies
         self._context = context
 
     def visit_final_answer(self, decision: FinalAnswer) -> MessageContent | None:
+        """Apply stop hooks and return the answer or None to keep looping."""
         stop = self._dependencies.hooks.on_stop(
             self._context.run_id, self._context.iteration, decision.answer
         )
         return stop.accept(StopDecisionApplier(self._context.state, decision.answer))
 
     def visit_tool_call(self, decision: ToolCall) -> MessageContent | None:
+        """Execute the tool, record the step, and return None to continue."""
         result = self._resolve_tool_result(decision)
         message = self._dependencies.policy.build_tool_observation_message(
             self._context.prompt, result
@@ -142,17 +145,21 @@ class PreToolDecisionApplier:
     """
 
     def __init__(self, state: AgentLoopState, tool_name: ToolName) -> None:
+        """See class docstring for argument descriptions."""
         self._state = state
         self._tool_name = tool_name
 
     def visit_proceed(self, _decision: Proceed) -> ToolRunResult | None:
+        """Continue without injecting or blocking."""
         return None
 
     def visit_inject_context(self, decision: InjectContext) -> ToolRunResult | None:
+        """Inject context and continue."""
         self._state.append_message(ChatMessage(USER, decision.content))
         return None
 
     def visit_block(self, decision: Block) -> ToolRunResult | None:
+        """Return a failed tool result with the block reason."""
         output = ToolOutput(decision.reason.value)
         return ToolRunResult(self._tool_name, output, succeeded=False)
 
@@ -165,15 +172,18 @@ class MessageInjectingApplier:
     """
 
     def __init__(self, state: AgentLoopState) -> None:
+        """See class docstring for argument descriptions."""
         self._state = state
 
     def visit_proceed(self, _decision: Proceed) -> None:
         """No-op: nothing to inject."""
 
     def visit_inject_context(self, decision: InjectContext) -> None:
+        """Append the context as a user message."""
         self._state.append_message(ChatMessage(USER, decision.content))
 
     def visit_block(self, decision: Block) -> None:
+        """Append the block reason as a user message."""
         self._state.append_message(ChatMessage(USER, decision.reason))
 
 
@@ -185,16 +195,20 @@ class StopDecisionApplier:
     """
 
     def __init__(self, state: AgentLoopState, answer: MessageContent) -> None:
+        """See class docstring for argument descriptions."""
         self._state = state
         self._answer = answer
 
     def visit_proceed(self, _decision: Proceed) -> MessageContent | None:
+        """Return the answer to stop the loop."""
         return self._answer
 
     def visit_inject_context(self, decision: InjectContext) -> MessageContent | None:
+        """Inject the context message and return the answer."""
         self._state.append_message(ChatMessage(USER, decision.content))
         return self._answer
 
     def visit_block(self, decision: Block) -> MessageContent | None:
+        """Inject the block reason and return None to keep looping."""
         self._state.append_message(ChatMessage(USER, decision.reason))
         return None

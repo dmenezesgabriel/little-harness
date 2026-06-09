@@ -13,6 +13,7 @@ class ToolRunRequest:
 
     Example:
         request = ToolRunRequest(ToolName("calculator"), ToolInput("2 + 2"))
+
     """
 
     tool_name: ToolName
@@ -25,6 +26,7 @@ class ToolRunResult:
 
     Example:
         result = ToolRunResult(ToolName("calculator"), ToolOutput("4"), True)
+
     """
 
     tool_name: ToolName

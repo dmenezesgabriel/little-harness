@@ -18,22 +18,28 @@ class ToolRegistry:
     Example:
         registry = ToolRegistry([CalculatorTool()])
         tool = registry.find(ToolName("calculator"))
+
     """
 
     def __init__(self, tools: Sequence[AgentTool]) -> None:
+        """See class docstring for argument descriptions."""
         self._tools_by_name = build_tool_index(tools)
 
     def find(self, name: ToolName) -> AgentTool | None:
+        """Look up a tool by name, or None if not registered."""
         return self._tools_by_name.get(name)
 
     def specs(self) -> tuple[ToolSpec, ...]:
+        """Return the spec of every registered tool."""
         return tuple(tool.spec for tool in self._tools_by_name.values())
 
     def __len__(self) -> int:
+        """Return the number of registered tools."""
         return len(self._tools_by_name)
 
 
 def build_tool_index(tools: Sequence[AgentTool]) -> dict[ToolName, AgentTool]:
+    """Build a name-to-tool dict, raising on duplicate names."""
     index: dict[ToolName, AgentTool] = {}
 
     for tool in tools:

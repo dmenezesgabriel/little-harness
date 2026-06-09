@@ -14,15 +14,19 @@ class MessageHistory:
 
     Example:
         history = MessageHistory().with_message(system_message)
+
     """
 
     _messages: tuple[ChatMessage, ...] = ()
 
     def with_message(self, message: ChatMessage) -> MessageHistory:
+        """Return a new history with `message` appended."""
         return MessageHistory((*self._messages, message))
 
     def __iter__(self) -> Iterator[ChatMessage]:
+        """Yield each message in order."""
         return iter(self._messages)
 
     def __len__(self) -> int:
+        """Return the number of messages."""
         return len(self._messages)

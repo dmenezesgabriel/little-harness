@@ -17,11 +17,13 @@ class Temperature:
 
     Example:
         temperature = Temperature(0.0)
+
     """
 
     value: float
 
     def __post_init__(self) -> None:
+        """Validate that temperature is within 0.0..2.0."""
         require_within(self.value, 0.0, 2.0, "Temperature")
 
 
@@ -31,11 +33,13 @@ class MaxTokens:
 
     Example:
         max_tokens = MaxTokens(512)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate that max tokens is positive."""
         require_positive_int(self.value, "MaxTokens")
 
 
@@ -45,11 +49,13 @@ class MaxIterations:
 
     Example:
         max_iterations = MaxIterations(5)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate that max iterations is positive."""
         require_positive_int(self.value, "MaxIterations")
 
 
@@ -59,11 +65,13 @@ class Iteration:
 
     Example:
         iteration = Iteration(1)
+
     """
 
     value: int
 
     def __post_init__(self) -> None:
+        """Validate that iteration is positive."""
         require_positive_int(self.value, "Iteration")
 
 
@@ -73,11 +81,13 @@ class TopP:
 
     Example:
         top_p = TopP(0.95)
+
     """
 
     value: float
 
     def __post_init__(self) -> None:
+        """Validate that top-p is within 0.0..1.0."""
         require_within(self.value, 0.0, 1.0, "TopP")
 
 
@@ -87,11 +97,13 @@ class RepeatPenalty:
 
     Example:
         repeat_penalty = RepeatPenalty(1.0)
+
     """
 
     value: float
 
     def __post_init__(self) -> None:
+        """Validate that repeat penalty is within 0.0..2.0."""
         require_within(self.value, 0.0, 2.0, "RepeatPenalty")
 
 
@@ -101,9 +113,11 @@ class ElapsedSeconds:
 
     Example:
         elapsed = ElapsedSeconds(1.25)
+
     """
 
     value: float
 
     def __post_init__(self) -> None:
+        """Validate that elapsed seconds is non-negative."""
         require_non_negative(self.value, "ElapsedSeconds")

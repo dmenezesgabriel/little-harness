@@ -28,6 +28,7 @@ class ResponseSchema:
 
     Example:
         schema = ResponseSchema({"type": "object", "required": ["action"]})
+
     """
 
     value: Mapping[str, object]
@@ -35,6 +36,8 @@ class ResponseSchema:
 
 @dataclass(frozen=True)
 class ChatCompletionRequest:
+    """A request DTO for a chat completion call."""
+
     messages: MessageHistory
     temperature: Temperature
     max_tokens: MaxTokens
@@ -57,5 +60,6 @@ class ChatModel(Closeable, Protocol):
 
         Example:
             text = "".join(chunk.value for chunk in model.complete_streaming(req))
+
         """
         ...

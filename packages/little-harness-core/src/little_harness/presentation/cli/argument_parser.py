@@ -30,14 +30,17 @@ class ArgumentParser:
 
     Example:
         config = ArgumentParser().parse(["--provider", "litellm", "-o", "model=gpt"])
+
     """
 
     def parse(self, argv: Sequence[str] | None = None) -> AppConfig:
+        """Parse command-line arguments into an ``AppConfig``."""
         namespace = build_parser().parse_args(argv)
         return to_app_config(namespace)
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build and return the top-level argument parser."""
     parser = argparse.ArgumentParser(description="Run a small local LLM agent.")
     add_prompt_arguments(parser)
     add_runtime_arguments(parser)
@@ -46,6 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
+    """Register the --prompt / -p argument."""
     parser.add_argument(
         "-p",
         "--prompt",
@@ -54,6 +58,7 @@ def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
+    """Register sampling, streaming, and loop-control arguments."""
     parser.add_argument(
         "--temperature", type=float, default=0.0, help="Sampling temperature."
     )
@@ -107,6 +112,7 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
+    """Register provider, policy, model, and provider-specific option arguments."""
     parser.add_argument(
         # No `default=`: argparse defaults to None, meaning "no provider chosen",
         # which the composition root resolves to the sole installed provider.
@@ -139,6 +145,7 @@ def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def to_app_config(namespace: argparse.Namespace) -> AppConfig:
+    """Convert a parsed argparse namespace into an ``AppConfig``."""
     # argparse already applied each argument's `type=`/`action`; value objects then
     # validate ranges, and the provider validates its own options downstream.
     # prompt=None means interactive mode (REPL); a value means one-shot execution.
@@ -164,6 +171,7 @@ def to_app_config(namespace: argparse.Namespace) -> AppConfig:
 
 
 def resolve_observer_name(observer: str | None, log: bool) -> str | None:
+    """Return the observer plugin name from ``--observer`` or ``--log``."""
     # `--observer` is explicit; `--log` is the shorthand for the logging observer.
     if observer is not None:
         return observer
@@ -172,6 +180,7 @@ def resolve_observer_name(observer: str | None, log: bool) -> str | None:
 
 
 def parse_tool_selection(raw: str | None) -> tuple[str, ...] | None:
+    """Parse a comma-separated tool list into a tuple of names."""
     if raw is None:
         return None
 
@@ -186,6 +195,7 @@ def parse_tool_selection(raw: str | None) -> tuple[str, ...] | None:
 
 
 def build_provider_options(model: str | None, pairs: Sequence[str]) -> dict[str, str]:
+    """Merge ``--model`` and ``--option`` pairs into a provider options dict."""
     # `--model` is shorthand for the `model` option; an explicit `-o model=` wins.
     options: dict[str, str] = {}
     if model is not None:
@@ -195,10 +205,12 @@ def build_provider_options(model: str | None, pairs: Sequence[str]) -> dict[str,
 
 
 def parse_options(pairs: Sequence[str]) -> dict[str, str]:
+    """Parse a sequence of KEY=VALUE strings into a dict."""
     return dict(split_option(pair) for pair in pairs)
 
 
 def split_option(pair: str) -> tuple[str, str]:
+    """Split a single KEY=VALUE string into a ``(key, value)`` tuple."""
     key, separator, value = pair.partition(OPTION_SEPARATOR)
 
     if separator == "" or key == "":

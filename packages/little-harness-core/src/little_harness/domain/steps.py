@@ -14,18 +14,23 @@ class AgentSteps:
 
     Example:
         steps = AgentSteps().with_step(first_step)
+
     """
 
     _steps: tuple[AgentStep, ...] = ()
 
     def with_step(self, step: AgentStep) -> AgentSteps:
+        """Return a new collection with `step` appended."""
         return AgentSteps((*self._steps, step))
 
     def is_empty(self) -> bool:
+        """Return `True` when no steps have been recorded."""
         return len(self._steps) == 0
 
     def __iter__(self) -> Iterator[AgentStep]:
+        """Yield each step in order."""
         return iter(self._steps)
 
     def __len__(self) -> int:
+        """Return the number of steps."""
         return len(self._steps)

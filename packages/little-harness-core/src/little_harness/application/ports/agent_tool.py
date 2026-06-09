@@ -9,12 +9,15 @@ from little_harness.domain.tool_spec import ToolSpec
 
 
 class AgentTool(Protocol):
+    """Describe a tool the agent can call."""
+
     @property
     def spec(self) -> ToolSpec:
         """Describe the tool exposed to the agent.
 
         Example:
             name = tool.spec.name
+
         """
         ...
 
@@ -23,5 +26,6 @@ class AgentTool(Protocol):
 
         Example:
             result = tool.run(request)
+
         """
         ...

@@ -30,24 +30,34 @@ class Application(Protocol):
     so the presentation layer never imports the composition root.
     """
 
-    def build_system_message(self) -> ChatMessage: ...
+    def build_system_message(self) -> ChatMessage:
+        """Build the system message for the conversation."""
+        ...
 
     def run_turn(
         self,
         prompt: Prompt,
         messages: MessageHistory,
-    ) -> tuple[AgentResult, MessageHistory]: ...
+    ) -> tuple[AgentResult, MessageHistory]:
+        """Run a single agent turn with the given prompt and message history."""
+        ...
 
 
 class InteractiveRunner(Protocol):
     """Protocol defining an interactive UI runner."""
 
     def start(self) -> str:
-        """Starts the interactive session, returns when the session finishes."""
+        """Start the interactive session and return when the session finishes."""
         ...
 
 
 class InteractiveConsole:
+    """Read-eval-print loop that drives the agent and handles slash commands.
+
+    Injected io streams (output/source) allow tests to drive the loop with
+    ``StringIO`` instead of real stdin/stdout.
+    """
+
     def __init__(
         self,
         application: Application,
@@ -55,6 +65,7 @@ class InteractiveConsole:
         source: TextIO | None = None,
         registry: CommandRegistry | None = None,
     ) -> None:
+        """See class docstring for argument descriptions."""
         self._app = application
         self._output = output if output is not None else sys.stdout
         self._source = source if source is not None else sys.stdin
@@ -66,13 +77,16 @@ class InteractiveConsole:
 
     @property
     def registry(self) -> CommandRegistry:
+        """Return the command registry used by the console."""
         return self._registry
 
     def clear_history(self) -> None:
+        """Clear the conversation history and reset the turn count."""
         self._messages = None
         self._turn_count = 0
 
     def show_history(self) -> None:
+        """Print the conversation history to the output stream."""
         self._output.write(f"Turns: {self._turn_count}\n")
         if self._messages is None:
             self._output.flush()
@@ -83,10 +97,12 @@ class InteractiveConsole:
         self._output.flush()
 
     def write(self, text: str) -> None:
+        """Write text to the output stream and flush."""
         self._output.write(text)
         self._output.flush()
 
     def start(self) -> str:
+        """Start the REPL loop and return when the session finishes."""
         readline.get_history_length()
 
         with contextlib.suppress(ExitReplError):

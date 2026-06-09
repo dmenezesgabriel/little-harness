@@ -12,9 +12,11 @@ class ResultRenderer:
 
     Example:
         text = ResultRenderer().render(result)
+
     """
 
     def render(self, result: AgentResult) -> str:
+        """Render an ``AgentResult`` as user-facing text."""
         lines = [result.answer.value, "", f"Elapsed: {result.elapsed.value:.2f}s"]
 
         if result.steps.is_empty():
@@ -24,6 +26,7 @@ class ResultRenderer:
 
 
 def render_steps(steps: AgentSteps) -> list[str]:
+    """Build a human-readable list of lines from agent step data."""
     lines = ["", "Agent steps:"]
 
     for step in steps:
@@ -36,6 +39,7 @@ def render_steps(steps: AgentSteps) -> list[str]:
 
 
 def format_step_action(step: AgentStep) -> str:
+    """Format a step's action as a human-readable string."""
     if step.decision is None:
         return "repair"
 

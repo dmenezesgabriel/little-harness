@@ -32,20 +32,25 @@ class HookChain:
     Example:
         chain = HookChain([audit_hook, allowlist_hook])
         decision = chain.on_pre_tool_use(run_id, iteration, call)
+
     """
 
     def __init__(self, hooks: Sequence[LifecycleHook]) -> None:
+        """See class docstring for argument descriptions."""
         self._hooks = tuple(hooks)
 
     def on_session_start(self, run_id: RunId, prompt: Prompt) -> HookDecision:
+        """Fold `on_session_start` across all hooks."""
         return self._fold(lambda hook: hook.on_session_start(run_id, prompt))
 
     def on_user_prompt_submit(self, run_id: RunId, prompt: Prompt) -> HookDecision:
+        """Fold `on_user_prompt_submit` across all hooks."""
         return self._fold(lambda hook: hook.on_user_prompt_submit(run_id, prompt))
 
     def on_pre_tool_use(
         self, run_id: RunId, iteration: Iteration, call: ToolCall
     ) -> HookDecision:
+        """Fold `on_pre_tool_use` across all hooks."""
         return self._fold(lambda hook: hook.on_pre_tool_use(run_id, iteration, call))
 
     def on_post_tool_use(
@@ -55,6 +60,7 @@ class HookChain:
         call: ToolCall,
         result: ToolRunResult,
     ) -> HookDecision:
+        """Fold `on_post_tool_use` across all hooks."""
         return self._fold(
             lambda hook: hook.on_post_tool_use(run_id, iteration, call, result)
         )
@@ -62,9 +68,11 @@ class HookChain:
     def on_stop(
         self, run_id: RunId, iteration: Iteration, answer: MessageContent
     ) -> HookDecision:
+        """Fold `on_stop` across all hooks."""
         return self._fold(lambda hook: hook.on_stop(run_id, iteration, answer))
 
     def on_session_end(self, run_id: RunId, result: AgentResult) -> None:
+        """Run `on_session_end` on every hook in order."""
         for hook in self._hooks:
             hook.on_session_end(run_id, result)
 

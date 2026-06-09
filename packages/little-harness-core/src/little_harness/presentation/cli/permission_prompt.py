@@ -23,15 +23,18 @@ class InteractivePermissionRequester:
 
     Example:
         InteractivePermissionRequester().request_approval(call)
+
     """
 
     def __init__(
         self, output: TextIO | None = None, source: TextIO | None = None
     ) -> None:
+        """See class docstring for argument descriptions."""
         self._output = output if output is not None else sys.stdout
         self._source = source if source is not None else sys.stdin
 
     def request_approval(self, call: ToolCall) -> bool:
+        """Prompt the operator to approve a tool call and return their answer."""
         self._output.write(
             f"Allow tool {call.tool_name.value!r} to run with input "
             f"{call.tool_input.value!r}? [y/N] "

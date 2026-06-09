@@ -14,22 +14,28 @@ class AgentLoopState:
     Example:
         state = AgentLoopState(initial_messages)
         state.append_message(observation)
+
     """
 
     def __init__(self, messages: MessageHistory) -> None:
+        """See class docstring for argument descriptions."""
         self._messages = messages
         self._steps = AgentSteps()
 
     def append_message(self, message: ChatMessage) -> None:
+        """Append a message to the conversation history."""
         self._messages = self._messages.with_message(message)
 
     def record_step(self, step: AgentStep) -> None:
+        """Record one agent step in the step trace."""
         self._steps = self._steps.with_step(step)
 
     @property
     def messages(self) -> MessageHistory:
+        """Return the conversation history."""
         return self._messages
 
     @property
     def steps(self) -> AgentSteps:
+        """Return the step trace."""
         return self._steps

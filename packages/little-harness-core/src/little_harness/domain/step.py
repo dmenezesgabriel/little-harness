@@ -17,6 +17,7 @@ class AgentStep:
 
     Example:
         step = AgentStep(Iteration(1), output, decision, observation)
+
     """
 
     iteration: Iteration

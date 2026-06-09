@@ -6,6 +6,7 @@ configuration fails. Pass `--log` to re-raise and see the full traceback.
 
 Example:
     little-harness --provider llama_cpp -o model_path=models/m.gguf -p "2 + 2?"
+
 """
 
 from __future__ import annotations
@@ -19,10 +20,12 @@ TRACEBACK_FLAG = "--log"
 
 
 def main() -> None:
+    """Entry point registered as ``little-harness`` console script."""
     raise SystemExit(run(sys.argv[1:]))
 
 
 def run(argv: Sequence[str]) -> int:
+    """Execute the agent run and return a shell exit code."""
     try:
         print(run_cli(argv))
         return 0

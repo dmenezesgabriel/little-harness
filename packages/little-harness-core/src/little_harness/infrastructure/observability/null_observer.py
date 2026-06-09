@@ -24,12 +24,14 @@ class NullObserver:
         class MyObserver(NullObserver):
             def on_run_started(self, run_id: RunId, prompt: Prompt) -> None:
                 print(f"Run {run_id.value} started")
+
     """
 
     # Parameter names mirror the AgentObserver Protocol exactly so pyright's
     # strict structural-subtype check accepts this class wherever the protocol
     # is expected. Leading underscores are intentionally absent.
     def on_run_started(self, run_id: RunId, prompt: Prompt) -> None:
+        """Ignore run start event."""
         del run_id, prompt
 
     def on_model_completed(
@@ -39,11 +41,13 @@ class NullObserver:
         output: MessageContent,
         elapsed: ElapsedSeconds,
     ) -> None:
+        """Ignore model completion event."""
         del run_id, iteration, output, elapsed
 
     def on_decision_parsed(
         self, run_id: RunId, iteration: Iteration, decision: AgentDecision
     ) -> None:
+        """Ignore decision parsed event."""
         del run_id, iteration, decision
 
     def on_tool_invoked(
@@ -53,10 +57,13 @@ class NullObserver:
         result: ToolRunResult,
         elapsed: ElapsedSeconds,
     ) -> None:
+        """Ignore tool invoked event."""
         del run_id, iteration, result, elapsed
 
     def on_repair(self, run_id: RunId, iteration: Iteration, error: Exception) -> None:
+        """Ignore repair event."""
         del run_id, iteration, error
 
     def on_run_finished(self, run_id: RunId, result: AgentResult) -> None:
+        """Ignore run finished event."""
         del run_id, result

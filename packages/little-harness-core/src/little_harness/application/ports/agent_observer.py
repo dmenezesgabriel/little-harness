@@ -20,7 +20,8 @@ class AgentObserver(Protocol):
     also carry the call's `elapsed` (the latency measurement).
     """
 
-    def on_run_started(self, run_id: RunId, prompt: Prompt) -> None: ...
+    def on_run_started(self, run_id: RunId, prompt: Prompt) -> None:
+        """Record the start of a new agent run."""
 
     def on_model_completed(
         self,
@@ -28,11 +29,13 @@ class AgentObserver(Protocol):
         iteration: Iteration,
         output: MessageContent,
         elapsed: ElapsedSeconds,
-    ) -> None: ...
+    ) -> None:
+        """Record the model completion output."""
 
     def on_decision_parsed(
         self, run_id: RunId, iteration: Iteration, decision: AgentDecision
-    ) -> None: ...
+    ) -> None:
+        """Record a parsed agent decision."""
 
     def on_tool_invoked(
         self,
@@ -40,10 +43,11 @@ class AgentObserver(Protocol):
         iteration: Iteration,
         result: ToolRunResult,
         elapsed: ElapsedSeconds,
-    ) -> None: ...
+    ) -> None:
+        """Record a tool invocation result."""
 
-    def on_repair(
-        self, run_id: RunId, iteration: Iteration, error: Exception
-    ) -> None: ...
+    def on_repair(self, run_id: RunId, iteration: Iteration, error: Exception) -> None:
+        """Record a repair attempt for invalid model output."""
 
-    def on_run_finished(self, run_id: RunId, result: AgentResult) -> None: ...
+    def on_run_finished(self, run_id: RunId, result: AgentResult) -> None:
+        """Record the finish of an agent run."""

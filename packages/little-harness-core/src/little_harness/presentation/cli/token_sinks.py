@@ -12,6 +12,7 @@ class NullTokenSink:
     """Discards every chunk — the default when streaming is not requested."""
 
     def emit(self, chunk: MessageContent) -> None:
+        """Discard a chunk (no-op sink)."""
         del chunk
 
 
@@ -20,11 +21,14 @@ class StdoutTokenSink:
 
     Example:
         StdoutTokenSink().emit(MessageContent("Hello"))
+
     """
 
     def __init__(self, stream: TextIO | None = None) -> None:
+        """See class docstring for argument descriptions."""
         self._stream = stream if stream is not None else sys.stdout
 
     def emit(self, chunk: MessageContent) -> None:
+        """Write a chunk to the output stream and flush."""
         self._stream.write(chunk.value)
         self._stream.flush()

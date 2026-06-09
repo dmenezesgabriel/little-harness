@@ -10,6 +10,7 @@ Example:
     builder = load_chat_model_builder("llama_cpp")   # imports the llama adapter
     chat_model = builder({"model_path": "models/m.gguf"})
     policy = discover_policy("json")                 # imports the json policy
+
 """
 
 from __future__ import annotations
@@ -53,8 +54,11 @@ ChatModelBuilder = Callable[[Mapping[str, str]], ChatModel]
 
 
 def load_chat_model_builder(name: str) -> ChatModelBuilder:
-    # Providers take options, so the deferred builder is returned for the caller
-    # to invoke; policy/observer builders take none and are invoked immediately.
+    """Return the deferred builder for the provider plugin registered under ``name``.
+
+    Providers take options, so the deferred builder is returned for the caller
+    to invoke; policy/observer builders take none and are invoked immediately.
+    """
     return resolve_builder(PROVIDER_GROUP, name, UnknownProviderError, "provider")
 
 
@@ -63,6 +67,7 @@ def discover_policy(name: str) -> AgentPolicy:
 
     Example:
         policy = discover_policy("json")
+
     """
     return resolve_builder(POLICY_GROUP, name, UnknownPolicyError, "policy")()
 
@@ -72,6 +77,7 @@ def discover_observer(name: str) -> AgentObserver:
 
     Example:
         observer = discover_observer("logging")
+
     """
     return resolve_builder(OBSERVER_GROUP, name, UnknownObserverError, "observer")()
 
@@ -85,6 +91,7 @@ def discover_repl_commands() -> Sequence[ReplCommand]:
 
     Example:
         commands = discover_repl_commands()
+
     """
     points = entry_points(group=REPL_COMMAND_GROUP)
     return [point.load()() for point in points]
@@ -95,6 +102,7 @@ def discover_ui(name: str) -> UiBuilder:
 
     Example:
         ui_builder = discover_ui("rich")
+
     """
     return resolve_builder(UI_GROUP, name, UnknownUiError, "UI")
 
@@ -104,6 +112,7 @@ def discover_permission_requester(name: str) -> PermissionRequester:
 
     Example:
         requester = discover_permission_requester("rich")
+
     """
     return resolve_builder(
         PERMISSION_REQUESTER_GROUP,
@@ -124,6 +133,7 @@ def resolve_builder(
 
     Example:
         builder = resolve_builder(POLICY_GROUP, "json", UnknownPolicyError, "policy")
+
     """
     matches = entry_points(group=group, name=name)
 
@@ -141,6 +151,7 @@ def resolve_builder(
 def require_callable_builder(
     builder: object, name: str, error_type: type[ValueError], kind: str
 ) -> None:
+    """Assert callable, or raise ``error_type`` with a descriptive message."""
     if callable(builder):
         return
 
@@ -168,10 +179,12 @@ def require_sole_installed(
 
 
 def installed_names(group: str) -> list[str]:
+    """Return sorted entry-point names registered under `group`."""
     return sorted(point.name for point in entry_points(group=group))
 
 
 def installed_providers() -> list[str]:
+    """Return sorted names of all installed provider plugins."""
     return installed_names(PROVIDER_GROUP)
 
 
@@ -183,6 +196,7 @@ def default_provider_name() -> str:
 
     Example:
         builder = load_chat_model_builder(default_provider_name())
+
     """
     return require_sole_installed(
         PROVIDER_GROUP, UnknownProviderError, "provider", "--provider"
@@ -197,6 +211,7 @@ def default_policy_name() -> str:
 
     Example:
         policy = discover_policy(default_policy_name())
+
     """
     return require_sole_installed(
         POLICY_GROUP, UnknownPolicyError, "policy", "--policy"
@@ -204,6 +219,7 @@ def default_policy_name() -> str:
 
 
 def installed_tools() -> list[str]:
+    """Return sorted names of all installed tool plugins."""
     return installed_names(TOOL_GROUP)
 
 
@@ -216,6 +232,7 @@ def discover_tools(selection: Sequence[str] | None = None) -> Sequence[AgentTool
 
     Example:
         tools = discover_tools(["read_file", "ripgrep"])
+
     """
     points = {point.name: point for point in entry_points(group=TOOL_GROUP)}
     names = sorted(points) if selection is None else selection
@@ -223,6 +240,7 @@ def discover_tools(selection: Sequence[str] | None = None) -> Sequence[AgentTool
 
 
 def build_discovered_tool(points: Mapping[str, EntryPoint], name: str) -> AgentTool:
+    """Load and instantiate the tool entry point identified by `name`."""
     point = points.get(name)
 
     if point is None:

@@ -21,12 +21,14 @@ class JsonObjectInput:
     Example:
         fields = JsonObjectInput.parse('{"path": "a.txt"}')
         path = fields.required_text("path")
+
     """
 
     fields: Mapping[str, object]
 
     @classmethod
     def parse(cls, raw: str) -> JsonObjectInput:
+        """Parse a raw JSON string into a `JsonObjectInput`."""
         try:
             loaded: object = json.loads(raw)
         except json.JSONDecodeError as error:
@@ -46,6 +48,7 @@ class JsonObjectInput:
         return cls(cast("dict[str, object]", loaded))
 
     def required_text(self, key: str) -> str:
+        """Return the string value for `key` or raise with a descriptive error."""
         if key not in self.fields:
             raise ValueError(
                 f"Missing field {key!r} in tool input. "

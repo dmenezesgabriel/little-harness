@@ -16,9 +16,9 @@ class SessionPlugin(Protocol):
     """
 
     def observer(self) -> AgentObserver:
-        """Returns the observer that records session events."""
+        """Return the observer that records session events."""
         ...
 
     def repository(self) -> SessionRepository:
-        """Returns the repository that loads past session history."""
+        """Return the repository that loads past session history."""
         ...

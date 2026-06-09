@@ -13,11 +13,13 @@ class Prompt:
 
     Example:
         prompt = Prompt("What is 2 + 2?")
+
     """
 
     value: str
 
     def __post_init__(self) -> None:
+        """Validate that prompt is non-empty."""
         require_non_empty_text(self.value, "Prompt")
 
 
@@ -29,11 +31,13 @@ class RunId:
 
     Example:
         run_id = RunId("a1b2c3d4")
+
     """
 
     value: str
 
     def __post_init__(self) -> None:
+        """Validate and normalize the run id."""
         normalized = require_non_empty_text(self.value, "RunId")
         object.__setattr__(self, "value", normalized)
 
@@ -46,11 +50,13 @@ class SessionId:
 
     Example:
         session_id = SessionId("test-session")
+
     """
 
     value: str
 
     def __post_init__(self) -> None:
+        """Validate and normalize the session id."""
         normalized = require_non_empty_text(self.value, "SessionId")
         object.__setattr__(self, "value", normalized)
 
@@ -61,6 +67,7 @@ class MessageContent:
 
     Example:
         content = MessageContent("You are a strict JSON agent.")
+
     """
 
     value: str
@@ -72,11 +79,13 @@ class ToolName:
 
     Example:
         name = ToolName("calculator")
+
     """
 
     value: str
 
     def __post_init__(self) -> None:
+        """Validate and normalize the tool name."""
         normalized = require_non_empty_text(self.value, "ToolName")
         object.__setattr__(self, "value", normalized)
 
@@ -87,11 +96,13 @@ class ToolInput:
 
     Example:
         tool_input = ToolInput("144 / 12")
+
     """
 
     value: str
 
     def __post_init__(self) -> None:
+        """Strip whitespace from the raw tool input."""
         object.__setattr__(self, "value", self.value.strip())
 
 
@@ -101,6 +112,7 @@ class ToolOutput:
 
     Example:
         output = ToolOutput("12")
+
     """
 
     value: str

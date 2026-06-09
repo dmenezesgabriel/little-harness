@@ -26,8 +26,12 @@ from little_harness.domain.values.text_values import MessageContent, Prompt, Run
 
 
 class LifecycleHook(Protocol):
-    # Arguments are passed positionally, so a hook (or the Null Object) need not
-    # echo every name; subclass `NullHook` and override only what you need.
+    """Intercept the agent loop at every decision point.
+
+    Arguments are passed positionally, so a hook (or the Null Object) need not
+    echo every name; subclass `NullHook` and override only what you need.
+    """
+
     def on_session_start(self, run_id: RunId, prompt: Prompt, /) -> HookDecision:
         """Decide before the run begins. Block aborts the run with the reason."""
         ...

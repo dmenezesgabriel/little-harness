@@ -22,6 +22,7 @@ class CommandRegistry:
     """
 
     def __init__(self) -> None:
+        """See class docstring for argument descriptions."""
         self._index: dict[str, ReplCommand] = {}
         self._sources: dict[str, str] = {}
         self._overrides: dict[str, str] = {}
@@ -71,13 +72,21 @@ class ReplConsole(Protocol):
     """Protocol defining the operations a REPL command can invoke on the console."""
 
     @property
-    def registry(self) -> CommandRegistry: ...
+    def registry(self) -> CommandRegistry:
+        """Return the command registry."""
+        ...
 
-    def clear_history(self) -> None: ...
+    def clear_history(self) -> None:
+        """Clear the conversation history."""
+        ...
 
-    def show_history(self) -> None: ...
+    def show_history(self) -> None:
+        """Show the conversation history."""
+        ...
 
-    def write(self, text: str) -> None: ...
+    def write(self, text: str) -> None:
+        """Write text to the console output."""
+        ...
 
 
 class ReplCommand(Protocol):
@@ -87,7 +96,9 @@ class ReplCommand(Protocol):
     aliases: tuple[str, ...]
     description: str
 
-    def execute(self, console: ReplConsole, /) -> None: ...
+    def execute(self, console: ReplConsole, /) -> None:
+        """Execute the command against the given console."""
+        ...
 
 
 class ExitReplError(Exception):
@@ -101,29 +112,38 @@ class ExitReplError(Exception):
 
 
 class ClearCommand:
+    """Built-in ``/clear`` slash command that resets conversation history."""
+
     name = "clear"
     aliases: tuple[str, ...] = ()
     description = "Clear conversation history"
 
     def execute(self, console: ReplConsole, /) -> None:
+        """Clear the conversation history."""
         console.clear_history()
 
 
 class ExitCommand:
+    """Built-in ``/exit`` slash command that terminates the REPL loop."""
+
     name = "exit"
     aliases: tuple[str, ...] = ("quit",)
     description = "Exit the interactive session"
 
     def execute(self, _console: ReplConsole, /) -> None:
+        """Exit the interactive session."""
         raise ExitReplError()
 
 
 class HelpCommand:
+    """Built-in ``/help`` slash command that lists available commands."""
+
     name = "help"
     aliases: tuple[str, ...] = ()
     description = "Show this help message"
 
     def execute(self, console: ReplConsole, /) -> None:
+        """Show available commands and their descriptions."""
         lines = ["Available commands:"]
         for command in sorted(console.registry, key=lambda c: c.name):
             names = f"/{command.name}"
@@ -134,11 +154,14 @@ class HelpCommand:
 
 
 class HistoryCommand:
+    """Built-in ``/history`` slash command that shows conversation history."""
+
     name = "history"
     aliases: tuple[str, ...] = ()
     description = "Show conversation history"
 
     def execute(self, console: ReplConsole, /) -> None:
+        """Show the conversation history."""
         console.show_history()
 
 

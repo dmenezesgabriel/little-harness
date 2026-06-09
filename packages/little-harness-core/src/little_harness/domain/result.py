@@ -15,6 +15,7 @@ class AgentResult:
 
     Example:
         result = AgentResult(answer, ElapsedSeconds(1.2), steps)
+
     """
 
     answer: MessageContent

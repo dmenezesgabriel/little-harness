@@ -8,6 +8,8 @@ from little_harness.domain.values.text_values import MessageContent
 
 
 class TokenSink(Protocol):
+    """Surface generated tokens to the user as they are produced."""
+
     def emit(self, chunk: MessageContent) -> None:
         """Surface one generated token chunk to the user.
 
@@ -16,5 +18,6 @@ class TokenSink(Protocol):
 
         Example:
             token_sink.emit(MessageContent("Hello"))
+
         """
         ...

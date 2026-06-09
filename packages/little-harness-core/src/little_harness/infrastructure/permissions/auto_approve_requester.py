@@ -15,7 +15,9 @@ class AutoApprovePermissionRequester:
 
     Example:
         AutoApprovePermissionRequester().request_approval(call)  # True
+
     """
 
     def request_approval(self, _call: ToolCall) -> bool:
+        """Approve every tool call without user interaction."""
         return True

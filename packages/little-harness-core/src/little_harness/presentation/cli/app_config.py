@@ -26,6 +26,12 @@ def _no_options() -> dict[str, str]:
 
 @dataclass(frozen=True)
 class AppConfig:
+    """Complete CLI configuration after argument parsing.
+
+    Provider-specific values are carried opaquely in ``provider_options``;
+    each provider plugin validates its own keys.
+    """
+
     temperature: Temperature
     max_tokens: MaxTokens
     max_iterations: MaxIterations

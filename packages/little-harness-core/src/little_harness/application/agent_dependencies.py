@@ -20,6 +20,7 @@ class AgentDependencies:
         dependencies = AgentDependencies(
             model, registry, policy, observer, sink, hooks
         )
+
     """
 
     chat_model: ChatModel

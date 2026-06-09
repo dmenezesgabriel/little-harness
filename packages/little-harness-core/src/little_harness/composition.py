@@ -68,25 +68,31 @@ class Application:
         renderer: ResultRenderer,
         chat_model: Closeable,
     ) -> None:
+        """See class docstring for argument descriptions."""
         self._runtime = runtime
         self._renderer = renderer
         self._chat_model = chat_model
 
     def run(self, prompt: Prompt) -> str:
+        """Run the agent with the given prompt and return rendered output."""
         return self._renderer.render(self._runtime.run(prompt))
 
     def build_system_message(self) -> ChatMessage:
+        """Build the system message for the agent."""
         return self._runtime.build_system_message()
 
     def run_turn(
         self, prompt: Prompt, messages: MessageHistory
     ) -> tuple[AgentResult, MessageHistory]:
+        """Run a single turn with the given prompt and message history."""
         return self._runtime.run_turn(prompt, messages)
 
     def __enter__(self) -> Application:
+        """Enter the context manager, returning the application."""
         return self
 
     def __exit__(self, *_exc_info: object) -> None:
+        """Close the chat model on exit."""
         self._chat_model.close()
 
 
@@ -94,12 +100,14 @@ def build_application(
     config: AppConfig,
     observer: AgentObserver | None = None,
 ) -> Application:
+    """Build and return an `Application` from config."""
     dependencies = build_dependencies(config, observer or NullObserver())
     runtime = AgentRuntime(dependencies, to_runtime_config(config))
     return Application(runtime, ResultRenderer(), dependencies.chat_model)
 
 
 def build_observer(config: AppConfig) -> AgentObserver:
+    """Build an observer from config, or return `NullObserver`."""
     # No observer selected means no observability; only a named plugin is loaded.
     if config.observer_name is None:
         return NullObserver()
@@ -111,6 +119,7 @@ def build_dependencies(
     config: AppConfig,
     observer: AgentObserver,
 ) -> AgentDependencies:
+    """Build all agent dependencies from config and observer."""
     registry = ToolRegistry(discover_tools(config.tool_selection))
     return AgentDependencies(
         chat_model=build_chat_model(config),
@@ -123,12 +132,14 @@ def build_dependencies(
 
 
 def build_hooks(registry: ToolRegistry, config: AppConfig) -> LifecycleHook:
+    """Build the lifecycle hook chain from config."""
     # The seam: every lifecycle hook is composed here. An empty chain folds to
     # `Proceed` (like the null hook), so adding a second hook needs no rewiring.
     return HookChain(build_hook_list(registry, config))
 
 
 def build_hook_list(registry: ToolRegistry, config: AppConfig) -> list[LifecycleHook]:
+    """Build the list of lifecycle hooks from config."""
     names_requiring_approval = approval_required_names(registry)
 
     if not names_requiring_approval:
@@ -138,12 +149,14 @@ def build_hook_list(registry: ToolRegistry, config: AppConfig) -> list[Lifecycle
 
 
 def approval_required_names(registry: ToolRegistry) -> frozenset[str]:
+    """Return the set of tool names that require approval."""
     return frozenset(
         spec.name.value for spec in registry.specs() if spec.requires_approval
     )
 
 
 def build_permission_requester(config: AppConfig) -> PermissionRequester:
+    """Build the permission requester from config."""
     # A terminal is required to prompt a human; piped input, CI, and `--yes` all
     # run unattended, so they auto-approve and rely on each tool's guardrails.
     if config.approve_all or not sys.stdin.isatty():
@@ -159,6 +172,7 @@ def build_permission_requester(config: AppConfig) -> PermissionRequester:
 
 
 def build_chat_model(config: AppConfig) -> ChatModel:
+    """Build the chat model from config."""
     # Discovery imports only the selected provider's adapter (and its vendor SDK).
     provider = config.provider or default_provider_name()
     builder = load_chat_model_builder(provider)
@@ -166,6 +180,7 @@ def build_chat_model(config: AppConfig) -> ChatModel:
 
 
 def build_policy(config: AppConfig) -> AgentPolicy:
+    """Build the agent policy from config."""
     # Discovery imports only the selected policy's adapter; core ships none, so an
     # omitted --policy resolves to the sole installed policy.
     policy = config.policy or default_policy_name()
@@ -173,6 +188,7 @@ def build_policy(config: AppConfig) -> AgentPolicy:
 
 
 def build_token_sink(config: AppConfig) -> TokenSink:
+    """Build the token sink from config."""
     if not config.enable_streaming:
         return NullTokenSink()
 
@@ -190,6 +206,7 @@ def build_command_registry() -> CommandRegistry:
 
 
 def to_runtime_config(config: AppConfig) -> AgentRuntimeConfig:
+    """Convert `AppConfig` to `AgentRuntimeConfig`."""
     return AgentRuntimeConfig(
         max_iterations=config.max_iterations,
         temperature=config.temperature,
@@ -200,6 +217,7 @@ def to_runtime_config(config: AppConfig) -> AgentRuntimeConfig:
 
 
 def run_cli(argv: Sequence[str] | None = None) -> str:
+    """Parse CLI args and run the application."""
     config = ArgumentParser().parse(argv)
     with build_application(config, build_observer(config)) as app:
         if config.prompt is None:

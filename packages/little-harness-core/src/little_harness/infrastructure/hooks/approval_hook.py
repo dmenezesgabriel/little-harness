@@ -25,6 +25,7 @@ class ApprovalHook:
 
     Example:
         hook = ApprovalHook(requester, frozenset({"bash"}))
+
     """
 
     def __init__(
@@ -32,18 +33,22 @@ class ApprovalHook:
         requester: PermissionRequester,
         names_requiring_approval: frozenset[str],
     ) -> None:
+        """See class docstring for argument descriptions."""
         self._requester = requester
         self._names_requiring_approval = names_requiring_approval
 
     def on_session_start(self, _run_id: RunId, _prompt: Prompt) -> HookDecision:
+        """Proceed with the session start without approval check."""
         return Proceed()
 
     def on_user_prompt_submit(self, _run_id: RunId, _prompt: Prompt) -> HookDecision:
+        """Proceed with the user prompt without approval check."""
         return Proceed()
 
     def on_pre_tool_use(
         self, _run_id: RunId, _iteration: Iteration, call: ToolCall
     ) -> HookDecision:
+        """Block unapproved tool calls; proceed with safe tools."""
         if call.tool_name.value not in self._names_requiring_approval:
             return Proceed()
 
@@ -64,11 +69,15 @@ class ApprovalHook:
         _call: ToolCall,
         _result: ToolRunResult,
     ) -> HookDecision:
+        """Proceed after tool use without additional checks."""
         return Proceed()
 
     def on_stop(
         self, _run_id: RunId, _iteration: Iteration, _answer: MessageContent
     ) -> HookDecision:
+        """Proceed with the stop without approval check."""
         return Proceed()
 
-    def on_session_end(self, _run_id: RunId, _result: AgentResult) -> None: ...
+    def on_session_end(self, _run_id: RunId, _result: AgentResult) -> None:
+        """Proceed with session end without cleanup."""
+        ...

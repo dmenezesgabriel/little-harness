@@ -14,12 +14,17 @@ from little_harness.domain.decision import ToolCall
 
 
 class PermissionRequester(Protocol):
-    # Positional-only (like LifecycleHook) so implementations may name or ignore
-    # the argument without breaking structural conformance.
+    """Obtain permission to run a sensitive tool call.
+
+    Positional-only (like LifecycleHook) so implementations may name or ignore
+    the argument without breaking structural conformance.
+    """
+
     def request_approval(self, call: ToolCall, /) -> bool:
         """Return True to allow the call, False to reject it.
 
         Example:
             allowed = requester.request_approval(call)
+
         """
         ...

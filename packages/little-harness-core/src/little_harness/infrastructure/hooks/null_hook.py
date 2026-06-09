@@ -27,17 +27,21 @@ class NullHook:
                 self, run_id: RunId, iteration: Iteration, call: ToolCall, /
             ) -> HookDecision:
                 return Proceed()
+
     """
 
     def on_session_start(self, _run_id: RunId, _prompt: Prompt, /) -> HookDecision:
+        """Proceed with session start."""
         return Proceed()
 
     def on_user_prompt_submit(self, _run_id: RunId, _prompt: Prompt, /) -> HookDecision:
+        """Proceed with the user prompt submission."""
         return Proceed()
 
     def on_pre_tool_use(
         self, _run_id: RunId, _iteration: Iteration, _call: ToolCall, /
     ) -> HookDecision:
+        """Proceed with the tool call."""
         return Proceed()
 
     def on_post_tool_use(
@@ -48,11 +52,15 @@ class NullHook:
         _result: ToolRunResult,
         /,
     ) -> HookDecision:
+        """Proceed after tool use."""
         return Proceed()
 
     def on_stop(
         self, _run_id: RunId, _iteration: Iteration, _answer: MessageContent, /
     ) -> HookDecision:
+        """Proceed with the stop request."""
         return Proceed()
 
-    def on_session_end(self, _run_id: RunId, _result: AgentResult, /) -> None: ...
+    def on_session_end(self, _run_id: RunId, _result: AgentResult, /) -> None:
+        """Proceed with session end."""
+        ...

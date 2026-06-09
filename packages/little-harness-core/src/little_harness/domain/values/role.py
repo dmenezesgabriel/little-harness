@@ -16,11 +16,13 @@ class Role:
 
     Example:
         message_role = SYSTEM
+
     """
 
     name: str
 
     def __post_init__(self) -> None:
+        """Validate that role name is one of the valid role names."""
         if self.name in VALID_ROLE_NAMES:
             return
 

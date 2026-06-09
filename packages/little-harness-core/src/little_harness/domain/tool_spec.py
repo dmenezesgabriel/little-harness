@@ -14,26 +14,32 @@ class ToolExamples:
 
     Example:
         examples = ToolExamples(("144 / 12", "2 ** 8"))
+
     """
 
     _values: tuple[str, ...] = ()
 
     def is_empty(self) -> bool:
+        """Return `True` when no examples have been registered."""
         return len(self._values) == 0
 
     def first(self) -> str:
+        """Return the first example, or raise on an empty collection."""
         if self.is_empty():
             raise ValueError("ToolExamples is empty. Expected at least one example.")
 
         return self._values[0]
 
     def joined(self, separator: str) -> str:
+        """Concatenate all examples with `separator`."""
         return separator.join(self._values)
 
     def __iter__(self) -> Iterator[str]:
+        """Yield each example string in order."""
         return iter(self._values)
 
     def __len__(self) -> int:
+        """Return the number of examples."""
         return len(self._values)
 
 
@@ -43,6 +49,7 @@ class ToolInputSchema:
 
     Example:
         schema = ToolInputSchema("A numeric expression", ToolExamples(("2 + 2",)))
+
     """
 
     description: str
@@ -60,6 +67,7 @@ class ToolSpec:
 
     Example:
         spec = ToolSpec(ToolName("calculator"), "Evaluate math", schema)
+
     """
 
     name: ToolName

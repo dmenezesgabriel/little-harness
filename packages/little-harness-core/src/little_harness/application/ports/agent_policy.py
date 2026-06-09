@@ -14,11 +14,14 @@ from little_harness.domain.values.text_values import MessageContent, Prompt
 
 
 class AgentPolicy(Protocol):
+    """Define the strategy that drives the model reasoning protocol."""
+
     def system_prompt(self, tools: Sequence[ToolSpec]) -> MessageContent:
         """Return the system prompt for the available tools.
 
         Example:
             prompt = policy.system_prompt(registry.specs())
+
         """
         ...
 
@@ -31,6 +34,7 @@ class AgentPolicy(Protocol):
 
         Example:
             schema = policy.response_schema(registry.specs())
+
         """
         ...
 
@@ -39,6 +43,7 @@ class AgentPolicy(Protocol):
 
         Example:
             decision = policy.parse_model_output(output)
+
         """
         ...
 
@@ -51,6 +56,7 @@ class AgentPolicy(Protocol):
 
         Example:
             message = policy.build_tool_observation_message(prompt, result)
+
         """
         ...
 
@@ -63,5 +69,6 @@ class AgentPolicy(Protocol):
 
         Example:
             message = policy.build_repair_message(prompt, error)
+
         """
         ...
