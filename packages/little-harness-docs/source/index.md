@@ -42,6 +42,7 @@ plugins/creating-session
 reference/lifecycle-hooks
 reference/permission-requester
 reference/errors
+reference/api
 ```
 
 ```{toctree}
