@@ -31,7 +31,7 @@ jobs:
           uv run --directory packages/little-harness-docs \
             sphinx-build -b html source build
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: packages/little-harness-docs/build
 
