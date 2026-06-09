@@ -39,6 +39,23 @@ class RunId:
 
 
 @dataclass(frozen=True)
+class SessionId:
+    """Identifier for a conversation session. Non-empty and trimmed.
+
+    Ties together the durable history of an agent across multiple runs.
+
+    Example:
+        session_id = SessionId("test-session")
+    """
+
+    value: str
+
+    def __post_init__(self) -> None:
+        normalized = require_non_empty_text(self.value, "SessionId")
+        object.__setattr__(self, "value", normalized)
+
+
+@dataclass(frozen=True)
 class MessageContent:
     """Free-form text of a chat message (system/user/assistant or observation).
 

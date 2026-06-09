@@ -33,3 +33,7 @@ class UnknownUiError(ValueError):
 
 class UnknownPermissionRequesterError(ValueError):
     """Raised when a UI plugin does not register a permission requester."""
+
+
+class UnknownSessionPluginError(ValueError):
+    """Raised when a session plugin is not registered under the requested name."""

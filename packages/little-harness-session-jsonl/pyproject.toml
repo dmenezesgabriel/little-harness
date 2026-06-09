@@ -1,0 +1,51 @@
+[project]
+name = "little-harness-session-jsonl"
+version = "0.1.0"
+description = "Durable JSONL session storage plugin for little-harness"
+requires-python = ">=3.10"
+dependencies = [
+    "little-harness-core",
+]
+
+[project.entry-points."little_harness.session_plugins"]
+jsonl = "little_harness_session_jsonl.plugin:build_plugin"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config -ra"
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+exclude = ["tests/"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.vulture]
+paths = ["src/little_harness_session_jsonl", "tests"]
+min_confidence = 80
+
+[tool.deptry]
+extend_exclude = ["tests"]
+package_module_name_map = { little-harness-core = ["little_harness"] }
+known_first_party = ["little_harness_session_jsonl"]
+
+[tool.importlinter]
+root_packages = ["little_harness_session_jsonl", "little_harness"]
+
+[[tool.importlinter.contracts]]
+name = "Plugin touches only core domain, application and presentation"
+type = "forbidden"
+source_modules = ["little_harness_session_jsonl"]
+forbidden_modules = [
+    "little_harness.infrastructure",
+]
+
+[tool.mutmut]
+paths_to_mutate = ["src/little_harness_session_jsonl"]
+tests_dir = ["tests"]
+pytest_add_cli_args = ["--no-cov"]

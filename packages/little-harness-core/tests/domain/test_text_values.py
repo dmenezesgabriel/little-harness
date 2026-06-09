@@ -5,6 +5,7 @@ from little_harness.domain.values.text_values import (
     MessageContent,
     Prompt,
     RunId,
+    SessionId,
     ToolInput,
     ToolName,
     ToolOutput,
@@ -60,6 +61,17 @@ class TestRunId:
         # Act / Assert
         with pytest.raises(ValueError, match="RunId is empty"):
             RunId("   ")
+
+
+class TestSessionId:
+    def test_keeps_non_empty_value(self) -> None:
+        # Act / Assert
+        assert SessionId("default").value == "default"
+
+    def test_rejects_blank_value(self) -> None:
+        # Act / Assert
+        with pytest.raises(ValueError, match="SessionId is empty"):
+            SessionId("   ")
 
 
 class TestPlainTextWrappers:
