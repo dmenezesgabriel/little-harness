@@ -12,16 +12,16 @@ little-harness-my-provider/
       __init__.py
       provider.py
       model_settings.py
+      chat_model.py
 ```
 
 ## 2. Implement `ChatModel`
 
 ```python
-# src/little_harness_my_provider/provider.py
+# src/little_harness_my_provider/chat_model.py
 from collections.abc import Iterator
-from little_harness.application.ports import ChatModel
-from little_harness.domain.values import MessageContent
-from little_harness.domain import ChatCompletionRequest
+from little_harness.application.ports.chat_model import ChatModel, ChatCompletionRequest
+from little_harness.domain.values.text_values import MessageContent
 
 
 class MyChatModel(ChatModel):
@@ -36,14 +36,50 @@ class MyChatModel(ChatModel):
         yield MessageContent("Hello from my provider!")
 
     def close(self) -> None:
+        """Release provider resources (e.g. close HTTP sessions)."""
         pass
+```
 
+### ChatCompletionRequest structure
 
-def build(options: dict) -> ChatModel:
-    return MyChatModel(
-        api_key=options.get("api_key", ""),
-        model=options["model"],
-    )
+`ChatCompletionRequest` carries everything needed for a model call:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messages` | `Sequence[ChatMessage]` | Full conversation history |
+| `temperature` | `Temperature` | Sampling temperature |
+| `max_tokens` | `MaxTokens` | Max tokens to generate |
+| `response_schema` | `ResponseSchema \| None` | JSON Schema for constrained decoding |
+| `top_p` | `TopP \| None` | Nucleus sampling threshold |
+| `repeat_penalty` | `RepeatPenalty \| None` | Repetition penalty |
+
+Map these to your SDK's native request format in `complete_streaming`.
+
+### Streaming
+
+`complete_streaming` must return an `Iterator[MessageContent]` — each chunk is a
+fragment of the full response. The runtime concatenates all chunks and emits each
+one through the `TokenSink` for live UI output. For non-streaming SDKs, yield a
+single chunk:
+
+```python
+def complete_streaming(self, request: ChatCompletionRequest) -> Iterator[MessageContent]:
+    response = self._sdk.complete(request.messages)  # blocking call
+    yield MessageContent(response.text)
+```
+
+### Response Schema / Constrained Decoding
+
+If the provider supports JSON Schema-guided generation (e.g. OpenAI's
+`response_format`, llama.cpp's `grammar`), convert the `ResponseSchema` value to
+your SDK's format in a helper method. If not supported, ignore it — the policy
+will still work through prompting alone.
+
+```python
+def to_response_format(self, schema: ResponseSchema | None) -> dict | None:
+    if schema is None:
+        return None
+    return {"type": "json_object", "schema": schema.value}
 ```
 
 ## 3. Validate options
@@ -57,7 +93,7 @@ from dataclasses import dataclass
 class MyModelSettings:
     model: str
     api_key: str = ""
-    temperature: float | None = None
+    num_retries: int = 0
 
     @classmethod
     def from_options(cls, options: dict) -> "MyModelSettings":
@@ -106,18 +142,29 @@ little-harness --provider my_provider --model my-model -p "Hello!"
 ## 6. Write tests
 
 ```python
-from little_harness_my_provider.provider import MyChatModel, build
-from little_harness.domain import ChatCompletionRequest
-from little_harness.domain.values import Role, MessageContent
+from little_harness_my_provider import MyChatModel, build
+from little_harness.application.ports.chat_model import ChatCompletionRequest
+from little_harness.domain.message import ChatMessage
+from little_harness.domain.message_history import MessageHistory
+from little_harness.domain.values.role import USER
+from little_harness.domain.values.text_values import MessageContent
+
 
 def test_build_returns_chat_model() -> None:
     model = build({"model": "test-model"})
     assert isinstance(model, MyChatModel)
 
+
 def test_complete_streaming_yields_content() -> None:
     model = MyChatModel(api_key="", model="test")
+    history = MessageHistory().with_message(
+        ChatMessage(USER, MessageContent("hi"))
+    )
     request = ChatCompletionRequest(
-        messages=[(Role.USER, MessageContent("hi"))],
+        messages=history,
+        temperature=...,
+        max_tokens=...,
+        response_schema=None,
     )
     chunks = list(model.complete_streaming(request))
     assert len(chunks) > 0
