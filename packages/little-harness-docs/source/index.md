@@ -32,11 +32,21 @@ plugins/creating-tool
 plugins/creating-policy
 plugins/creating-observer
 plugins/creating-ui
+plugins/creating-session
 ```
 
 ```{toctree}
 :maxdepth: 2
 :caption: Reference
+
+reference/lifecycle-hooks
+reference/permission-requester
+reference/errors
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Project
 
 contributing
 changelog
