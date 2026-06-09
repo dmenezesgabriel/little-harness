@@ -26,6 +26,8 @@ from little_harness.presentation.cli.repl_command import (
     build_default_registry,
 )
 
+from little_harness_rich.state import set_active_status
+
 
 class RichInteractiveConsole:
     """An interactive session runner that displays agent output in color/markdown.
@@ -148,8 +150,13 @@ class RichInteractiveConsole:
     def _run_turn(self, text: str) -> None:
         history = self._system_messages()
 
-        with self._console.status("[bold blue]Agent is thinking...[/bold blue]"):
-            result, updated = self._app.run_turn(AgentPrompt(text), history)
+        status = self._console.status("[bold blue]Agent is thinking...[/bold blue]")
+        set_active_status(status)
+        try:
+            with status:
+                result, updated = self._app.run_turn(AgentPrompt(text), history)
+        finally:
+            set_active_status(None)
 
         self._messages = updated
         self._turn_count += 1

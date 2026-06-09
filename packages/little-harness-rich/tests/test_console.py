@@ -21,6 +21,7 @@ from little_harness.presentation.cli.repl_command import (
     build_default_registry,
 )
 from little_harness_rich.console import RichInteractiveConsole
+from little_harness_rich.state import get_active_status
 from rich.console import Console
 from rich.panel import Panel
 
@@ -35,6 +36,8 @@ class FakeApplication:
     def run_turn(
         self, prompt: AgentPrompt, messages: MessageHistory
     ) -> tuple[AgentResult, MessageHistory]:
+        assert get_active_status() is not None
+
         self.turns.append((prompt, messages))
         result = AgentResult(
             MessageContent("Mocked agent response"),
