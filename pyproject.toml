@@ -88,20 +88,16 @@ select = [
     "UP",
     "W",
 ]
-ignore = [
-    "ANN401",
-    "PLR0913",
-]
+ignore = []
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-# SubprocessShellRunner reports non-zero exits via CommandOutcome instead of
-# raising, so it omits `check`. An explicit `check=False` (what PLW1510 wants)
-# only adds an *equivalent* mutant the zero-survivor mutation gate cannot kill,
-# so the two gates conflict here; the runners are covered by their own tests.
-"**/shell_command_runner.py" = ["PLW1510"]
+# plugin_discovery.py is the single dynamic-typing boundary: entry_point.load()
+# returns Any by design, and both the UiBuilder alias and resolve_builder return
+# type deliberately use Any so they are validated in one place, nowhere else.
+"packages/little-harness-core/src/little_harness/plugin_discovery.py" = ["ANN401"]
 
 # All source packages have documented D rules; tests and docs remain excluded.
 # "packages/little-harness-litellm/src/**" = ["D"]  # documented
@@ -114,6 +110,12 @@ convention = "google"
     # PLR2004 (magic-value comparison): acceptable in test assertions
     # where constants like 2, 3, 8 are self-evident.
     "PLR2004",
+    # PLR0913 (too-many-arguments): test helpers mirror the real API they
+    # exercise, which often has many params; the helper is tested by the tests.
+    "PLR0913",
+    # ANN401 (Any in annotations): test fakes and mocks use Any extensively
+    # for **kwargs passthrough, which mirrors the SDK APIs they stand in for.
+    "ANN401",
 ]
 "packages/little-harness-docs/**" = ["D"]
 
