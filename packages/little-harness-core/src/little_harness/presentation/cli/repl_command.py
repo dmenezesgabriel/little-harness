@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator
+from operator import attrgetter
 from typing import Protocol
 
 logger = logging.getLogger(__name__)
@@ -145,7 +146,7 @@ class HelpCommand:
     def execute(self, console: ReplConsole, /) -> None:
         """Show available commands and their descriptions."""
         lines = ["Available commands:"]
-        for command in sorted(console.registry, key=lambda c: c.name):
+        for command in sorted(console.registry, key=attrgetter("name")):
             names = f"/{command.name}"
             for alias in command.aliases:
                 names += f", /{alias}"

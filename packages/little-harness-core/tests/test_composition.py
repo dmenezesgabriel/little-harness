@@ -332,17 +332,21 @@ class TestRunCliInteractive:
             started.append(True)
             return ""
 
+        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+            return FakeApplication()
+
+        def fake_build_obs(_config: object) -> None:
+            return None
+
         monkeypatch.setattr(
             "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
             fake_start,
         )
         monkeypatch.setattr(
             "little_harness.composition.build_application",
-            lambda _config, _observer: FakeApplication(),
+            fake_build_app,
         )
-        monkeypatch.setattr(
-            "little_harness.composition.build_observer", lambda _config: None
-        )
+        monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
 
         result = run_cli([])
 
@@ -358,14 +362,18 @@ class TestRunCliInteractive:
             built.append(_config)
             return FakeApplication()
 
+        def fake_start_console(_self: object) -> str:
+            return ""
+
+        def fake_build_obs(_config: object) -> None:
+            return None
+
         monkeypatch.setattr(
             "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
-            lambda _self: "",
+            fake_start_console,
         )
         monkeypatch.setattr("little_harness.composition.build_application", fake_build)
-        monkeypatch.setattr(
-            "little_harness.composition.build_observer", lambda _config: None
-        )
+        monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
 
         run_cli([])
 
@@ -380,13 +388,19 @@ class TestRunCliInteractive:
             built.append(_config)
             return RecordingObserver()
 
+        def fake_start_console(_self: object) -> str:
+            return ""
+
+        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+            return FakeApplication()
+
         monkeypatch.setattr(
             "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
-            lambda _self: "",
+            fake_start_console,
         )
         monkeypatch.setattr(
             "little_harness.composition.build_application",
-            lambda _config, _observer: FakeApplication(),
+            fake_build_app,
         )
         monkeypatch.setattr("little_harness.composition.build_observer", fake_build)
 
@@ -414,14 +428,18 @@ class TestRunCliInteractive:
             def start(self) -> str:
                 return ""
 
+        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+            return built_app
+
+        def fake_build_obs(_config: object) -> None:
+            return None
+
         built_app = FakeApplication()
         monkeypatch.setattr(
             "little_harness.composition.build_application",
-            lambda _config, _observer: built_app,
+            fake_build_app,
         )
-        monkeypatch.setattr(
-            "little_harness.composition.build_observer", lambda _config: None
-        )
+        monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
         monkeypatch.setattr(
             "little_harness.composition.InteractiveConsole",
             SpyingInteractiveConsole,
@@ -444,17 +462,24 @@ class TestRunCliInteractive:
             def start(self) -> str:
                 return "custom_started"
 
+        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+            return built_app
+
+        def fake_build_obs(_config: object) -> None:
+            return None
+
+        def fake_discover_ui(name: str) -> type[FakeCustomUi] | None:
+            return FakeCustomUi if name == "custom" else None
+
         built_app = FakeApplication()
         monkeypatch.setattr(
             "little_harness.composition.build_application",
-            lambda _config, _observer: built_app,
+            fake_build_app,
         )
-        monkeypatch.setattr(
-            "little_harness.composition.build_observer", lambda _config: None
-        )
+        monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
         monkeypatch.setattr(
             "little_harness.composition.discover_ui",
-            lambda name: FakeCustomUi if name == "custom" else None,
+            fake_discover_ui,
         )
 
         result = run_cli(["--ui", "custom"])

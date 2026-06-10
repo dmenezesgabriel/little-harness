@@ -28,9 +28,8 @@ include = ["src/little_harness", "tests"]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
+# Tests legitimately inspect internal state; source code has 0 private usage.
 reportPrivateUsage = false
-reportUnknownArgumentType = false
-reportUnknownLambdaType = false
 venvPath = "../.."
 venv = ".venv"
 
