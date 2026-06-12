@@ -2,30 +2,38 @@
 
 from __future__ import annotations
 
-import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rich.status import Status
-
-_state = threading.local()
+    from little_harness_rich.app import HarnessTuiApp
 
 
-def get_active_status() -> Status | None:
-    """Get the currently active status spinner, if any.
+class ActiveAppState:
+    """A container for the active TUI application state."""
+
+    def __init__(self) -> None:
+        """Initialize the state container."""
+        self.app: HarnessTuiApp | None = None
+
+
+_state = ActiveAppState()
+
+
+def get_active_app() -> HarnessTuiApp | None:
+    """Get the active HarnessTuiApp instance.
 
     Returns:
-        The active Status, or None if no status is active.
+        The active HarnessTuiApp, or None if no app is active.
 
     """
-    return getattr(_state, "status", None)
+    return _state.app
 
 
-def set_active_status(status: Status | None) -> None:
-    """Set the currently active status spinner.
+def set_active_app(app: HarnessTuiApp | None) -> None:
+    """Set the active HarnessTuiApp instance.
 
     Args:
-        status: The Status object, or None to clear.
+        app: The HarnessTuiApp object, or None to clear.
 
     """
-    _state.status = status
+    _state.app = app

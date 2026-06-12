@@ -1,25 +1,28 @@
 # pyright: reportPrivateUsage=false
 from __future__ import annotations
 
-from little_harness_rich.state import _state, get_active_status, set_active_status
-from rich.console import Console
-from rich.status import Status
+from little_harness_rich.app import HarnessTuiApp
+from little_harness_rich.state import get_active_app, set_active_app
 
 
-def test_get_active_status_returns_none_when_unset() -> None:
-    set_active_status(None)
+class FakeTuiApp(HarnessTuiApp):
+    """Fake TUI app for testing state."""
 
-    # Delete the attribute to test the default getattr behavior
-    if hasattr(_state, "status"):
-        delattr(_state, "status")
-
-    assert get_active_status() is None
+    def __init__(self) -> None:
+        """Initialize fake app without application core dependencies."""
+        pass
 
 
-def test_set_and_get_active_status() -> None:
-    console = Console(force_terminal=True)
-    status = Status("thinking", console=console)
-    set_active_status(status)
-    assert get_active_status() is status
-    set_active_status(None)
-    assert get_active_status() is None
+def test_get_active_app_returns_none_by_default() -> None:
+    """Verify that get_active_app returns None when unset."""
+    set_active_app(None)
+    assert get_active_app() is None
+
+
+def test_set_and_get_active_app() -> None:
+    """Verify that set_active_app correctly sets and clears active app."""
+    app = FakeTuiApp()  # type: ignore[reportAbstractUsage]
+    set_active_app(app)
+    assert get_active_app() is app
+    set_active_app(None)
+    assert get_active_app() is None
