@@ -36,7 +36,7 @@ venv = ".venv"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-pythonpath = ["."]
+pythonpath = ["src"]
 addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harness --cov-report=term-missing"
 
 [tool.coverage.report]
@@ -77,3 +77,20 @@ forbidden_modules = ["little_harness.infrastructure", "little_harness.presentati
 name = "Infrastructure and presentation are independent"
 type = "independence"
 modules = ["little_harness.infrastructure", "little_harness.presentation"]
+
+[dependency-groups]
+dev = [
+    "bandit==1.9.4",
+    "deptry==0.25.1",
+    "import-linter==2.11",
+    "mutmut==3.5.0",
+    "pyright==1.1.409",
+    "pytest==9.0.3",
+    "pytest-bdd==8.1.0",
+    "pytest-cov==7.1.0",
+    "pytest-timeout==2.3.1",
+    "radon==6.0.1",
+    "ruff==0.15.14",
+    "semgrep==1.163.0",
+    "vulture==2.16",
+]
