@@ -32,8 +32,8 @@ class JsonlSessionPlugin(SessionPlugin):
         self._storage_dir = storage_dir
         self._policy = policy
         self._session_id = session_id or SessionId(
-            str(uuid.uuid4())
-        )  # pragma: no mutate
+            str(uuid.uuid4())  # pragma: no mutate
+        )
         self._storage_dir.mkdir(parents=True, exist_ok=True)  # pragma: no mutate
 
         file_path = (

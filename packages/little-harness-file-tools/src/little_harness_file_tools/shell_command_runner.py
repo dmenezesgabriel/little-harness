@@ -53,13 +53,12 @@ class SubprocessShellRunner:
     def run(self, command: str, timeout_seconds: float) -> CommandOutcome:
         """Run via system shell; return output, exit code, and timeout flag."""
         try:
-            completed = subprocess.run(
+            completed = subprocess.run(  # noqa: PLW1510
                 command,
                 shell=True,
                 capture_output=True,
                 text=True,
                 timeout=timeout_seconds,
-                check=False,
             )
         except subprocess.TimeoutExpired:
             return CommandOutcome(
