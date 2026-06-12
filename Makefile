@@ -8,7 +8,8 @@ CODE_PACKAGES := little-harness-core little-harness-llama-cpp \
                  little-harness-calculator little-harness-litellm \
                  little-harness-file-tools little-harness-ripgrep \
                  little-harness-ast little-harness-json-policy \
-                 little-harness-logging little-harness-rich
+                 little-harness-logging little-harness-rich \
+                 little-harness-session-jsonl
 
 # Members with deterministic through-core integration tests (marked `integration`).
 # Real-provider/model tests stay under umbrella e2e targets so CI is reproducible.

@@ -20,6 +20,7 @@ members = [
     "little-harness-logging",
     "little-harness-rich",
     "little-harness-ripgrep",
+    "little-harness-session-jsonl",
 ]
 
 [manifest.dependency-groups]
@@ -37,6 +38,7 @@ dev = [
     { name = "little-harness-logging", editable = "packages/little-harness-logging" },
     { name = "little-harness-rich", editable = "packages/little-harness-rich" },
     { name = "little-harness-ripgrep", editable = "packages/little-harness-ripgrep" },
+    { name = "little-harness-session-jsonl", editable = "packages/little-harness-session-jsonl" },
     { name = "mutmut", specifier = "==3.5.0" },
     { name = "pre-commit", specifier = "==4.6.0" },
     { name = "pyright", specifier = "==1.1.409" },
@@ -885,6 +887,7 @@ all = [
     { name = "little-harness-logging" },
     { name = "little-harness-rich" },
     { name = "little-harness-ripgrep" },
+    { name = "little-harness-session-jsonl" },
 ]
 ast = [
     { name = "little-harness-ast" },
@@ -913,10 +916,13 @@ rich = [
 ripgrep = [
     { name = "little-harness-ripgrep" },
 ]
+session-jsonl = [
+    { name = "little-harness-session-jsonl" },
+]
 
 [package.metadata]
 requires-dist = [
-    { name = "little-harness", extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging", "rich"], marker = "extra == 'all'" },
+    { name = "little-harness", extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging", "rich", "session-jsonl"], marker = "extra == 'all'" },
     { name = "little-harness-ast", marker = "extra == 'ast'", editable = "packages/little-harness-ast" },
     { name = "little-harness-calculator", marker = "extra == 'calculator'", editable = "packages/little-harness-calculator" },
     { name = "little-harness-core", editable = "packages/little-harness-core" },
@@ -927,8 +933,9 @@ requires-dist = [
     { name = "little-harness-logging", marker = "extra == 'logging'", editable = "packages/little-harness-logging" },
     { name = "little-harness-rich", marker = "extra == 'rich'", editable = "packages/little-harness-rich" },
     { name = "little-harness-ripgrep", marker = "extra == 'ripgrep'", editable = "packages/little-harness-ripgrep" },
+    { name = "little-harness-session-jsonl", marker = "extra == 'session-jsonl'", editable = "packages/little-harness-session-jsonl" },
 ]
-provides-extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging", "rich", "all"]
+provides-extras = ["llama-cpp", "litellm", "calculator", "file-tools", "ripgrep", "ast", "json-policy", "logging", "rich", "session-jsonl", "all"]
 
 [[package]]
 name = "little-harness-ast"
@@ -941,12 +948,46 @@ dependencies = [
     { name = "tree-sitter-python" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "little-harness-core", editable = "packages/little-harness-core" },
     { name = "tree-sitter", specifier = ">=0.25,<0.26" },
     { name = "tree-sitter-javascript", specifier = ">=0.25,<0.26" },
     { name = "tree-sitter-python", specifier = ">=0.25,<0.26" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
 ]
 
 [[package]]
@@ -957,13 +998,83 @@ dependencies = [
     { name = "little-harness-core" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [{ name = "little-harness-core", editable = "packages/little-harness-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
+]
 
 [[package]]
 name = "little-harness-core"
 version = "0.1.0"
 source = { editable = "packages/little-harness-core" }
+
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
+]
 
 [[package]]
 name = "little-harness-docs"
@@ -998,8 +1109,42 @@ dependencies = [
     { name = "little-harness-core" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [{ name = "little-harness-core", editable = "packages/little-harness-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
+]
 
 [[package]]
 name = "little-harness-json-policy"
@@ -1009,8 +1154,42 @@ dependencies = [
     { name = "little-harness-core" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [{ name = "little-harness-core", editable = "packages/little-harness-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
+]
 
 [[package]]
 name = "little-harness-litellm"
@@ -1021,10 +1200,44 @@ dependencies = [
     { name = "little-harness-core" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "litellm", specifier = "==1.86.2" },
     { name = "little-harness-core", editable = "packages/little-harness-core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
 ]
 
 [[package]]
@@ -1036,10 +1249,44 @@ dependencies = [
     { name = "llama-cpp-python" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "little-harness-core", editable = "packages/little-harness-core" },
     { name = "llama-cpp-python", specifier = "==0.3.23" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
 ]
 
 [[package]]
@@ -1050,8 +1297,42 @@ dependencies = [
     { name = "little-harness-core" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [{ name = "little-harness-core", editable = "packages/little-harness-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
+]
 
 [[package]]
 name = "little-harness-rich"
@@ -1062,10 +1343,44 @@ dependencies = [
     { name = "rich" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "little-harness-core", editable = "packages/little-harness-core" },
     { name = "rich", specifier = ">=13.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
 ]
 
 [[package]]
@@ -1076,8 +1391,87 @@ dependencies = [
     { name = "little-harness-core" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
 [package.metadata]
 requires-dist = [{ name = "little-harness-core", editable = "packages/little-harness-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
+]
+
+[[package]]
+name = "little-harness-session-jsonl"
+version = "0.1.0"
+source = { editable = "packages/little-harness-session-jsonl" }
+dependencies = [
+    { name = "little-harness-core" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "deptry" },
+    { name = "import-linter" },
+    { name = "mutmut" },
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-bdd" },
+    { name = "pytest-cov" },
+    { name = "pytest-timeout" },
+    { name = "radon" },
+    { name = "ruff" },
+    { name = "semgrep" },
+    { name = "vulture" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "little-harness-core", editable = "packages/little-harness-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = "==1.9.4" },
+    { name = "deptry", specifier = "==0.25.1" },
+    { name = "import-linter", specifier = "==2.11" },
+    { name = "mutmut", specifier = "==3.5.0" },
+    { name = "pyright", specifier = "==1.1.409" },
+    { name = "pytest", specifier = "==9.0.3" },
+    { name = "pytest-bdd", specifier = "==8.1.0" },
+    { name = "pytest-cov", specifier = "==7.1.0" },
+    { name = "pytest-timeout", specifier = "==2.3.1" },
+    { name = "radon", specifier = "==6.0.1" },
+    { name = "ruff", specifier = "==0.15.14" },
+    { name = "semgrep", specifier = "==1.163.0" },
+    { name = "vulture", specifier = "==2.16" },
+]
 
 [[package]]
 name = "llama-cpp-python"
