@@ -1,34 +1,53 @@
 # pyright: reportPrivateUsage=false
 from __future__ import annotations
 
-from io import StringIO
+import asyncio
+from typing import TYPE_CHECKING, cast
 
 import pytest
+from little_harness.domain.decision import ToolCall
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.steps import AgentSteps
-from little_harness.domain.values.numeric_values import ElapsedSeconds
+from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
 from little_harness.domain.values.role import ASSISTANT, SYSTEM, USER
 from little_harness.domain.values.text_values import (
     MessageContent,
+    RunId,
+    ToolInput,
+    ToolName,
 )
 from little_harness.domain.values.text_values import (
     Prompt as AgentPrompt,
 )
 from little_harness.presentation.cli.repl_command import (
-    ExitReplError,
     build_default_registry,
 )
+from little_harness_rich.app import HarnessTuiApp, _TuiObserver, _TuiTokenSink
 from little_harness_rich.console import RichInteractiveConsole
-from little_harness_rich.state import get_active_status
-from rich.console import Console
-from rich.panel import Panel
+from little_harness_rich.permission import RichPermissionRequester
+from little_harness_rich.state import ActiveAppState, get_active_app, set_active_app
+from little_harness_rich.widgets.chat_input import ChatInputWidget
+from little_harness_rich.widgets.chat_message import ChatMessageWidget
+from little_harness_rich.widgets.reasoning import ReasoningBlockWidget
+from little_harness_rich.widgets.tool_call import ToolCallWidget
+from rich.syntax import Syntax
+from textual.containers import VerticalScroll
+from textual.widgets import Button
+
+if TYPE_CHECKING:
+    from little_harness.application.ports.agent_observer import AgentObserver
+    from little_harness.domain.decision import AgentDecision
+    from little_harness.domain.tool_result import ToolRunResult
 
 
 class FakeApplication:
+    """Fake application that simulates prompt turns and tool calls."""
+
     def __init__(self) -> None:
         self.turns: list[tuple[AgentPrompt, MessageHistory]] = []
+        self.approved: bool | None = None
 
     def build_system_message(self) -> ChatMessage:
         return ChatMessage(SYSTEM, MessageContent("You are a helpful assistant."))
@@ -36,9 +55,21 @@ class FakeApplication:
     def run_turn(
         self, prompt: AgentPrompt, messages: MessageHistory
     ) -> tuple[AgentResult, MessageHistory]:
-        assert get_active_status() is not None
-
         self.turns.append((prompt, messages))
+
+        # Test tool permission flow if specified
+        if prompt.value == "use_tool":
+            requester = RichPermissionRequester()
+            call = ToolCall(ToolName("test_tool"), ToolInput('{"arg": 1}'))
+            self.approved = requester.request_approval(call)
+
+        # Test tool permission fallback format
+        if prompt.value == "use_invalid_tool":
+            requester = RichPermissionRequester()
+            # Bad JSON syntax causes fallback syntax rendering
+            call = ToolCall(ToolName("test_tool"), ToolInput("invalid_json_data"))
+            self.approved = requester.request_approval(call)
+
         result = AgentResult(
             MessageContent("Mocked agent response"),
             ElapsedSeconds(0.5),
@@ -50,310 +81,643 @@ class FakeApplication:
         return result, updated
 
 
-class FakeCommandRegistry:
-    def __init__(self) -> None:
-        self._index: dict[str, object] = {"/test": object()}
+class TestChatMessageWidget:
+    """Test suite for ChatMessageWidget."""
+
+    @pytest.mark.asyncio
+    async def test_factory_methods(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test():
+            user_msg = ChatMessageWidget.user("hello")
+            assert user_msg.role == "user"
+            assert user_msg.text_content == "hello"
+
+            assistant_msg = ChatMessageWidget.assistant("response")
+            assert assistant_msg.role == "assistant"
+            assert assistant_msg.text_content == "response"
+
+            system_msg = ChatMessageWidget.system("system log")
+            assert system_msg.role == "system"
+            assert system_msg.text_content == "system log"
+
+    @pytest.mark.asyncio
+    async def test_message_mounting_and_classes(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            user_msg = ChatMessageWidget.user("hello")
+            assistant_msg = ChatMessageWidget.assistant("response")
+            system_msg = ChatMessageWidget.system("system log")
+
+            # Mount to execute on_mount and verify styles
+            stream = app.query_one("#message-stream")
+            await stream.mount(user_msg)
+            await stream.mount(assistant_msg)
+            await stream.mount(system_msg)
+            await pilot.pause()
+
+            assert user_msg.has_class("chat-bubble")
+            assert user_msg.has_class("user")
+            assert assistant_msg.has_class("chat-bubble")
+            assert assistant_msg.has_class("assistant")
+            assert system_msg.has_class("chat-bubble")
+            assert system_msg.has_class("system")
+
+            # Test empty update path
+            user_msg.update_content("")
+            assert user_msg.text_content == ""
+            assert user_msg._Static__content == ""  # type: ignore
 
 
-class TestRichInteractiveConsole:
-    def test_default_console_is_constructed_on_init(self) -> None:
-        app = FakeApplication()
-        console = RichInteractiveConsole(app)
-        assert console._console is not None
-        assert isinstance(console._console, Console)
+class TestChatInputWidget:
+    """Test suite for ChatInputWidget."""
 
-    def test_init_defaults_registry(self) -> None:
-        app = FakeApplication()
-        # Case 1: registry is None (should fall back to default)
-        console = RichInteractiveConsole(app, registry=None)
-        assert console._registry is not None
-        assert len(console._registry._index) > 0
+    @pytest.mark.asyncio
+    async def test_value_getter_setter(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test():
+            chat_input = app.query_one(ChatInputWidget)
+            assert chat_input.input.placeholder == "Type your message or /help..."
+            chat_input.value = "test value"
+            assert chat_input.value == "test value"
+            assert chat_input.input.value == "test value"
+            chat_input.focus()
 
-        # Case 2: registry is provided
-        custom_registry = FakeCommandRegistry()
-        console2 = RichInteractiveConsole(app, registry=custom_registry)  # type: ignore[arg-type]
-        assert console2._registry is custom_registry
+            # Default constructor placeholder test
+            default_widget = ChatInputWidget()
+            assert default_widget.input.placeholder == "Type your prompt..."
 
-    def test_loop_executes_turns_and_commands(  # noqa: PLR0915
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        # Arrange
-        app = FakeApplication()
-        output = StringIO()
-        console = RichInteractiveConsole(app, build_default_registry())
-        # Replace the console instance to capture output and disable color
-        console._console = Console(file=output, force_terminal=False, color_system=None)
 
-        inputs = ["Hello", "/help", "/exit"]
-        input_iter = iter(inputs)
+class TestReasoningBlockWidget:
+    """Test suite for ReasoningBlockWidget."""
 
-        prompt_asks: list[str] = []
+    @pytest.mark.asyncio
+    async def test_update_and_complete(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            widget = ReasoningBlockWidget()
+            assert widget._collapsible is None  # type: ignore
 
-        def mock_ask(prompt_val: str = "", *_args: object, **_kwargs: object) -> str:
-            prompt_asks.append(prompt_val)
-            try:
-                return next(input_iter)
-            except StopIteration as err:
-                raise KeyboardInterrupt() from err
+            await app.query_one("#message-stream").mount(widget)
+            await pilot.pause()
+            assert "Thinking..." in widget.title
+            assert widget.collapsed is False
+            assert widget._collapsible is not None  # type: ignore
+            assert widget._text_widget.parent is not None
 
-        monkeypatch.setattr("rich.prompt.Prompt.ask", mock_ask)
+            widget.update_reasoning("Analyzing files...")
+            assert widget._text_widget._Static__content == "Analyzing files..."  # type: ignore
 
-        status_calls: list[object] = []
-        original_status = console._console.status
+            widget.complete()
+            assert widget.title == "Thought Process (Done)"
+            assert widget.collapsed is True
 
-        def mock_status(status_text: object, **kwargs: object) -> object:
-            status_calls.append(status_text)
-            return original_status(status_text, **kwargs)  # type: ignore[arg-type]
+    @pytest.mark.asyncio
+    async def test_append_reasoning(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            widget = ReasoningBlockWidget()
+            await app.query_one("#message-stream").mount(widget)
+            await pilot.pause()
 
-        console._console.status = mock_status  # type: ignore[assignment]
+            widget.append_reasoning("Thinking step 1...")
+            assert widget._accumulated_text == "Thinking step 1..."
+            widget.append_reasoning(" step 2.")
+            assert widget._accumulated_text == "Thinking step 1... step 2."
 
-        # Act
-        res = console.start()
 
-        # Assert
-        assert res == ""
-        output_text = output.getvalue()
-        assert "Agent Interactive Session" in output_text
-        assert "Mocked agent response" in output_text
-        assert "Available commands:" in output_text
-        assert "/help" in output_text
-        assert "/exit" in output_text
+class TestToolCallWidget:
+    """Test suite for ToolCallWidget."""
 
-        # Verify agent was invoked
-        assert len(app.turns) == 1
-        assert app.turns[0][0].value == "Hello"
+    @pytest.mark.asyncio
+    async def test_render_tool_details_json(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            call = ToolCall(ToolName("json_tool"), ToolInput('{"key": "value"}'))
+            widget = ToolCallWidget(call)
+            await app.query_one("#message-stream").mount(widget)
+            await pilot.pause()
+            syntax_obj = cast(Syntax, widget._details._Static__content)  # type: ignore
+            assert widget.tool_call.tool_name.value == "json_tool"
+            assert isinstance(syntax_obj, Syntax)
+            assert syntax_obj.lexer is not None
+            assert syntax_obj.lexer.name == "JSON"
+            assert widget._status.id == "status-container"
 
-        # Verify correct prompt was displayed
-        assert prompt_asks == [">", ">", ">"]
+    @pytest.mark.asyncio
+    async def test_render_tool_details_raw_text(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            call = ToolCall(ToolName("raw_tool"), ToolInput("plain text"))
+            widget = ToolCallWidget(call)
+            await app.query_one("#message-stream").mount(widget)
+            await pilot.pause()
+            syntax_obj = cast(Syntax, widget._details._Static__content)  # type: ignore
+            assert widget.tool_call.tool_name.value == "raw_tool"
+            assert isinstance(syntax_obj, Syntax)
+            assert syntax_obj.lexer is not None
+            assert syntax_obj.lexer.name == "Text only"
 
-        # Verify correct status was displayed during turn execution
-        assert status_calls == ["[bold blue]Agent is thinking...[/bold blue]"]
+    @pytest.mark.asyncio
+    async def test_tool_call_widget_with_future(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            future: asyncio.Future[bool] = asyncio.Future()
+            call = ToolCall(ToolName("test_tool"), ToolInput('{"key": "value"}'))
+            widget = ToolCallWidget(call, future)
+            await app.query_one("#message-stream").mount(widget)
+            await pilot.pause()
 
-        # Verify all inputs were consumed (no early breaks)
-        with pytest.raises(StopIteration):
-            next(input_iter)
+            assert widget.has_class("tool-call-card")
+            assert widget._status.id == "status-container"
 
-        # Verify messages history is updated in the console
-        assert console._messages is not None
-        assert len(list(console._messages)) == 2
+            buttons_container = widget.query_one("#buttons-container")
+            assert buttons_container.id == "buttons-container"
 
-    def test_keyboard_interrupt_during_input_exits_gracefully(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        # Arrange
-        app = FakeApplication()
-        output = StringIO()
-        console = RichInteractiveConsole(app, build_default_registry())
-        console._console = Console(file=output, force_terminal=False, color_system=None)
+            approve_btn = buttons_container.query_one("#approve", Button)
+            reject_btn = buttons_container.query_one("#reject", Button)
+            assert approve_btn.label == "Approve"
+            assert reject_btn.label == "Reject"
 
-        def mock_ask(*_args: object, **_kwargs: object) -> str:
-            raise KeyboardInterrupt()
 
-        monkeypatch.setattr("rich.prompt.Prompt.ask", mock_ask)
+class TestTuiAppAndConsole:
+    """Test suite for HarnessTuiApp and RichInteractiveConsole adapter."""
 
-        # Act
-        console.start()
+    @pytest.mark.asyncio
+    async def test_app_lifecycle_and_input(self) -> None:
+        app_core = FakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
 
-        # Assert: exits gracefully and outputs exiting message on the final line
-        lines = output.getvalue().splitlines()
-        assert lines[-1] == "Exiting..."
+        async with app.run_test() as pilot:
+            # Mount welcome panels
+            stream = app.query_one("#message-stream", VerticalScroll)
+            assert len(stream.children) == 2
 
-    def test_eof_during_input_exits_gracefully(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        # Arrange
-        app = FakeApplication()
-        output = StringIO()
-        console = RichInteractiveConsole(app, build_default_registry())
-        console._console = Console(file=output, force_terminal=False, color_system=None)
+            # Input normal text
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.value = "Hello"
+            await pilot.press("enter")
 
-        def mock_ask(*_args: object, **_kwargs: object) -> str:
-            raise EOFError()
+            # Check that user prompt bubble got added
+            # Note: since the run turn can finish instantly,
+            # we expect 4 children after pause (thinking is disabled by default)
+            await pilot.pause(0.8)
+            assert len(stream.children) == 4
 
-        monkeypatch.setattr("rich.prompt.Prompt.ask", mock_ask)
+            user_bubble = stream.children[2]
+            assert isinstance(user_bubble, ChatMessageWidget)
+            assert user_bubble.role == "user"
+            assert user_bubble.text_content == "Hello"
 
-        # Act
-        console.start()
+            # Check that agent responded
+            assistant_bubble = stream.children[3]
+            assert isinstance(assistant_bubble, ChatMessageWidget)
+            assert assistant_bubble.role == "assistant"
+            assert assistant_bubble.text_content == "Mocked agent response"
+            assert len(app_core.turns) == 1
 
-        # Assert: exits gracefully and outputs exiting message on the final line
-        lines = output.getvalue().splitlines()
-        assert lines[-1] == "Exiting..."
+    @pytest.mark.asyncio
+    async def test_app_slash_command_unknown(self) -> None:
+        app_core = FakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
 
-    def test_clear_history_resets_state_and_prints_message(self) -> None:
-        # Arrange
-        app = FakeApplication()
-        output = StringIO()
-        console = RichInteractiveConsole(app, build_default_registry())
-        console._console = Console(file=output, force_terminal=False, color_system=None)
-        console._turn_count = 5
+        async with app.run_test() as pilot:
+            stream = app.query_one("#message-stream", VerticalScroll)
 
-        # Act
+            # Test command autocomplete / unknown
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.value = "/unknown"
+            await pilot.press("enter")
+            await pilot.pause()
+
+            # The system bubble with warning is added
+            last_child = stream.children[-1]
+            assert isinstance(last_child, ChatMessageWidget)
+            assert "Unknown command" in last_child.text_content
+
+    @pytest.mark.asyncio
+    async def test_app_slash_command_clear(self) -> None:
+        app_core = FakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
+
+        async with app.run_test() as pilot:
+            stream = app.query_one("#message-stream", VerticalScroll)
+            chat_input = app.query_one(ChatInputWidget)
+
+            # Test /clear command
+            app._turn_count = 3
+            chat_input.value = "/clear"
+            await pilot.press("enter")
+            await pilot.pause()
+
+            assert app._turn_count == 0
+            assert app._messages is None
+            assert len(stream.children) == 1
+            first_child = stream.children[0]
+            assert isinstance(first_child, ChatMessageWidget)
+            assert "History cleared" in first_child.text_content
+
+    @pytest.mark.asyncio
+    async def test_app_show_history_command(self) -> None:
+        app_core = FakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
+
+        async with app.run_test() as pilot:
+            stream = app.query_one("#message-stream", VerticalScroll)
+
+            # Mock messages history
+            app._messages = (
+                MessageHistory()
+                .with_message(ChatMessage(USER, MessageContent("hello u")))
+                .with_message(
+                    ChatMessage(ASSISTANT, MessageContent("hello a")),
+                )
+            )
+            app._turn_count = 1
+
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.value = "/history"
+            await pilot.press("enter")
+            await pilot.pause()
+
+            # Ensure history was written to stream
+            history_bubble = stream.children[-2]
+            bubble = cast(ChatMessageWidget, history_bubble)
+            assert bubble.role == "user"
+            assert bubble.text_content == "hello u"
+
+    @pytest.mark.asyncio
+    async def test_tool_call_approval_dialog_yes(self) -> None:
+        app_core = FakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
+
+        async with app.run_test() as pilot:
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.value = "use_tool"
+            await pilot.press("enter")
+
+            # Pause to let the thread spawn and request approval
+            await pilot.pause(0.2)
+
+            # A tool call widget should be mounted
+            tool_widget = app.query_one(ToolCallWidget)
+            assert tool_widget is not None
+
+            # Simulate pressing the "Approve" button
+            approve_btn = tool_widget.query_one("#approve", Button)
+            approve_btn.press()
+            await pilot.pause(0.8)
+
+            assert app_core.approved is True
+            # Verify tool status text shows Approved
+            content = cast(object, tool_widget._status._Static__content)  # type: ignore
+            assert "Approved" in str(content)
+
+    @pytest.mark.asyncio
+    async def test_tool_call_approval_dialog_no(self) -> None:
+        app_core = FakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
+
+        async with app.run_test() as pilot:
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.value = "use_invalid_tool"
+            await pilot.press("enter")
+
+            # Let the prompt render
+            await pilot.pause(0.2)
+
+            tool_widget = app.query_one(ToolCallWidget)
+
+            # Simulate pressing the "Reject" button
+            reject_btn = tool_widget.query_one("#reject", Button)
+            reject_btn.press()
+            await pilot.pause(0.8)
+
+            assert app_core.approved is False
+            content = cast(object, tool_widget._status._Static__content)  # type: ignore
+            assert "Rejected" in str(content)
+
+
+class TestConsoleAdapter:
+    """Test console wrapper matching the InteractiveRunner interface."""
+
+    def test_active_app_state_initial_value(self) -> None:
+        state = ActiveAppState()
+        assert state.app is None
+
+    def test_console_forwarders(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        app_core = FakeApplication()
+        console = RichInteractiveConsole(app_core)
+        assert console.registry is not None
+
+        # When active app is None, forwarders should not raise errors
+        assert get_active_app() is None
         console.clear_history()
-
-        # Assert
-        assert console._turn_count == 0
-        assert console._messages is None
-        assert output.getvalue() == "History cleared.\n"
-
-    def test_show_history_displays_turns_and_messages(self) -> None:
-        # Arrange
-        app = FakeApplication()
-        output = StringIO()
-        console = RichInteractiveConsole(app, build_default_registry())
-        console._console = Console(file=output, force_terminal=False, color_system=None)
-
-        # Act with no history
         console.show_history()
-        assert "Turns: 0" in output.getvalue()
+        console.write("test")
 
-        # Act with history
-        output.truncate(0)
-        output.seek(0)
+        # Mock app active state
+        class DummyApp:
+            def __init__(self) -> None:
+                self.calls: list[str] = []
 
-        console._turn_count = 1
-        console._messages = (
-            MessageHistory()
-            .with_message(ChatMessage(USER, MessageContent("hello user")))
-            .with_message(ChatMessage(ASSISTANT, MessageContent("hello assistant")))
-        )
+            def clear_history(self) -> None:
+                self.calls.append("clear")
 
-        console.show_history()
-        history_text = output.getvalue()
-        assert "Turns: 1" in history_text
-        assert "User:" in history_text
-        assert "hello user" in history_text
-        assert "Assistant:" in history_text
-        assert "hello assistant" in history_text
+            def show_history(self) -> None:
+                self.calls.append("history")
 
-    def test_show_history_prints_with_correct_styles(self) -> None:
-        app = FakeApplication()
-        console = RichInteractiveConsole(app)
+            def write(self, text: str) -> None:
+                self.calls.append(f"write:{text}")
 
-        # Spy on console print calls
-        printed_args: list[tuple[object, ...]] = []
+        dummy = DummyApp()
+        set_active_app(dummy)  # type: ignore[arg-type]
 
-        def mock_print(*args: object, **_kwargs: object) -> None:
-            printed_args.append(args)
+        try:
+            console.clear_history()
+            console.show_history()
+            console.write("announce")
+            assert dummy.calls == ["clear", "history", "write:announce"]
+        finally:
+            set_active_app(None)
 
-        console._console.print = mock_print  # type: ignore[assignment]
+    def test_console_start_runs_app(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        app_core = FakeApplication()
+        console = RichInteractiveConsole(app_core)
+        run_called = False
 
-        console._turn_count = 1
-        console._messages = (
-            MessageHistory()
-            .with_message(ChatMessage(SYSTEM, MessageContent("hello system")))
-            .with_message(ChatMessage(USER, MessageContent("hello user")))
-            .with_message(ChatMessage(ASSISTANT, MessageContent("hello assistant")))
-        )
+        def mock_run(_self_app: object) -> None:
+            nonlocal run_called
+            run_called = True
 
-        # Act
-        console.show_history()
+        monkeypatch.setattr(HarnessTuiApp, "run", mock_run)
 
-        # Assert correct style tags and formatting are used
-        assert printed_args[0] == ("Turns: 1",)
-        assert printed_args[1] == ("[bold magenta]System:[/bold magenta]",)
-        assert printed_args[4] == ("[bold green]User:[/bold green]",)
-        assert printed_args[7] == ("[bold blue]Assistant:[/bold blue]",)
+        res = console.start()
+        assert res == ""
+        assert run_called is True
+        assert get_active_app() is None
 
-    def test_loop_ignores_empty_lines(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # Arrange
-        app = FakeApplication()
-        output = StringIO()
-        console = RichInteractiveConsole(app, build_default_registry())
-        console._console = Console(file=output, force_terminal=False, color_system=None)
 
-        inputs = ["", "/exit"]
-        input_iter = iter(inputs)
+class FakeTokenSink:
+    def __init__(self) -> None:
+        self.chunks: list[object] = []
 
-        def mock_ask(*_args: object, **_kwargs: object) -> str:
-            return next(input_iter)
+    def emit(self, chunk: object) -> None:
+        self.chunks.append(chunk)
 
-        monkeypatch.setattr("rich.prompt.Prompt.ask", mock_ask)
 
-        # Act
-        console.start()
+class FakeDependencies:
+    def __init__(self, observer: AgentObserver, token_sink: object) -> None:
+        self.observer = observer
+        self.token_sink = token_sink
 
-        # Assert: agent run_turn should not be called since the empty line was ignored
-        assert len(app.turns) == 0
 
-        # Verify all inputs were consumed (no early breaks)
-        with pytest.raises(StopIteration):
-            next(input_iter)
+class FakeRuntime:
+    def __init__(self, observer: AgentObserver, token_sink: object) -> None:
+        self._dependencies = FakeDependencies(observer, token_sink)
 
-    def test_loop_handles_unknown_commands(
-        self, monkeypatch: pytest.MonkeyPatch
+
+class FakeApplicationWithRuntime:
+    def __init__(
+        self, observer: AgentObserver, token_sink: object | None = None
     ) -> None:
-        # Arrange
-        app = FakeApplication()
-        output = StringIO()
-        console = RichInteractiveConsole(app, build_default_registry())
-        console._console = Console(file=output, force_terminal=False, color_system=None)
+        self.token_sink = token_sink or FakeTokenSink()
+        self._runtime = FakeRuntime(observer, self.token_sink)
+        self.turns: list[tuple[AgentPrompt, MessageHistory]] = []
 
-        inputs = ["/unknown", "/exit"]
-        input_iter = iter(inputs)
+    def build_system_message(self) -> ChatMessage:
+        return ChatMessage(SYSTEM, MessageContent("System message"))
 
-        def mock_ask(*_args: object, **_kwargs: object) -> str:
-            return next(input_iter)
+    def run_turn(
+        self, prompt: AgentPrompt, messages: MessageHistory
+    ) -> tuple[AgentResult, MessageHistory]:
+        self.turns.append((prompt, messages))
+        run_id = RunId("test-run")
+        iteration = Iteration(1)
 
-        monkeypatch.setattr("rich.prompt.Prompt.ask", mock_ask)
-
-        # Act
-        console.start()
-
-        # Assert
-        assert "Unknown command: /unknown" in output.getvalue()
-        assert len(app.turns) == 0
-
-        # Verify all inputs were consumed
-        with pytest.raises(StopIteration):
-            next(input_iter)
-
-    def test_system_messages_cached(self) -> None:
-        # Arrange
-        app = FakeApplication()
-        console = RichInteractiveConsole(app, build_default_registry())
-
-        # Act
-        msg1 = console._system_messages()
-        msg2 = console._system_messages()
-
-        # Assert
-        assert msg1 is msg2
-        assert next(iter(msg1)).content.value == "You are a helpful assistant."
-
-    def test_run_turn_increments_turn_count(self) -> None:
-        app = FakeApplication()
-        console = RichInteractiveConsole(app)
-        console._turn_count = 5
-        console._run_turn("hello")
-        assert console._turn_count == 6
-
-    def test_start_prints_welcome_panel(self) -> None:
-        app = FakeApplication()
-        console = RichInteractiveConsole(app, build_default_registry())
-
-        panel_printed: list[Panel] = []
-
-        def mock_print(arg: object, **_kwargs: object) -> None:
-            if isinstance(arg, Panel):
-                panel_printed.append(arg)
-
-        console._console.print = mock_print  # type: ignore[assignment]
-
-        def mock_loop() -> None:
-            raise ExitReplError()
-
-        console._loop = mock_loop
-
-        # Act
-        console.start()
-
-        # Assert welcome panel attributes
-        assert len(panel_printed) == 1
-        panel = panel_printed[0]
-        assert panel.title == "Agent Interactive Session"
-        assert panel.border_style == "cyan"
-        assert panel.renderable == (
-            "[bold green]Welcome to the Little Harness Agent![/bold green]\n"
-            "Type your prompt to start, or [cyan]/help[/cyan] "
-            "for available commands."
+        # Fire observer events to trigger TuiObserver handlers
+        self._runtime._dependencies.observer.on_run_started(run_id, prompt)
+        self._runtime._dependencies.observer.on_model_completed(
+            run_id,
+            iteration,
+            MessageContent('{"thought": "Step-by-step thinking"}'),
+            ElapsedSeconds(0.1),
         )
+        self._runtime._dependencies.observer.on_model_completed(
+            run_id,
+            iteration,
+            MessageContent("Plain text fallback"),
+            ElapsedSeconds(0.1),
+        )
+        self._runtime._dependencies.observer.on_decision_parsed(
+            run_id, iteration, cast("AgentDecision", None)
+        )
+        self._runtime._dependencies.observer.on_repair(
+            run_id, iteration, ValueError("invalid JSON syntax")
+        )
+
+        class DummyToolName:
+            value = "calculator"
+
+        class DummyToolRunResult:
+            tool_name = DummyToolName()
+            succeeded = True
+
+        self._runtime._dependencies.observer.on_tool_invoked(
+            run_id,
+            iteration,
+            cast("ToolRunResult", DummyToolRunResult()),
+            ElapsedSeconds(0.1),
+        )
+        self._runtime._dependencies.observer.on_run_finished(
+            run_id, cast("AgentResult", None)
+        )
+
+        result = AgentResult(
+            MessageContent("Final result"),
+            ElapsedSeconds(0.5),
+            AgentSteps(),
+        )
+        updated = messages.with_message(
+            ChatMessage(ASSISTANT, MessageContent("Final result"))
+        )
+        return result, updated
+
+
+class OriginalObserver:
+    def __init__(self) -> None:
+        self.events: list[str] = []
+
+    def on_run_started(self, run_id: object, prompt: object) -> None:
+        self.events.append("started")
+
+    def on_model_completed(
+        self,
+        run_id: object,
+        iteration: object,
+        output: object,
+        elapsed: object,
+    ) -> None:
+        self.events.append("completed")
+
+    def on_decision_parsed(
+        self, run_id: object, iteration: object, decision: object
+    ) -> None:
+        self.events.append("parsed")
+
+    def on_repair(self, run_id: object, iteration: object, error: object) -> None:
+        self.events.append("repair")
+
+    def on_tool_invoked(
+        self,
+        run_id: object,
+        iteration: object,
+        result: object,
+        elapsed: object,
+    ) -> None:
+        self.events.append("tool")
+
+    def on_run_finished(self, run_id: object, result: object) -> None:
+        self.events.append("finished")
+
+
+class TestTuiObserver:
+    """Test suite for TuiObserver and app event integration."""
+
+    @pytest.mark.asyncio
+    async def test_tui_observer_integration(self) -> None:
+        orig_obs = OriginalObserver()
+        app_core = FakeApplicationWithRuntime(orig_obs)
+        app = HarnessTuiApp(app_core, build_default_registry())
+
+        # Check observer is wrapped
+        assert isinstance(app_core._runtime._dependencies.observer, _TuiObserver)
+
+        async with app.run_test() as pilot:
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.value = "run task"
+            await pilot.press("enter")
+            # Wait for background thread worker turn to run and call observer methods
+            await pilot.pause(0.5)
+
+            # Check original observer was called
+            assert orig_obs.events == [
+                "started",
+                "completed",
+                "completed",
+                "parsed",
+                "repair",
+                "tool",
+                "finished",
+            ]
+
+            # Verify widgets in TUI stream
+            stream = app.query_one("#message-stream", VerticalScroll)
+
+            # Check repair and tool logs were written to the stream
+            texts = [
+                child.text_content
+                for child in stream.children
+                if isinstance(child, ChatMessageWidget)
+            ]
+            assert any("Repairing" in t for t in texts)
+            assert any("completed" in t for t in texts)
+
+    @pytest.mark.asyncio
+    async def test_tui_token_sink_integration(self) -> None:
+        orig_obs = OriginalObserver()
+        app_core = FakeApplicationWithRuntime(orig_obs)
+        app = HarnessTuiApp(app_core, build_default_registry())
+
+        # Check token sink is wrapped
+        assert isinstance(app_core._runtime._dependencies.token_sink, _TuiTokenSink)
+
+        async with app.run_test() as pilot:
+            # Test token sink emit updates reasoning widget
+            reasoning = ReasoningBlockWidget()
+            await app.query_one("#message-stream").mount(reasoning)
+            app._active_reasoning_widget = reasoning
+
+            app_core._runtime._dependencies.token_sink.emit(
+                MessageContent("Token stream content")
+            )
+            await pilot.pause()
+            assert reasoning._accumulated_text == "Token stream content"
+
+
+class TestAppActionClearHistory:
+    """Test clear history keyboard shortcut."""
+
+    @pytest.mark.asyncio
+    async def test_app_action_clear_history(self) -> None:
+        app_core = FakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
+        async with app.run_test() as pilot:
+            app._turn_count = 5
+            await pilot.press("ctrl+l")
+            await pilot.pause()
+            assert app._turn_count == 0
+
+
+class DummySchema:
+    def __init__(self, props: dict[str, object]) -> None:
+        self.value = {"properties": props}
+
+
+class DummyPolicy:
+    def __init__(self, schema_val: DummySchema | None) -> None:
+        self._schema_val = schema_val
+
+    def response_schema(self, _specs: object) -> object:
+        return self._schema_val
+
+
+class DummyToolRegistry:
+    def specs(self) -> list[object]:
+        return []
+
+
+class DummyDependencies:
+    def __init__(self, policy: object) -> None:
+        self.policy = policy
+        self.tool_registry = DummyToolRegistry()
+
+
+class DummyRuntime:
+    def __init__(self, policy: object) -> None:
+        self._dependencies = DummyDependencies(policy)
+
+    @property
+    def _runtime(self) -> object:
+        return self
+
+
+class DummyApp(FakeApplication):
+    def __init__(self, policy: object) -> None:
+        super().__init__()
+        self._runtime = DummyRuntime(policy)
+
+
+class TestTuiThinkingEnabled:
+    """Test suite for the conditional thinking/reasoning display in the TUI."""
+
+    def test_thinking_disabled_by_default(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        assert app._is_thinking_enabled() is False
+
+    def test_thinking_enabled_with_schema(self) -> None:
+        # 1. Schema with 'thought' property -> True
+        schema = DummySchema({"thought": {"type": "string"}})
+        app = HarnessTuiApp(DummyApp(DummyPolicy(schema)), build_default_registry())
+        assert app._is_thinking_enabled() is True
+
+        # 2. Schema without 'thought' property -> False
+        schema_no_thought = DummySchema({"other": {"type": "string"}})
+        app = HarnessTuiApp(
+            DummyApp(DummyPolicy(schema_no_thought)),
+            build_default_registry(),
+        )
+        assert app._is_thinking_enabled() is False
+
+        # 3. None schema -> False
+        app = HarnessTuiApp(DummyApp(DummyPolicy(None)), build_default_registry())
+        assert app._is_thinking_enabled() is False
