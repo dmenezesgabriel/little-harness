@@ -7,17 +7,17 @@ from little_harness.domain.decision import ToolCall
 from rich.console import Console
 from rich.prompt import Confirm
 
-from little_harness_rich.state import get_active_status
+from little_harness_rich.state import get_active_app
 
 
 class RichPermissionRequester(PermissionRequester):
-    """Prompts the operator to approve a sensitive tool call using Rich."""
+    """Prompts the operator to approve a sensitive tool call using Rich or TUI."""
 
     def __init__(self, console: Console | None = None) -> None:
         """Initialize the permission requester.
 
         Args:
-            console: The Rich console to use for prompting.
+            console: The Rich console to use for prompting as fallback.
 
         """
         self._console = console or Console()
@@ -32,17 +32,13 @@ class RichPermissionRequester(PermissionRequester):
             True if the operator approved the call, False otherwise.
 
         """
-        status = get_active_status()
-        if status is not None:
-            status.stop()
+        app = get_active_app()
+        if app is not None:
+            return app.prompt_permission(call)
 
-        try:
-            return Confirm.ask(
-                f"Allow tool [cyan]{call.tool_name.value!r}[/cyan] to run with input "
-                f"[yellow]{call.tool_input.value!r}[/yellow]?",
-                console=self._console,
-                default=False,
-            )
-        finally:
-            if status is not None:
-                status.start()
+        return Confirm.ask(
+            f"Allow tool [cyan]{call.tool_name.value!r}[/cyan] to run with input "
+            f"[yellow]{call.tool_input.value!r}[/yellow]?",
+            console=self._console,
+            default=False,
+        )
