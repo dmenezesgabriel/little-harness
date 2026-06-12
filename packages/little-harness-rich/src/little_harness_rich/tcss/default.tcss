@@ -1,0 +1,92 @@
+/* Textual TUI Stylesheet for little-harness-rich-tui */
+
+Screen {
+    background: #1C1C1E;
+    color: #F2F2F7;
+    layout: vertical;
+}
+
+#message-stream {
+    height: 1fr;
+    padding: 1 2;
+    background: #1C1C1E;
+    scrollbar-size: 1 1;
+}
+
+#input-container {
+    height: auto;
+    background: #2C2C2E;
+    border-top: tall #0A84FF;
+    padding: 1 2;
+}
+
+ChatInputWidget {
+    height: auto;
+}
+
+ChatInputWidget Input {
+    border: round #8E8E93;
+    background: #272727;
+}
+
+ChatInputWidget Input:focus {
+    border: round #0A84FF;
+}
+
+.chat-bubble {
+    margin: 0 0 1 0;
+    padding: 0 1;
+    background: transparent;
+}
+
+.chat-bubble.user {
+    border-left: wide #0A84FF;
+}
+
+.chat-bubble.assistant {
+    border-left: wide #5E5CE6;
+}
+
+.chat-bubble.system {
+    border-left: wide #8E8E93 50%;
+}
+
+ReasoningBlockWidget {
+    margin: 0 0 1 0;
+    background: #2C2C2E 20%;
+    border-left: wide #8E8E93;
+    padding: 0 1;
+    height: auto;
+}
+
+ReasoningBlockWidget Collapsible {
+    border: none;
+    background: transparent;
+}
+
+ReasoningBlockWidget Static {
+    color: #8E8E93;
+}
+
+.tool-call-card {
+    border: round #0A84FF;
+    background: #2C2C2E;
+    margin: 1 2;
+    padding: 1;
+    height: auto;
+}
+
+#buttons-container {
+    margin-top: 1;
+    height: auto;
+    align: left middle;
+}
+
+#buttons-container Button {
+    margin-right: 2;
+}
+
+#status-container {
+    margin-top: 1;
+    height: auto;
+}
