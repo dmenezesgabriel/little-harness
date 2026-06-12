@@ -1,4 +1,5 @@
 # ruff: noqa: D100, D101, D102, D103
+# pyright: reportPrivateUsage=false
 from pathlib import Path
 
 from typing import Any
