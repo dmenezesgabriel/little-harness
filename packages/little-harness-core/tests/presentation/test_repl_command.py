@@ -125,6 +125,12 @@ class TestCommandRegistry:
         registry.add(ClearCommand(), "built-in")
         assert registry._sources["/clear"] == "built-in"
 
+    def test_list_commands_returns_all_names_and_aliases(self) -> None:
+        registry = CommandRegistry()
+        registry.add(ExitCommand(), "built-in")
+        commands = registry.list_commands()
+        assert set(commands) == {"/exit", "/quit"}
+
 
 def test_command_registry_default_source() -> None:
     registry = CommandRegistry()

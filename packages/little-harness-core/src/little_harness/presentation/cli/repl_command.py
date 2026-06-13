@@ -59,6 +59,15 @@ class CommandRegistry:
         """Return a copy of the override tracking dict."""
         return dict(self._overrides)
 
+    def list_commands(self) -> list[str]:
+        """Return all registered command and alias keys, prefixed with /.
+
+        Example:
+            >>> registry.list_commands()
+            ['/exit', '/quit']
+        """
+        return list(self._index.keys())
+
     def __iter__(self) -> Iterator[ReplCommand]:
         """Yield each unique command object (once per name, not per alias)."""
         seen: set[int] = set()
