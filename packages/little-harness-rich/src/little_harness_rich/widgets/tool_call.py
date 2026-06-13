@@ -45,8 +45,8 @@ class ToolCallWidget(Vertical):
         yield self._details
         if self.future is not None:
             yield Horizontal(
-                Button("Approve", variant="success", id="approve"),
-                Button("Reject", variant="error", id="reject"),
+                Button("Approve (y)", variant="success", id="approve"),
+                Button("Reject (n)", variant="error", id="reject"),
                 id="buttons-container",
             )
         yield self._status
@@ -72,22 +72,18 @@ class ToolCallWidget(Vertical):
         )
         self._details.update(renderable)
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle Approve/Reject button clicks.
-
-        Args:
-            event: The button pressed event.
-
-        """
+    def resolve(self, approved: bool) -> None:
+        """Programmatically resolve the tool call approval."""
         if self.future is None or self.future.done():
             return
 
-        approved = event.button.id == "approve"
         self.future.set_result(approved)
 
-        # Remove buttons container using query
-        buttons_container = self.query_one("#buttons-container")
-        buttons_container.remove()
+        try:
+            buttons_container = self.query_one("#buttons-container")
+            buttons_container.remove()
+        except Exception:  # nosec
+            pass
 
         status_text = (
             "[bold green]✔ Approved[/bold green]"
@@ -95,3 +91,13 @@ class ToolCallWidget(Vertical):
             else "[bold red]❌ Rejected[/bold red]"
         )
         self._status.update(status_text)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle Approve/Reject button clicks.
+
+        Args:
+            event: The button pressed event.
+
+        """
+        approved = event.button.id == "approve"
+        self.resolve(approved)

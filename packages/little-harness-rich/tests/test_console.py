@@ -235,8 +235,8 @@ class TestToolCallWidget:
 
             approve_btn = buttons_container.query_one("#approve", Button)
             reject_btn = buttons_container.query_one("#reject", Button)
-            assert approve_btn.label == "Approve"
-            assert reject_btn.label == "Reject"
+            assert str(approve_btn.label) == "Approve (y)"
+            assert str(reject_btn.label) == "Reject (n)"
 
 
 class TestTuiAppAndConsole:
