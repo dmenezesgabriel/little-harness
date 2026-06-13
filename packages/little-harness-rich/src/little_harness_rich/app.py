@@ -10,13 +10,15 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.text_values import Prompt
 from little_harness.presentation.cli.repl_command import ExitReplError
+from textual import events
 from textual._context import active_app
 from textual.app import App, ComposeResult
-from textual.binding import BindingType
+from textual.binding import Binding, BindingType
 from textual.containers import Vertical, VerticalScroll
-from textual.widgets import Footer, Header, Input
+from textual.widgets import Footer, Input, OptionList
 
 from little_harness_rich.state import set_active_app
+from little_harness_rich.theme import harness_tokyonight
 from little_harness_rich.widgets.chat_input import ChatInputWidget
 from little_harness_rich.widgets.chat_message import ChatMessageWidget
 from little_harness_rich.widgets.reasoning import ReasoningBlockWidget
@@ -39,8 +41,13 @@ class HarnessTuiApp(App[str]):
     CSS_PATH = "tcss/default.tcss"
 
     BINDINGS: ClassVar[list[BindingType]] = [
-        ("ctrl+c", "quit", "Exit"),
-        ("ctrl+l", "clear_history", "Clear"),
+        Binding("ctrl+c", "quit", "Exit"),
+        Binding("ctrl+l", "clear_history", "Clear"),
+        Binding("y", "approve_tool", "Approve Tool"),
+        Binding("n", "reject_tool", "Reject Tool"),
+        Binding("up", "autocomplete_up", "Previous Command", show=False),
+        Binding("down", "autocomplete_down", "Next Command", show=False),
+        Binding("tab", "autocomplete_complete", "Complete Command", show=False),
     ]
 
     def __init__(
@@ -56,11 +63,15 @@ class HarnessTuiApp(App[str]):
 
         """
         super().__init__()
+        self.register_theme(harness_tokyonight)
+        self.theme = "harness-tokyonight"
         self._app = application
         self._command_registry = registry
         self._messages: MessageHistory | None = None
         self._turn_count = 0
         self._active_future: asyncio.Future[bool] | None = None
+        self._active_tool_call_widget: ToolCallWidget | None = None
+        self._completing = False
         self._active_reasoning_widget: ReasoningBlockWidget | None = None
         self._wrap_observer()
 
@@ -79,10 +90,10 @@ class HarnessTuiApp(App[str]):
 
     def compose(self) -> ComposeResult:
         """Compose the main TUI layout."""
-        yield Header(show_clock=True)
         yield VerticalScroll(id="message-stream")
         with Vertical(id="input-container"):
             yield ChatInputWidget(placeholder="Type your message or /help...")
+        yield OptionList(id="autocomplete-list")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -189,6 +200,7 @@ class HarnessTuiApp(App[str]):
         self._active_future = asyncio.Future()
         stream = self.query_one("#message-stream", VerticalScroll)
         widget = ToolCallWidget(call, self._active_future)
+        self._active_tool_call_widget = widget
         await stream.mount(widget)
         stream.scroll_end()
 
@@ -206,6 +218,7 @@ class HarnessTuiApp(App[str]):
             chat_input.input.disabled = False
             chat_input.focus()
             self._active_future = None
+            self._active_tool_call_widget = None
 
         return approved
 
@@ -286,6 +299,97 @@ class HarnessTuiApp(App[str]):
     def action_clear_history(self) -> None:
         """Clear history action handler."""
         self.clear_history()
+
+    def action_approve_tool(self) -> None:
+        """Approve the active tool call via keyboard shortcut."""
+        if self._active_tool_call_widget is not None:
+            self._active_tool_call_widget.resolve(True)
+
+    def action_reject_tool(self) -> None:
+        """Reject the active tool call via keyboard shortcut."""
+        if self._active_tool_call_widget is not None:
+            self._active_tool_call_widget.resolve(False)
+
+    def on_key(self, event: events.Key) -> None:
+        """Intercept tab key events to perform autocomplete completion when active."""
+        if event.key == "tab":
+            autocomplete = self.query_one("#autocomplete-list", OptionList)
+            if autocomplete.display and autocomplete.highlighted is not None:
+                event.prevent_default()
+                event.stop()
+                self.action_autocomplete_complete()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Handle chat input text changes to show/hide REPL command autocomplete."""
+        if "\n" in event.value:
+            event.input.value = event.value.replace("\n", "")
+            return
+
+        if getattr(self, "_completing", False):
+            self._completing = False
+            self._hide_autocomplete()
+            return
+
+        if event.value.startswith("/") and " " not in event.value:
+            self._update_autocomplete(event.value)
+            return
+        self._hide_autocomplete()
+
+    def _update_autocomplete(self, text: str) -> None:
+        autocomplete = self.query_one("#autocomplete-list", OptionList)
+        autocomplete.clear_options()
+
+        candidates = self._command_registry.list_commands()
+        matches = [c for c in candidates if c.startswith(text.lower())]
+
+        if not matches:
+            self._hide_autocomplete()
+            return
+
+        for match in sorted(set(matches)):
+            autocomplete.add_option(match)
+
+        autocomplete.display = True
+        if autocomplete.highlighted is None or autocomplete.highlighted >= len(matches):
+            autocomplete.highlighted = 0
+
+    def _hide_autocomplete(self) -> None:
+        autocomplete = self.query_one("#autocomplete-list", OptionList)
+        autocomplete.display = False
+
+    def action_autocomplete_up(self) -> None:
+        """Navigate up in the command autocomplete list."""
+        autocomplete = self.query_one("#autocomplete-list", OptionList)
+        if (
+            autocomplete.display
+            and autocomplete.highlighted is not None
+            and autocomplete.highlighted > 0
+        ):
+            autocomplete.highlighted -= 1
+
+    def action_autocomplete_down(self) -> None:
+        """Navigate down in the command autocomplete list."""
+        autocomplete = self.query_one("#autocomplete-list", OptionList)
+        if (
+            autocomplete.display
+            and autocomplete.highlighted is not None
+            and autocomplete.highlighted < autocomplete.option_count - 1
+        ):
+            autocomplete.highlighted += 1
+
+    def action_autocomplete_complete(self) -> None:
+        """Complete the text input with the currently selected autocomplete command."""
+        autocomplete = self.query_one("#autocomplete-list", OptionList)
+        if not autocomplete.display or autocomplete.highlighted is None:
+            return
+
+        option = autocomplete.get_option_at_index(autocomplete.highlighted)
+        chat_input = self.query_one(ChatInputWidget)
+        self._completing = chat_input.value != str(option.prompt)
+        if self._completing:
+            chat_input.value = str(option.prompt)
+        self._hide_autocomplete()
+        chat_input.focus()
 
     def handle_run_started(self, _run_id: RunId, _prompt: Prompt) -> None:
         """Handle run started event."""

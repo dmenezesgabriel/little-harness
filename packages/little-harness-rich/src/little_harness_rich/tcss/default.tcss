@@ -1,22 +1,27 @@
 /* Textual TUI Stylesheet for little-harness-rich-tui */
 
 Screen {
-    background: #1C1C1E;
-    color: #F2F2F7;
+    background: $background;
+    color: $foreground;
     layout: vertical;
+    layers: base autocomplete;
+}
+
+/* App-wide thin scrollbars */
+* {
+    scrollbar-size-vertical: 1;
 }
 
 #message-stream {
     height: 1fr;
     padding: 1 2;
-    background: #1C1C1E;
-    scrollbar-size: 1 1;
+    background: $background;
 }
 
 #input-container {
     height: auto;
-    background: #2C2C2E;
-    border-top: tall #0A84FF;
+    background: $background;
+    border-top: solid $surface;
     padding: 1 2;
 }
 
@@ -25,36 +30,41 @@ ChatInputWidget {
 }
 
 ChatInputWidget Input {
-    border: round #8E8E93;
-    background: #272727;
+    border: round $text-muted;
+    background: $surface;
 }
 
 ChatInputWidget Input:focus {
-    border: round #0A84FF;
+    border: round $primary;
 }
 
 .chat-bubble {
     margin: 0 0 1 0;
     padding: 0 1;
     background: transparent;
+    transition: background 200ms;
+}
+
+.chat-bubble:hover {
+    background: $panel 15%;
 }
 
 .chat-bubble.user {
-    border-left: wide #0A84FF;
+    border-left: wide $primary;
 }
 
 .chat-bubble.assistant {
-    border-left: wide #5E5CE6;
+    border-left: wide $secondary;
 }
 
 .chat-bubble.system {
-    border-left: wide #8E8E93 50%;
+    border-left: wide $text-muted;
 }
 
 ReasoningBlockWidget {
     margin: 0 0 1 0;
-    background: #2C2C2E 20%;
-    border-left: wide #8E8E93;
+    background: $panel 20%;
+    border-left: wide $text-muted;
     padding: 0 1;
     height: auto;
 }
@@ -65,15 +75,20 @@ ReasoningBlockWidget Collapsible {
 }
 
 ReasoningBlockWidget Static {
-    color: #8E8E93;
+    color: $text-muted;
 }
 
 .tool-call-card {
-    border: round #0A84FF;
-    background: #2C2C2E;
+    border: round $primary;
+    background: $surface;
     margin: 1 2;
     padding: 1;
     height: auto;
+    transition: border 200ms;
+}
+
+.tool-call-card:hover {
+    border: round $accent;
 }
 
 #buttons-container {
@@ -90,3 +105,37 @@ ReasoningBlockWidget Static {
     margin-top: 1;
     height: auto;
 }
+
+#autocomplete-list {
+    display: none;
+    layer: autocomplete;
+    background: $surface;
+    border: round $primary;
+    height: auto;
+    max-height: 8;
+    width: 60;
+    dock: bottom;
+    offset-y: -5;
+    margin-left: 4;
+}
+
+Footer {
+    background: $background;
+    border-top: solid $surface;
+}
+
+Footer .footer--key {
+    background: $surface;
+    color: $primary;
+}
+
+Footer .footer--description {
+    color: $foreground;
+}
+
+Footer .footer--highlight {
+    background: $primary;
+    color: $background;
+}
+
+

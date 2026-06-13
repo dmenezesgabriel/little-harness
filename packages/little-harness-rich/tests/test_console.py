@@ -22,6 +22,7 @@ from little_harness.domain.values.text_values import (
     Prompt as AgentPrompt,
 )
 from little_harness.presentation.cli.repl_command import (
+    CommandRegistry,
     build_default_registry,
 )
 from little_harness_rich.app import HarnessTuiApp, _TuiObserver, _TuiTokenSink
@@ -34,7 +35,7 @@ from little_harness_rich.widgets.reasoning import ReasoningBlockWidget
 from little_harness_rich.widgets.tool_call import ToolCallWidget
 from rich.syntax import Syntax
 from textual.containers import VerticalScroll
-from textual.widgets import Button
+from textual.widgets import Button, OptionList
 
 if TYPE_CHECKING:
     from little_harness.application.ports.agent_observer import AgentObserver
@@ -721,3 +722,168 @@ class TestTuiThinkingEnabled:
         # 3. None schema -> False
         app = HarnessTuiApp(DummyApp(DummyPolicy(None)), build_default_registry())
         assert app._is_thinking_enabled() is False
+
+
+class TestTuiThemeAndKeyboardApproval:
+    """Test suite for TUI dynamic theme integration and keyboard approval controls."""
+
+    @pytest.mark.asyncio
+    async def test_theme_registration_and_activation(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test():
+            assert "harness-tokyonight" in app._registered_themes
+            assert app.theme == "harness-tokyonight"
+
+    @pytest.mark.asyncio
+    async def test_keyboard_approval_y(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            future: asyncio.Future[bool] = asyncio.Future()
+            call = ToolCall(ToolName("test_tool"), ToolInput('{"arg": 1}'))
+            widget = ToolCallWidget(call, future)
+
+            stream = app.query_one("#message-stream")
+            await stream.mount(widget)
+            app._active_future = future
+            app._active_tool_call_widget = widget
+            await pilot.pause()
+
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.input.disabled = True
+            widget.query_one("#approve").focus()
+            await pilot.pause()
+
+            # Press 'y' key
+            await pilot.press("y")
+            await pilot.pause()
+
+            assert future.done()
+            assert future.result() is True
+
+    @pytest.mark.asyncio
+    async def test_keyboard_approval_n(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            future: asyncio.Future[bool] = asyncio.Future()
+            call = ToolCall(ToolName("test_tool"), ToolInput('{"arg": 1}'))
+            widget = ToolCallWidget(call, future)
+
+            stream = app.query_one("#message-stream")
+            await stream.mount(widget)
+            app._active_future = future
+            app._active_tool_call_widget = widget
+            await pilot.pause()
+
+            chat_input = app.query_one(ChatInputWidget)
+            chat_input.input.disabled = True
+            widget.query_one("#reject").focus()
+            await pilot.pause()
+
+            # Press 'n' key
+            await pilot.press("n")
+            await pilot.pause()
+
+            assert future.done()
+            assert future.result() is False
+
+
+class TestTuiAutocomplete:
+    """Test suite for command autocomplete dropdown logic."""
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_visibility_and_toggle(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            autocomplete = app.query_one("#autocomplete-list", OptionList)
+            assert autocomplete.display is False
+
+            # Type '/' to trigger autocomplete
+            await pilot.click(ChatInputWidget)
+            await pilot.press("slash")
+            await pilot.pause()
+
+            assert autocomplete.display is True
+            assert autocomplete.option_count > 0
+
+            # Backspace should hide autocomplete
+            await pilot.press("backspace")
+            await pilot.pause()
+            assert autocomplete.display is False
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_navigation_and_completion(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            chat_input = app.query_one(ChatInputWidget)
+            autocomplete = app.query_one("#autocomplete-list", OptionList)
+
+            # Type '/'
+            await pilot.click(ChatInputWidget)
+            await pilot.press("slash")
+            await pilot.pause()
+
+            assert autocomplete.highlighted == 0
+            first_option = str(autocomplete.get_option_at_index(0).prompt)
+
+            # Navigate down
+            await pilot.press("down")
+            await pilot.pause()
+            assert autocomplete.highlighted == 1
+
+            # Navigate up
+            await pilot.press("up")
+            await pilot.pause()
+            assert autocomplete.highlighted == 0
+
+            # Press Tab to complete
+            await pilot.press("tab")
+            await pilot.pause()
+
+            assert chat_input.value == first_option
+            assert autocomplete.display is False
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_filtering(self) -> None:
+        app = HarnessTuiApp(FakeApplication(), build_default_registry())
+        async with app.run_test() as pilot:
+            autocomplete = app.query_one("#autocomplete-list", OptionList)
+
+            # Type '/c'
+            await pilot.click(ChatInputWidget)
+            await pilot.press("slash", "c")
+            await pilot.pause()
+
+            assert autocomplete.display is True
+            for idx in range(autocomplete.option_count):
+                option = autocomplete.get_option_at_index(idx)
+                assert str(option.prompt).startswith("/c")
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_dynamic_retrieval(self) -> None:
+        class DummyCommand:
+            name = "dummy"
+            aliases: tuple[str, ...] = ("dum",)
+            description = "dummy command for test"
+
+            def execute(self, console: object, /) -> None:
+                pass
+
+        registry = CommandRegistry()
+        registry.add(DummyCommand(), "test")
+
+        app = HarnessTuiApp(FakeApplication(), registry)
+        async with app.run_test() as pilot:
+            autocomplete = app.query_one("#autocomplete-list", OptionList)
+
+            # Type '/' to trigger autocomplete
+            await pilot.click(ChatInputWidget)
+            await pilot.press("slash")
+            await pilot.pause()
+
+            assert autocomplete.display is True
+            assert autocomplete.option_count == 2
+            options = [
+                str(autocomplete.get_option_at_index(idx).prompt)
+                for idx in range(autocomplete.option_count)
+            ]
+            assert set(options) == {"/dummy", "/dum"}
