@@ -32,6 +32,21 @@ class ChatMessageWidget(Static):
         self.add_class(self.role.lower())
         self.update_content(self.text_content)
 
+    def _get_theme_colors(self) -> tuple[str, str]:
+        primary_color = "#7AA2F7"
+        muted_color = "#8E8E93"
+        if not self.is_mounted:
+            return primary_color, muted_color
+        try:
+            app = self.app  # type: ignore[reportUnknownMemberType]
+            theme_obj = app.current_theme
+            primary_color = str(theme_obj.primary)
+            if theme_obj.name == "harness-tokyonight":
+                muted_color = "#545C7E"
+        except Exception:  # nosec
+            pass
+        return primary_color, muted_color
+
     def update_content(self, content: str) -> None:
         """Update the rendered content of the message.
 
@@ -44,17 +59,18 @@ class ChatMessageWidget(Static):
             self.update("")
             return
 
+        primary_color, muted_color = self._get_theme_colors()
         role_lower = self.role.lower()
         if role_lower == "user":
             text = Text()
-            text.append("> ", style="bold #0A84FF")
+            text.append("> ", style=f"bold {primary_color}")
             text.append(content)
             self.update(text)
             return
         if role_lower == "system":
             text = Text()
-            text.append("\u2139 ", style="bold #8E8E93")
-            text.append(content, style="#8E8E93")
+            text.append("\u2139 ", style=f"bold {muted_color}")
+            text.append(content, style=muted_color)
             self.update(text)
             return
         # Render markdown content cleanly
