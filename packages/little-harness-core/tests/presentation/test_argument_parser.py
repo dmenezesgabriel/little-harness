@@ -23,7 +23,7 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
         None,
         None,
     ),
-    ("temperature", ["--temperature"], "Sampling temperature.", 0.0, float),
+    ("temperature", ["--temperature"], "Sampling temperature.", 0.1, float),
     (
         "top_p",
         ["--top-p"],
@@ -152,7 +152,7 @@ class TestArgumentParser:
         # Assert
         assert config == AppConfig(
             prompt=None,
-            temperature=Temperature(0.0),
+            temperature=Temperature(0.1),
             max_tokens=MaxTokens(512),
             max_iterations=MaxIterations(5),
             provider=None,

@@ -60,7 +60,7 @@ def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
 def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     """Register sampling, streaming, and loop-control arguments."""
     parser.add_argument(
-        "--temperature", type=float, default=0.0, help="Sampling temperature."
+        "--temperature", type=float, default=0.1, help="Sampling temperature."
     )
     parser.add_argument(
         "--top-p",
