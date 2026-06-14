@@ -43,19 +43,13 @@ def render_tool_spec(tool: ToolSpec) -> str:
     )
 
 
-def build_tool_call_example(tools: Sequence[ToolSpec]) -> str:
-    """Render a concrete `{"action": ..., "input": ...}` from the first tool.
+def build_tool_call_example(_tools: Sequence[ToolSpec]) -> str:
+    """Render a generic tool call example using placeholders.
 
-    The input is shown as valid JSON: a tool whose example already is a JSON
-    object is inlined verbatim, while a bare expression is quoted as a string.
+    Using placeholders avoids biasing small models toward the first tool in
+    the list. The repair message already uses the same generic format.
     """
-    if len(tools) == 0:
-        return tool_call_json(PLACEHOLDER_TOOL_NAME, json.dumps(PLACEHOLDER_TOOL_INPUT))
-
-    first_tool = tools[0]
-    examples = first_tool.input_schema.examples
-    example = PLACEHOLDER_TOOL_INPUT if examples.is_empty() else examples.first()
-    return tool_call_json(first_tool.name.value, format_input_example(example))
+    return tool_call_json(PLACEHOLDER_TOOL_NAME, json.dumps(PLACEHOLDER_TOOL_INPUT))
 
 
 def format_input_example(example: str) -> str:

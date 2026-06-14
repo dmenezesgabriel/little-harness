@@ -51,12 +51,14 @@ class TestRenderSystemPrompt:
         assert "144 divided by 12" not in prompt
         assert "is even" not in prompt
 
-    def test_tool_call_example_uses_the_first_tool(self) -> None:
+    def test_tool_call_example_uses_generic_placeholders(self) -> None:
         # Act
         prompt = render_system_prompt([tool_spec("echo", ("hello",))]).value
 
-        # Assert: action carries the tool name; the input is the quoted example.
-        assert '{"action": "echo", "input": "hello"}' in prompt
+        # Assert: the example uses placeholders so small models aren't biased
+        # toward the first tool. The repair message already uses this same
+        # generic format.
+        assert '{"action": "tool_name", "input": "tool input"}' in prompt
 
     def test_final_answer_format_is_shown(self) -> None:
         # Act
@@ -79,30 +81,22 @@ class TestRenderSystemPrompt:
 
 
 class TestBuildToolCallExample:
-    def test_inlines_an_object_example_verbatim(self) -> None:
-        # Act: an example that already is JSON is shown as a nested object.
+    def test_uses_placeholders_regardless_of_tool(self) -> None:
         example = build_tool_call_example([tool_spec("edit_file", ('{"path": "a"}',))])
+        assert example == '{"action": "tool_name", "input": "tool input"}'
 
-        # Assert
-        assert example == '{"action": "edit_file", "input": {"path": "a"}}'
-
-    def test_quotes_a_bare_expression_example(self) -> None:
-        # Act
+    def test_uses_placeholders_with_bare_expressions(self) -> None:
         example = build_tool_call_example([tool_spec("calculator", ("144 / 12",))])
+        assert example == '{"action": "tool_name", "input": "tool input"}'
 
-        # Assert
-        assert example == '{"action": "calculator", "input": "144 / 12"}'
-
-    def test_falls_back_to_placeholders_without_tools(self) -> None:
-        # Act / Assert
+    def test_uses_placeholders_without_tools(self) -> None:
         assert build_tool_call_example([]) == (
             '{"action": "tool_name", "input": "tool input"}'
         )
 
-    def test_uses_a_placeholder_input_when_the_tool_has_no_examples(self) -> None:
-        # Act / Assert
+    def test_uses_placeholders_when_tool_has_no_examples(self) -> None:
         assert build_tool_call_example([tool_spec("echo")]) == (
-            '{"action": "echo", "input": "tool input"}'
+            '{"action": "tool_name", "input": "tool input"}'
         )
 
 
