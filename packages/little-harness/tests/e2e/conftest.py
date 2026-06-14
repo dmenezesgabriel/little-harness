@@ -31,10 +31,10 @@ RunRepl = Callable[[list[str], list[str]], str]
 
 # tests/e2e/conftest.py -> e2e -> tests -> little-harness -> packages -> repo root.
 MODELS_DIRECTORY = Path(__file__).resolve().parents[4] / "models"
-# The 350M model cannot reliably call tools: it tends to parrot example paths
-# from the system prompt rather than following the user instruction.  The 8B
-# model handles the JSON tool-calling protocol correctly.  Override with
-# LITTLE_HARNESS_E2E_MODEL=LFM2.5-350M-Q4_K_M.gguf for a fast (unreliable) run.
+# The 350M model cannot reliably call tools: it tends to jump to a final answer
+# rather than calling the requested tool. The 8B model handles tool calling
+# correctly. Override with LITTLE_HARNESS_E2E_MODEL=LFM2.5-350M-Q4_K_M.gguf for
+# a fast (unreliable) run.
 DEFAULT_LOCAL_MODEL = "LFM2.5-8B-A1B-Q4_K_M.gguf"
 DEFAULT_GEMINI_MODEL = "gemini/gemini-2.5-flash"
 DEFAULT_LOCAL_CONTEXT_SIZE = "8192"
@@ -42,7 +42,7 @@ DEFAULT_LOCAL_THREAD_COUNT = "4"
 DEFAULT_LOCAL_BATCH_SIZE = "256"
 DEFAULT_LOCAL_GPU_LAYER_COUNT = "0"
 DEFAULT_LOCAL_FLASH_ATTENTION = "false"
-# Fixed seed so local runs are bit-reproducible at temperature 0.
+# Fixed seed so local runs are reproducible at a given temperature.
 DEFAULT_LOCAL_SEED = "42"
 
 
@@ -141,8 +141,7 @@ def workspace_file(workspace: Path, name: str, content: str) -> None:
 @when(parsers.parse('the agent is asked to read "{name}"'), target_fixture="answer")
 def ask_read_file(run_agent: RunAgent, name: str) -> str:
     return run_agent(
-        f"Call exactly the read_file tool once with input {name}. Then answer with "
-        "the file contents.",
+        f"Read the file {name} and tell me what it says.",
         "read_file",
     )
 
@@ -153,8 +152,7 @@ def ask_read_file(run_agent: RunAgent, name: str) -> str:
 )
 def ask_write_file(run_agent: RunAgent, content: str, name: str) -> str:
     return run_agent(
-        "Call exactly the write_file tool once with JSON input "
-        f'{{"path": "{name}", "content": "{content}"}}. Then answer done.',
+        f'Create a file named "{name}" with the content "{content}". Then say done.',
         "write_file",
     )
 
@@ -165,9 +163,7 @@ def ask_write_file(run_agent: RunAgent, content: str, name: str) -> str:
 )
 def ask_edit_file(run_agent: RunAgent, old: str, new: str, name: str) -> str:
     return run_agent(
-        "Call exactly the edit_file tool once with JSON input "
-        f'{{"path": "{name}", "old": "{old}", "new": "{new}"}}. '
-        "Then answer done.",
+        f'Change "{old}" to "{new}" in the file {name}. Then say done.',
         "edit_file",
     )
 
@@ -178,8 +174,7 @@ def ask_edit_file(run_agent: RunAgent, old: str, new: str, name: str) -> str:
 )
 def ask_bash(run_agent: RunAgent, token: str) -> str:
     return run_agent(
-        f"Call exactly the bash tool once with input 'printf {token}'. Then answer "
-        "with the command output.",
+        f"Run the command printf {token} and tell me the output.",
         "bash",
     )
 
@@ -190,8 +185,7 @@ def ask_bash(run_agent: RunAgent, token: str) -> str:
 )
 def ask_calculator(run_agent: RunAgent, question: str) -> str:
     return run_agent(
-        f"Call exactly the calculator tool once to solve: {question} Then answer "
-        "with the number.",
+        f"What is {question}? Work it out.",
         "calculator",
     )
 
@@ -202,8 +196,7 @@ def ask_calculator(run_agent: RunAgent, question: str) -> str:
 )
 def ask_ripgrep(run_agent: RunAgent, term: str) -> str:
     return run_agent(
-        f"Call exactly the ripgrep tool once with input '{term} .'. Then answer "
-        "with the matching line.",
+        f'Search the workspace for "{term}" and show me the matching line.',
         "ripgrep",
     )
 
@@ -216,8 +209,7 @@ def ask_ripgrep(run_agent: RunAgent, term: str) -> str:
 )
 def ask_ripgrep_hidden(run_agent: RunAgent, term: str) -> str:
     return run_agent(
-        f"Call exactly the ripgrep tool once with input "
-        f"'--hidden \"{term}\" .'. Then answer with the matching line.",
+        f'Search hidden files too for "{term}" and show the matching line.',
         "ripgrep",
     )
 
@@ -228,9 +220,8 @@ def ask_ripgrep_hidden(run_agent: RunAgent, term: str) -> str:
 )
 def ask_ast_grep(run_agent: RunAgent, name: str) -> str:
     return run_agent(
-        "Call exactly the ast_grep tool once with JSON input "
-        f'{{"path": "{name}", "language": "python", "query": "(call) @match"}}. '
-        "Then answer with the match.",
+        f"Find all function calls in {name} using AST search with query "
+        '"(call) @match". Then show me the matches.',
         "ast_grep",
     )
 
@@ -244,10 +235,8 @@ def ask_ast_grep(run_agent: RunAgent, name: str) -> str:
 )
 def ask_ast_edit(run_agent: RunAgent, old: str, new: str, name: str) -> str:
     return run_agent(
-        "Call exactly the ast_edit tool once with JSON input "
-        f'{{"path": "{name}", "language": "python", '
-        f'"query": "(function_definition name: (identifier) @match)", '
-        f'"replacement": "{new}"}}. Then answer done. The old name is {old}.',
+        f"Rename the function {old} to {new} in {name} using AST edit with query "
+        '"(function_definition name: (identifier) @match)". Then say done.',
         "ast_edit",
     )
 
