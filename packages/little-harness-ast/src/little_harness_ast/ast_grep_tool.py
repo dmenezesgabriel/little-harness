@@ -34,7 +34,7 @@ class AstGrepTool:
         """Return the tool's specification: name, description, JSON schema."""
         return ToolSpec(
             ToolName("ast_grep"),
-            "Search a file's syntax tree with a tree-sitter query (capture @match).",
+            "Search code structure with tree-sitter query (capture @match).",
             ToolInputSchema(
                 'A JSON object {"path": "...", "language": "...", "query": "..."}.',
                 ToolExamples((EXAMPLE_INPUT,)),

@@ -28,7 +28,7 @@ class CalculatorTool:
         """Return the tool specification."""
         return ToolSpec(
             ToolName("calculator"),
-            "Evaluate safe arithmetic and numeric expressions.",
+            "Calculate arithmetic. Use this, not bash, for math.",
             ToolInputSchema(
                 "A numeric expression using +, -, *, /, //, %, **",
                 ToolExamples(("144 / 12", "2 ** 8", "(10 + 5) * 3")),

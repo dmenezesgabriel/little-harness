@@ -22,7 +22,7 @@ class ReadFileTool:
         """Return the tool specification for the read_file tool."""
         return ToolSpec(
             ToolName("read_file"),
-            "Read a UTF-8 text file and return its full contents.",
+            "Read a file. Use this, not bash, to read files.",
             ToolInputSchema(
                 "A filesystem path to the file to read.",
                 ToolExamples(("README.md", "src/app.py")),

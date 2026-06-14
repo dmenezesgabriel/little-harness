@@ -44,10 +44,9 @@ class AstEditTool:
         """Return the tool's specification: name, description, JSON schema."""
         return ToolSpec(
             ToolName("ast_edit"),
-            "Replace the unique tree-sitter @match node in a file with new text.",
+            "Replace AST-matched node in a file.",
             ToolInputSchema(
-                'A JSON object {"path", "language", "query", "replacement"}; the '
-                "query must capture the target node as @match.",
+                'JSON: {"path","language","query","replacement"}',
                 ToolExamples((EXAMPLE_INPUT,)),
                 {
                     "type": "object",

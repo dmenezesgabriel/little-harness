@@ -42,7 +42,7 @@ class BashTool:
         """Return the tool specification for the bash tool."""
         return ToolSpec(
             ToolName("bash"),
-            "Run a shell command line and return its output and exit code.",
+            "Run a shell command. Use read_file to read files.",
             ToolInputSchema(
                 "A shell command line to execute.",
                 ToolExamples(("ls -la", "grep -rn TODO src")),
