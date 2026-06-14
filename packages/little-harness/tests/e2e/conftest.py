@@ -23,8 +23,9 @@ from pathlib import Path
 import pytest
 from pytest_bdd import given, parsers, then, when
 
-# A provider-bound runner: (prompt, comma-separated tool names) -> printed answer.
-RunAgent = Callable[[str, str], str]
+# A provider-bound runner: (prompt, comma-separated tool names | None) -> answer.
+# When tools is None every installed tool is available.
+RunAgent = Callable[[str, str | None], str]
 
 # A REPL runner: (list of prompts, argv) -> captured stdout.
 RunRepl = Callable[[list[str], list[str]], str]
@@ -238,6 +239,131 @@ def ask_ast_edit(run_agent: RunAgent, old: str, new: str, name: str) -> str:
         f"Rename the function {old} to {new} in {name} using AST edit with query "
         '"(function_definition name: (identifier) @match)". Then say done.',
         "ast_edit",
+    )
+
+
+# -- "with all tools" step variants (Set B) -----------------------------------
+# Same prompts as above but tools=None so every installed tool is available,
+# testing whether the model selects the correct one from the full set.
+
+
+@when(
+    parsers.parse('the agent with all tools is asked to read "{name}"'),
+    target_fixture="answer",
+)
+def ask_read_file_all(run_agent: RunAgent, name: str) -> str:
+    return run_agent(
+        f"Read the file {name} and tell me what it says.",
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent with all tools is asked to write "{content}" into "{name}"'
+    ),
+    target_fixture="answer",
+)
+def ask_write_file_all(run_agent: RunAgent, content: str, name: str) -> str:
+    return run_agent(
+        f'Create a file named "{name}" with the content "{content}". Then say done.',
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent with all tools is asked to change "{old}" to "{new}" in "{name}"'
+    ),
+    target_fixture="answer",
+)
+def ask_edit_file_all(run_agent: RunAgent, old: str, new: str, name: str) -> str:
+    return run_agent(
+        f'Change "{old}" to "{new}" in the file {name}. Then say done.',
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent with all tools is asked to run a shell command printing "{token}"'
+    ),
+    target_fixture="answer",
+)
+def ask_bash_all(run_agent: RunAgent, token: str) -> str:
+    return run_agent(
+        f"Run the command printf {token} and tell me the output.",
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent with all tools is asked the arithmetic question "{question}"'
+    ),
+    target_fixture="answer",
+)
+def ask_calculator_all(run_agent: RunAgent, question: str) -> str:
+    return run_agent(
+        f"What is {question}? Work it out.",
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent with all tools is asked to search the workspace for "{term}"'
+    ),
+    target_fixture="answer",
+)
+def ask_ripgrep_all(run_agent: RunAgent, term: str) -> str:
+    return run_agent(
+        f'Search the workspace for "{term}" and show me the matching line.',
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        "the agent with all tools is asked to search the workspace including "
+        'hidden files for "{term}"'
+    ),
+    target_fixture="answer",
+)
+def ask_ripgrep_hidden_all(run_agent: RunAgent, term: str) -> str:
+    return run_agent(
+        f'Search hidden files too for "{term}" and show the matching line.',
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        "the agent with all tools is asked to find print calls in the Python "
+        'file "{name}"'
+    ),
+    target_fixture="answer",
+)
+def ask_ast_grep_all(run_agent: RunAgent, name: str) -> str:
+    return run_agent(
+        f"Find all function calls in {name} using AST search with query "
+        '"(call) @match". Then show me the matches.',
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        "the agent with all tools is asked to rename the Python function "
+        '"{old}" to "{new}" in "{name}"'
+    ),
+    target_fixture="answer",
+)
+def ask_ast_edit_all(run_agent: RunAgent, old: str, new: str, name: str) -> str:
+    return run_agent(
+        f"Rename the function {old} to {new} in {name} using AST edit with query "
+        '"(function_definition name: (identifier) @match)". Then say done.',
+        None,
     )
 
 
