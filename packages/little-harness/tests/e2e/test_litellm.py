@@ -18,33 +18,33 @@ from tests.e2e.conftest import RunAgent
 pytestmark = [pytest.mark.integration, pytest.mark.network]
 
 scenarios("features/agent_tools.feature")
+scenarios("features/tool_selection.feature")
 
 
 @pytest.fixture
 def run_agent(gemini_model: str) -> RunAgent:
-    def run(prompt: str, tools: str) -> str:
+    def run(prompt: str, tools: str | None) -> str:
+        cmd = [
+            "--provider",
+            "litellm",
+            "-o",
+            f"model={gemini_model}",
+            # Free-tier Gemini caps requests per minute; let LiteLLM ride out
+            # the 429s with backoff that honors the server's retry hint.
+            "-o",
+            "num_retries=8",
+            "--prompt",
+            prompt,
+            "--yes",
+            "--max-tokens",
+            "512",
+            "--max-iterations",
+            "4",
+        ]
+        if tools is not None:
+            cmd.extend(["--tools", tools])
         start = time.monotonic()
-        result = run_cli(
-            [
-                "--provider",
-                "litellm",
-                "-o",
-                f"model={gemini_model}",
-                # Free-tier Gemini caps requests per minute; let LiteLLM ride out
-                # the 429s with backoff that honors the server's retry hint.
-                "-o",
-                "num_retries=8",
-                "--tools",
-                tools,
-                "--prompt",
-                prompt,
-                "--yes",
-                "--max-tokens",
-                "512",
-                "--max-iterations",
-                "4",
-            ]
-        )
+        result = run_cli(cmd)
         print(f"\n[perf] {tools}: {time.monotonic() - start:.1f}s", flush=True)
         return result
 

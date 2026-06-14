@@ -19,31 +19,31 @@ pytestmark = [pytest.mark.integration, pytest.mark.local_model]
 
 scenarios("features/agent_tools.feature")
 scenarios("features/interactive.feature")
+scenarios("features/tool_selection.feature")
 
 
 @pytest.fixture
 def run_agent(local_llama_options: list[str]) -> RunAgent:
-    def run(prompt: str, tools: str) -> str:
+    def run(prompt: str, tools: str | None) -> str:
         provider_options = [
             item for option in local_llama_options for item in ("-o", option)
         ]
+        cmd = [
+            "--provider",
+            "llama_cpp",
+            *provider_options,
+            "--prompt",
+            prompt,
+            "--yes",
+            "--max-tokens",
+            "512",
+            "--max-iterations",
+            "4",
+        ]
+        if tools is not None:
+            cmd.extend(["--tools", tools])
         start = time.monotonic()
-        result = run_cli(
-            [
-                "--provider",
-                "llama_cpp",
-                *provider_options,
-                "--tools",
-                tools,
-                "--prompt",
-                prompt,
-                "--yes",
-                "--max-tokens",
-                "512",
-                "--max-iterations",
-                "4",
-            ]
-        )
+        result = run_cli(cmd)
         print(f"\n[perf] {tools}: {time.monotonic() - start:.1f}s", flush=True)
         return result
 
