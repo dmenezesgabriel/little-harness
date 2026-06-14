@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 from collections.abc import Sequence
+from dataclasses import replace
 
 from little_harness.application.agent_dependencies import AgentDependencies
-from little_harness.application.agent_runtime import (
-    AgentResult,
-    AgentRuntime,
-    AgentRuntimeConfig,
-)
+from little_harness.application.agent_runtime import AgentRuntime, AgentRuntimeConfig
 from little_harness.application.hook_chain import HookChain
 from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.agent_policy import AgentPolicy
@@ -23,7 +21,9 @@ from little_harness.application.tool_registry import ToolRegistry
 from little_harness.domain.errors import UnknownPermissionRequesterError
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
+from little_harness.domain.result import AgentResult
 from little_harness.domain.values.text_values import Prompt
+from little_harness.infrastructure.config.config_loader import ConfigLoader
 from little_harness.infrastructure.hooks.approval_hook import ApprovalHook
 from little_harness.infrastructure.observability.null_observer import NullObserver
 from little_harness.infrastructure.permissions.auto_approve_requester import (
@@ -173,10 +173,12 @@ def build_permission_requester(config: AppConfig) -> PermissionRequester:
 
 def build_chat_model(config: AppConfig) -> ChatModel:
     """Build the chat model from config."""
-    # Discovery imports only the selected provider's adapter (and its vendor SDK).
     provider = config.provider or default_provider_name()
     builder = load_chat_model_builder(provider)
-    return builder(config.provider_options)
+    # Plugin config from TOML is the floor; CLI --option/-o overrides it.
+    merged_options = dict(config.plugin_configs.get(provider, {}))
+    merged_options.update(config.provider_options)
+    return builder(merged_options)
 
 
 def build_policy(config: AppConfig) -> AgentPolicy:
@@ -217,13 +219,40 @@ def to_runtime_config(config: AppConfig) -> AgentRuntimeConfig:
 
 
 def run_cli(argv: Sequence[str] | None = None) -> str:
-    """Parse CLI args and run the application."""
-    config = ArgumentParser().parse(argv)
-    with build_application(config, build_observer(config)) as app:
-        if config.prompt is None:
+    """Parse CLI args, load TOML config, resolve profile, and run the application."""
+    argv_seq = list(argv) if argv is not None else []
+
+    profile_cli = _extract_profile(argv_seq)
+    loader = _create_config_loader()
+    toml_config = loader.load()
+
+    profile_name = profile_cli or toml_config.profile
+    if profile_name:
+        toml_config = loader.resolve_profile(toml_config, profile_name)
+
+    app_config = ArgumentParser(toml_config).parse(argv_seq)
+    app_config = replace(app_config, profile=profile_name)
+
+    with build_application(app_config, build_observer(app_config)) as app:
+        if app_config.prompt is None:
             registry = build_command_registry()
-            if config.ui == "default":
+            if app_config.ui == "default":
                 return InteractiveConsole(app, registry=registry).start()
-            ui_builder = discover_ui(config.ui)
+            ui_builder = discover_ui(app_config.ui)
             return ui_builder(app, registry).start()
-        return app.run(config.prompt)
+        return app.run(app_config.prompt)
+
+
+def _create_config_loader() -> ConfigLoader:
+    """Factory for the real ConfigLoader. Easy to monkeypatch in tests."""
+    return ConfigLoader()
+
+
+def _extract_profile(argv: Sequence[str]) -> str | None:
+    """Pre-parse ``--profile`` from argv so config can use it for profile resolution."""
+    if not argv:
+        return None
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--profile", default=None)
+    known, _remaining = pre.parse_known_args(argv)
+    return known.profile

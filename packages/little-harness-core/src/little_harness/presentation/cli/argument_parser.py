@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
+from typing import Any
 
+from little_harness.config_types import Config
 from little_harness.domain.values.numeric_values import (
     MaxIterations,
     MaxTokens,
@@ -24,19 +26,61 @@ from little_harness.presentation.cli.app_config import AppConfig
 OPTION_SEPARATOR = "="
 TOOL_SEPARATOR = ","
 
+# Code defaults for every CLI-settable field.
+# These are the floor: config.toml overrides them, CLI args override config.
+_CODE_DEFAULTS: dict[str, Any] = {
+    "temperature": 0.1,
+    "max_tokens": 512,
+    "max_iterations": 5,
+    "stream": False,
+    "approve_all": False,
+    "ui": "default",
+    "log": False,
+}
+
+# Mapping from Config field names to the values-dict keys used in the merge.
+# Most Config fields map directly; a few are aliased.
+_CONFIG_FIELD_MAP: dict[str, str] = {
+    "temperature": "temperature",
+    "max_tokens": "max_tokens",
+    "max_iterations": "max_iterations",
+    "top_p": "top_p",
+    "repeat_penalty": "repeat_penalty",
+    "provider": "provider",
+    "model": "model",
+    "policy": "policy",
+    "observer": "observer",
+    "stream": "stream",
+    "tools": "tools",
+    "approve_all": "approve_all",
+    "ui": "ui",
+}
+
+# CLI dests that have special handling not covered by the generic loop.
+_CLI_SKIP_KEYS = frozenset({"options", "model"})
+
+# `store_true` args: the CLI value is False when the flag is absent and True
+# when present. Only apply the True case so a missing flag does not overwrite
+# a config-file value of true.
+_BOOLEAN_FLAGS = frozenset({"stream", "log", "approve_all"})
+
 
 class ArgumentParser:
-    """Turns argv into an `AppConfig`.
+    """Turns argv into an `AppConfig`, optionally overlaying a ``Config``.
 
     Example:
         config = ArgumentParser().parse(["--provider", "litellm", "-o", "model=gpt"])
 
     """
 
+    def __init__(self, config: Config | None = None) -> None:
+        """Store an optional Config whose non-None fields act as defaults."""
+        self._config = config
+
     def parse(self, argv: Sequence[str] | None = None) -> AppConfig:
         """Parse command-line arguments into an ``AppConfig``."""
         namespace = build_parser().parse_args(argv)
-        return to_app_config(namespace)
+        return to_app_config(namespace, self._config)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,9 +102,16 @@ def add_prompt_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
-    """Register sampling, streaming, and loop-control arguments."""
+    """Register sampling, streaming, loop-control, and profile arguments."""
+    # All `store` args default to None so _merge_cli can distinguish
+    # "user explicitly passed" from "default was used". Code defaults
+    # live in _CODE_DEFAULTS and are applied by _merge_config.
     parser.add_argument(
-        "--temperature", type=float, default=0.1, help="Sampling temperature."
+        "--profile",
+        help="Profile to activate (overrides config default).",
+    )
+    parser.add_argument(
+        "--temperature", type=float, help="Sampling temperature. Default: 0.1."
     )
     parser.add_argument(
         "--top-p",
@@ -73,10 +124,10 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
         help="Repetition penalty (0.0..2.0, 1.0 = off). Provider default when unset.",
     )
     parser.add_argument(
-        "--max-tokens", type=int, default=512, help="Maximum generated tokens."
+        "--max-tokens", type=int, help="Maximum generated tokens. Default: 512."
     )
     parser.add_argument(
-        "--max-iterations", type=int, default=5, help="Maximum agent loop iterations."
+        "--max-iterations", type=int, help="Maximum agent loop iterations. Default: 5."
     )
     parser.add_argument(
         "--log",
@@ -106,23 +157,18 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--ui",
-        default="default",
-        help="Interactive UI plugin to use (e.g. 'rich', 'default').",
+        help="Interactive UI plugin to use (e.g. 'rich', 'default'). Default: default.",
     )
 
 
 def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
     """Register provider, policy, model, and provider-specific option arguments."""
     parser.add_argument(
-        # No `default=`: argparse defaults to None, meaning "no provider chosen",
-        # which the composition root resolves to the sole installed provider.
         "--provider",
         help="Chat model provider to use (an installed plugin name). "
         "Defaults to the sole installed provider.",
     )
     parser.add_argument(
-        # No `default=`: None means "no policy chosen", which the composition root
-        # resolves to the sole installed policy.
         "--policy",
         help="Agent policy plugin to use (an installed plugin name, e.g. 'json'). "
         "Defaults to the sole installed policy.",
@@ -144,45 +190,107 @@ def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def to_app_config(namespace: argparse.Namespace) -> AppConfig:
-    """Convert a parsed argparse namespace into an ``AppConfig``."""
-    # argparse already applied each argument's `type=`/`action`; value objects then
-    # validate ranges, and the provider validates its own options downstream.
-    # prompt=None means interactive mode (REPL); a value means one-shot execution.
-    prompt = Prompt(namespace.prompt) if namespace.prompt is not None else None
+def to_app_config(
+    namespace: argparse.Namespace, config: Config | None = None
+) -> AppConfig:
+    """Convert a parsed argparse namespace into an ``AppConfig``.
+
+    Values resolve in this order (each overrides the previous):
+    1. | ``_CODE_DEFAULTS`` — built-in floor
+    2. ``Config`` — TOML file values (only non-None fields)
+    3. CLI ``namespace`` — explicit user flags
+    """
+    merged = _merge_config(config)
+    _merge_cli(merged, namespace)
+
+    prompt = Prompt(merged["prompt"]) if merged.get("prompt") is not None else None
     return AppConfig(
         prompt=prompt,
-        temperature=Temperature(namespace.temperature),
-        max_tokens=MaxTokens(namespace.max_tokens),
-        max_iterations=MaxIterations(namespace.max_iterations),
-        top_p=TopP(namespace.top_p) if namespace.top_p is not None else None,
-        repeat_penalty=RepeatPenalty(namespace.repeat_penalty)
-        if namespace.repeat_penalty is not None
+        temperature=Temperature(merged["temperature"]),
+        max_tokens=MaxTokens(merged["max_tokens"]),
+        max_iterations=MaxIterations(merged["max_iterations"]),
+        top_p=TopP(merged["top_p"]) if merged.get("top_p") is not None else None,
+        repeat_penalty=RepeatPenalty(merged["repeat_penalty"])
+        if merged.get("repeat_penalty") is not None
         else None,
-        provider=namespace.provider,
-        provider_options=build_provider_options(namespace.model, namespace.options),
-        policy=namespace.policy,
-        observer_name=resolve_observer_name(namespace.observer, namespace.log),
-        enable_streaming=namespace.stream,
-        tool_selection=parse_tool_selection(namespace.tools),
-        approve_all=namespace.approve_all,
-        ui=namespace.ui,
+        provider=merged.get("provider"),
+        provider_options=build_provider_options(
+            merged.get("model"), merged.get("options", [])
+        ),
+        policy=merged.get("policy"),
+        observer_name=resolve_observer_name(
+            merged.get("observer"), merged.get("log", False)
+        ),
+        enable_streaming=merged.get("stream", False),
+        tool_selection=parse_tool_selection(merged.get("tools")),
+        approve_all=merged.get("approve_all", False),
+        ui=merged.get("ui", "default"),
+        profile=merged.get("profile"),
+        plugin_configs=config.plugins if config is not None else {},
     )
+
+
+def _merge_config(config: Config | None) -> dict[str, Any]:
+    """Apply code defaults, then overlay Config values."""
+    merged: dict[str, Any] = dict(_CODE_DEFAULTS)
+
+    if config is None:
+        return merged
+
+    for config_key, values_key in _CONFIG_FIELD_MAP.items():
+        value = getattr(config, config_key, None)
+        if value is not None:
+            merged[values_key] = value
+
+    return merged
+
+
+def _merge_cli(merged: dict[str, Any], namespace: argparse.Namespace) -> None:
+    """Overlay CLI values on top of the merged dict.
+
+    * ``store`` args: only applied when the value is not None (i.e. user
+      explicitly passed the flag).
+    * ``store_true`` args: only applied when the value is True (False is
+      the argparse default and means the flag was absent).
+    * ``model`` / ``options``: handled after the loop via special merge.
+    """
+    for key, cli_value in vars(namespace).items():
+        if key in _CLI_SKIP_KEYS:
+            continue
+        if key in _BOOLEAN_FLAGS:
+            if cli_value is True:
+                merged[key] = True
+            continue
+        if cli_value is not None:
+            merged[key] = cli_value
+
+    # model and options get special merge: CLI model overrides config model,
+    # CLI -o KEY=VALUE pairs are accumulated for provider_options.
+    model = getattr(namespace, "model", None)
+    if model is not None:
+        merged["model"] = model
+
+    options = getattr(namespace, "options", None)
+    if options:
+        merged.setdefault("options", [])
+        merged["options"].extend(options)
 
 
 def resolve_observer_name(observer: str | None, log: bool) -> str | None:
     """Return the observer plugin name from ``--observer`` or ``--log``."""
-    # `--observer` is explicit; `--log` is the shorthand for the logging observer.
     if observer is not None:
         return observer
 
     return "logging" if log else None
 
 
-def parse_tool_selection(raw: str | None) -> tuple[str, ...] | None:
-    """Parse a comma-separated tool list into a tuple of names."""
+def parse_tool_selection(raw: str | tuple[str, ...] | None) -> tuple[str, ...] | None:
+    """Parse a comma-separated tool list or tuple into a tuple of names."""
     if raw is None:
         return None
+
+    if isinstance(raw, tuple):
+        return raw
 
     names = tuple(name.strip() for name in raw.split(TOOL_SEPARATOR))
 
@@ -196,7 +304,6 @@ def parse_tool_selection(raw: str | None) -> tuple[str, ...] | None:
 
 def build_provider_options(model: str | None, pairs: Sequence[str]) -> dict[str, str]:
     """Merge ``--model`` and ``--option`` pairs into a provider options dict."""
-    # `--model` is shorthand for the `model` option; an explicit `-o model=` wins.
     options: dict[str, str] = {}
     if model is not None:
         options["model"] = model

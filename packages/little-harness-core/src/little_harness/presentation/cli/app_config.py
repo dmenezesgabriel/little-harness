@@ -24,6 +24,10 @@ def _no_options() -> dict[str, str]:
     return {}
 
 
+def _empty_plugin_configs() -> dict[str, dict[str, str]]:
+    return {}
+
+
 @dataclass(frozen=True)
 class AppConfig:
     """Complete CLI configuration after argument parsing.
@@ -54,3 +58,9 @@ class AppConfig:
     approve_all: bool = False
     # Interactive UI plugin to use (e.g. 'rich', 'default').
     ui: str = "default"
+    # Active profile name (None means no profile applied).
+    profile: str | None = None
+    # Plugin-specific config from TOML [plugins.*] sections.
+    plugin_configs: Mapping[str, Mapping[str, str]] = field(
+        default_factory=_empty_plugin_configs
+    )

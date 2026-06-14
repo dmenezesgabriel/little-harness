@@ -23,7 +23,13 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
         None,
         None,
     ),
-    ("temperature", ["--temperature"], "Sampling temperature.", 0.1, float),
+    (
+        "temperature",
+        ["--temperature"],
+        "Sampling temperature. Default: 0.1.",
+        None,
+        float,
+    ),
     (
         "top_p",
         ["--top-p"],
@@ -38,8 +44,20 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
         None,
         float,
     ),
-    ("max_tokens", ["--max-tokens"], "Maximum generated tokens.", 512, int),
-    ("max_iterations", ["--max-iterations"], "Maximum agent loop iterations.", 5, int),
+    (
+        "max_tokens",
+        ["--max-tokens"],
+        "Maximum generated tokens. Default: 512.",
+        None,
+        int,
+    ),
+    (
+        "max_iterations",
+        ["--max-iterations"],
+        "Maximum agent loop iterations. Default: 5.",
+        None,
+        int,
+    ),
     ("log", ["--log"], "Shorthand for --observer logging.", False, None),
     (
         "observer",
@@ -69,6 +87,13 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
         ["--policy"],
         "Agent policy plugin to use (an installed plugin name, e.g. 'json'). "
         "Defaults to the sole installed policy.",
+        None,
+        None,
+    ),
+    (
+        "profile",
+        ["--profile"],
+        "Profile to activate (overrides config default).",
         None,
         None,
     ),
@@ -105,8 +130,8 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
     (
         "ui",
         ["--ui"],
-        "Interactive UI plugin to use (e.g. 'rich', 'default').",
-        "default",
+        "Interactive UI plugin to use (e.g. 'rich', 'default'). Default: default.",
+        None,
         None,
     ),
 ]

@@ -57,6 +57,7 @@ known_first_party = ["little_harness"]
 [tool.vulture]
 paths = ["src/little_harness", "tests"]
 min_confidence = 80
+ignore_names = ["fake_provider_and_policy"]
 
 [tool.importlinter]
 root_package = "little_harness"
