@@ -1,0 +1,50 @@
+# Evaluate read_file vs bash cat for reading file contents.
+# Each case creates the files in ``setup``, then runs the prompt with
+# each candidate tool separately.
+
+cases:
+  - id: read_simple
+    setup:
+      note.txt: "hello world"
+    prompt: 'Read the file note.txt and tell me what it says.'
+    expected_substring: "hello world"
+    candidates: [read_file, bash]
+
+  - id: read_multiline
+    setup:
+      data.txt: |
+        line one
+        line two
+        line three
+    prompt: 'Read the file data.txt and tell me what it says.'
+    expected_substring: "line two"
+    candidates: [read_file, bash]
+
+  - id: read_python_file
+    setup:
+      app.py: |
+        def greet(name):
+            return f"Hello, {name}!"
+
+        print(greet("world"))
+    prompt: 'Read the file app.py and tell me what it says.'
+    expected_substring: "greet"
+    candidates: [read_file, bash]
+
+  - id: read_nonexistent
+    setup: {}
+    prompt: 'Read the file missing.txt and tell me what it says.'
+    expected_substring: "missing.txt"
+    candidates: [read_file, bash]
+
+  - id: read_long_file
+    setup:
+      long.txt: |
+        Line 1: The quick brown fox jumps over the lazy dog.
+        Line 2: Pack my box with five dozen liquor jugs.
+        Line 3: How vexingly quick daft zebras jump!
+        Line 4: The five boxing wizards jump quickly.
+        Line 5: Sphinx of black quartz, judge my vow.
+    prompt: 'Read the file long.txt and tell me what it says.'
+    expected_substring: "jump"
+    candidates: [read_file, bash]

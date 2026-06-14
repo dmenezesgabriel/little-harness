@@ -1,0 +1,51 @@
+# Evaluate calculator vs bash python for arithmetic.
+# calculator uses a safe expression evaluator; bash runs python on the CLI.
+
+cases:
+  - id: simple_division
+    setup: {}
+    prompt: "What is 144 divided by 12? Work it out."
+    expected_substring: "12"
+    candidates: [calculator, bash]
+
+  - id: exponentiation
+    setup: {}
+    prompt: "What is 2 to the power of 10? Work it out."
+    expected_substring: "1024"
+    candidates: [calculator, bash]
+
+  - id: compound_expression
+    setup: {}
+    prompt: "What is (10 + 5) * 3? Work it out."
+    expected_substring: "45"
+    candidates: [calculator, bash]
+
+  - id: modulo
+    setup: {}
+    prompt: "What is 100 modulo 7? Work it out."
+    expected_substring: "2"
+    candidates: [calculator, bash]
+
+  - id: integer_division
+    setup: {}
+    prompt: "What is 17 divided by 5 using integer division? Work it out."
+    expected_substring: "3"
+    candidates: [calculator, bash]
+
+  - id: large_numbers
+    setup: {}
+    prompt: "What is 1234 + 5678? Work it out."
+    expected_substring: "6912"
+    candidates: [calculator, bash]
+
+  - id: multiplication
+    setup: {}
+    prompt: "What is 25 times 4? Work it out."
+    expected_substring: "100"
+    candidates: [calculator, bash]
+
+  - id: subtraction
+    setup: {}
+    prompt: "What is 1000 minus 1? Work it out."
+    expected_substring: "999"
+    candidates: [calculator, bash]

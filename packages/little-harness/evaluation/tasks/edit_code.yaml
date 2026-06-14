@@ -1,0 +1,54 @@
+# Evaluate edit_file vs ast_edit for code modifications.
+# Both tools can change code but work differently: edit_file replaces text
+# snippets while ast_edit uses tree-sitter queries.
+
+cases:
+  - id: rename_function
+    setup:
+      greet.py: |
+        def greet(name):
+            return f"Hello, {name}!"
+
+        print(greet("world"))
+    prompt: 'Rename the function "greet" to "salute" in greet.py. Then say done.'
+    expected_substring: "salute"
+    candidates: [edit_file, ast_edit]
+
+  - id: change_variable_value
+    setup:
+      config.py: |
+        TIMEOUT = 30
+        RETRIES = 3
+    prompt: 'Change "TIMEOUT = 30" to "TIMEOUT = 60" in config.py. Then say done.'
+    expected_substring: "TIMEOUT = 60"
+    candidates: [edit_file, ast_edit]
+
+  - id: rename_class
+    setup:
+      models.py: |
+        class OldName:
+            pass
+
+        class NewName(OldName):
+            pass
+    prompt: 'Rename the class "OldName" to "BaseModel" in models.py using AST edit. Then say done.'
+    expected_substring: "BaseModel"
+    candidates: [edit_file, ast_edit]
+
+  - id: change_return_value
+    setup:
+      utils.py: |
+        def get_value():
+            return 42
+    prompt: 'Change "return 42" to "return 0" in utils.py. Then say done.'
+    expected_substring: "return 0"
+    candidates: [edit_file, ast_edit]
+
+  - id: replace_string_constant
+    setup:
+      messages.py: |
+        GREETING = "Hello"
+        FAREWELL = "Goodbye"
+    prompt: 'Change "Hello" to "Hi" in messages.py. Then say done.'
+    expected_substring: '"Hi"'
+    candidates: [edit_file, ast_edit]

@@ -1,0 +1,76 @@
+# Evaluate ripgrep vs ast_grep vs bash grep for searching code.
+# ast_grep only works on supported languages (python here).
+
+cases:
+  - id: search_text_simple
+    setup:
+      src/data.txt: |
+        apple
+        banana
+        cherry
+    prompt: 'Search the workspace for "banana" and show me the matching line.'
+    expected_substring: "banana"
+    candidates: [ripgrep, bash]
+
+  - id: search_text_case_insensitive
+    setup:
+      src/data.txt: |
+        Apple
+        BANANA
+        Cherry
+    prompt: 'Search the workspace for "banana" ignoring case and show the matching line.'
+    expected_substring: "BANANA"
+    candidates: [ripgrep, bash]
+
+  - id: search_python_function_call
+    setup:
+      src/app.py: |
+        def main():
+            result = process_data()
+            print(result)
+
+        main()
+    prompt: 'Find all function calls in src/app.py. Show me the matches.'
+    expected_substring: "main"
+    candidates: [ripgrep, ast_grep, bash]
+
+  - id: search_python_import
+    setup:
+      src/app.py: |
+        import os
+        import sys
+
+        def main():
+            pass
+    prompt: 'Find all import statements in src/app.py and show me the matches.'
+    expected_substring: "import"
+    candidates: [ripgrep, ast_grep, bash]
+
+  - id: search_regex_pattern
+    setup:
+      logs.txt: |
+        [INFO] Startup complete
+        [ERROR] Connection refused
+        [WARN] Retry attempt 1
+    prompt: 'Search for lines containing "ERROR" in the workspace and show them.'
+    expected_substring: "ERROR"
+    candidates: [ripgrep, bash]
+
+  - id: search_nonexistent
+    setup:
+      data.txt: "hello world"
+    prompt: 'Search the workspace for "nonexistent_term_xyz" and show me the matching line.'
+    expected_substring: "No matches"
+    candidates: [ripgrep, bash]
+
+  - id: search_python_class
+    setup:
+      src/models.py: |
+        class User:
+            pass
+
+        class Admin(User):
+            pass
+    prompt: 'Find all class definitions in src/models.py and show me the matches.'
+    expected_substring: "User"
+    candidates: [ripgrep, ast_grep, bash]
