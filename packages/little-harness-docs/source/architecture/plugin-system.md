@@ -85,7 +85,7 @@ All ports are `typing.Protocol` classes:
 
 | Port | Required method | Used by |
 |------|-----------------|---------|
-| `ChatModel` | `complete_streaming(request) -> Iterator[MessageContent]` | AgentRuntime |
+| `ChatModel` | `complete_streaming(request)` + `supports_thinking()` | AgentRuntime |
 | `AgentTool` | `spec -> ToolSpec` + `run(request) -> ToolRunResult` | AgentRuntime |
 | `AgentPolicy` | `system_prompt(tools)`, `parse_model_output()`, `build_repair_message()` | AgentRuntime |
 | `AgentObserver` | `on_run_started()`, `on_model_completed()`, … | AgentRuntime |

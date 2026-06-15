@@ -29,6 +29,10 @@ class MyChatModel(ChatModel):
         self._api_key = api_key
         self._model = model
 
+    def supports_thinking(self) -> bool:
+        """Return True when the provider supports reasoning tokens."""
+        return True
+
     def complete_streaming(
         self, request: ChatCompletionRequest
     ) -> Iterator[MessageContent]:
@@ -52,8 +56,18 @@ class MyChatModel(ChatModel):
 | `response_schema` | `ResponseSchema \| None` | JSON Schema for constrained decoding |
 | `top_p` | `TopP \| None` | Nucleus sampling threshold |
 | `repeat_penalty` | `RepeatPenalty \| None` | Repetition penalty |
+| `thinking_level` | `ThinkingLevel \| None` | How much reasoning to expose (off, low, medium, high) |
+| `thinking_budget` | `ThinkingBudget \| None` | Max tokens allowed for reasoning |
 
-Map these to your SDK's native request format in `complete_streaming`.
+Map these to your SDK's native request format in `complete_streaming`. If your
+provider does not support thinking, ignore the two thinking fields — the runtime
+will leave them `None` for non-thinking models.
+
+### `supports_thinking()`
+
+Override `supports_thinking()` to return `True` when the model provider supports
+reasoning/thinking tokens. The default returns `False`, so providers that do not
+support thinking can omit the override entirely.
 
 ### Streaming
 
@@ -66,6 +80,20 @@ single chunk:
 def complete_streaming(self, request: ChatCompletionRequest) -> Iterator[MessageContent]:
     response = self._sdk.complete(request.messages)  # blocking call
     yield MessageContent(response.text)
+```
+
+When the model produces both reasoning and visible tokens, yield chunks with
+`thinking` set for the reasoning portion:
+
+```python
+from little_harness.domain.values.thinking import ThinkingContent
+
+def complete_streaming(self, request: ChatCompletionRequest) -> Iterator[MessageContent]:
+    for chunk in self._sdk.complete_streaming(request.messages):
+        if chunk.type == "reasoning":
+            yield MessageContent("", thinking=ThinkingContent(chunk.text))
+        else:
+            yield MessageContent(chunk.text)
 ```
 
 ### Response Schema / Constrained Decoding

@@ -15,4 +15,5 @@
    numeric_values
    role
    text_values
+   thinking
    truncation
