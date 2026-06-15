@@ -48,6 +48,18 @@ Based on analysis of [pi](https://github.com/earendil-works/pi) vs little-harnes
   - `tests/infrastructure/skills/test_file_system_skill_loader.py` (8 tests)
   - `tests/application/test_skills_in_system_prompt.py` (4 tests)
 
+### 1.4 Skill Command (done)
+
+- **New files**: None
+- **Changes**:
+  - `presentation/cli/repl_command.py` — `command_args` property on `ReplConsole` protocol, `list_skills()`, `reload_skills()`, `SkillCommand` class, registered in `builtin_commands()`
+  - `presentation/cli/interactive_console.py` — optional `SkillLoader` param, `command_args` property, `list_skills()` and `reload_skills()` methods, smarter `_process_command()` that extracts base command name and args
+  - `composition.py` — created `skill_loader` in `run_cli()`, passed to `InteractiveConsole`; threaded `skill_loader` param through `build_application()` and `build_dependencies()`
+- **Tests**:
+  - `tests/presentation/test_repl_command.py` — `SkillCommand` conformance, execute, help output
+  - `tests/presentation/test_interactive_console.py` — `/skill` and `/skill reload` REPL tests
+  - `tests/test_composition.py` / `test_composition_config.py` — updated mocks for `skill_loader` param
+
 ## Phase 2: Tool Plugins (new packages)
 
 ### 2.1 `little-harness-find` (pending)
