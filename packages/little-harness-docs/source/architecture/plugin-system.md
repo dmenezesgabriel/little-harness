@@ -90,6 +90,7 @@ All ports are `typing.Protocol` classes:
 | `AgentPolicy` | `system_prompt(tools)`, `parse_model_output()`, `build_repair_message()` | AgentRuntime |
 | `AgentObserver` | `on_run_started()`, `on_model_completed()`, … | AgentRuntime |
 | `TokenSink` | `emit(chunk)` | AgentRuntime |
+| `ToolTruncator` | `truncate(content, config) -> TruncationResult` | AgentRuntime |
 | `LifecycleHook` | `on_session_start()`, `on_pre_tool_use()`, … | Application |
 | `PermissionRequester` | `request_approval(call) -> bool` | ApprovalHook |
 | `SessionPlugin` | `observer()`, `repository()` | Application / CLI |

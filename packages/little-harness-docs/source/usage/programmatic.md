@@ -60,23 +60,31 @@ For full control, wire the `AgentRuntime` yourself:
 ```python
 from little_harness.application import AgentRuntime, AgentDependencies, AgentRuntimeConfig, ToolRegistry
 from little_harness.domain.values.numeric_values import Temperature, MaxTokens, MaxIterations
+from little_harness.domain.values.text_values import Prompt
+from little_harness.domain.values.truncation import TruncationConfig
+from little_harness.infrastructure.hooks.null_hook import NullHook
+from little_harness.infrastructure.observability.null_observer import NullObserver
+from little_harness.infrastructure.truncation.head_truncator import HeadTruncator
 from little_harness.plugin_discovery import (
     load_chat_model_builder,
     discover_policy,
     discover_tools,
 )
+from little_harness.presentation.cli.token_sinks import NullTokenSink
 
 model = load_chat_model_builder("litellm")({"model": "gemini/gemini-2.5-flash"})
 policy = discover_policy("json")
 tools = ToolRegistry(discover_tools())
 
 deps = AgentDependencies(
-    model=model,
+    chat_model=model,
+    tool_registry=tools,
     policy=policy,
-    tools=tools,
-    observer=None,
-    token_sink=None,
-    hooks=None,
+    observer=NullObserver(),
+    token_sink=NullTokenSink(),
+    hooks=NullHook(),
+    truncator=HeadTruncator(),
+    truncation_config=TruncationConfig(),
 )
 
 config = AgentRuntimeConfig(
@@ -100,9 +108,11 @@ print(f"Steps: {len(result.steps)}")
 | `chat_model` | `ChatModel` | The model adapter |
 | `tool_registry` | `ToolRegistry` | Registered tools |
 | `policy` | `AgentPolicy` | The agent protocol policy |
-| `observer` | `AgentObserver \| None` | Lifecycle observer (no-op when None) |
-| `token_sink` | `TokenSink \| None` | Token streaming sink (discards when None) |
-| `hooks` | `LifecycleHook \| None` | Lifecycle hooks (proceeds when None) |
+| `observer` | `AgentObserver` | Lifecycle observer |
+| `token_sink` | `TokenSink` | Token streaming sink |
+| `hooks` | `LifecycleHook` | Lifecycle hooks |
+| `truncator` | `ToolTruncator` | Strategy for truncating tool output |
+| `truncation_config` | `TruncationConfig` | Line/byte limits for truncation |
 
 ## Custom observer
 

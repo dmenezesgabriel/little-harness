@@ -1,4 +1,4 @@
-little\_harness.application.ports
+﻿little\_harness.application.ports
 =================================
 
 .. automodule:: little_harness.application.ports
@@ -20,3 +20,4 @@ little\_harness.application.ports
    session_plugin
    session_repository
    token_sink
+   tool_truncator

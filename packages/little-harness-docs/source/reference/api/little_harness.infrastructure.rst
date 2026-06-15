@@ -10,6 +10,8 @@ little\_harness.infrastructure
    :toctree:
    :recursive:
 
+   config
    hooks
    observability
    permissions
+   truncation

@@ -47,21 +47,42 @@ print(result)
 Or wire the runtime yourself:
 
 ```python
-from little_harness.application import AgentRuntime, AgentDependencies, ToolRegistry
+from little_harness.application import AgentRuntime, AgentDependencies, AgentRuntimeConfig, ToolRegistry
+from little_harness.domain.values.numeric_values import Temperature, MaxTokens, MaxIterations
+from little_harness.domain.values.text_values import Prompt
+from little_harness.domain.values.truncation import TruncationConfig
+from little_harness.infrastructure.hooks.null_hook import NullHook
+from little_harness.infrastructure.observability.null_observer import NullObserver
+from little_harness.infrastructure.truncation.head_truncator import HeadTruncator
 from little_harness.plugin_discovery import (
     load_chat_model_builder,
     discover_policy,
     discover_tools,
 )
+from little_harness.presentation.cli.token_sinks import NullTokenSink
 
 model = load_chat_model_builder("litellm")({"model": "gemini/gemini-2.5-flash"})
 policy = discover_policy("json")
 tools = ToolRegistry(discover_tools())
 
-deps = AgentDependencies(model=model, policy=policy, tools=tools)
-runtime = AgentRuntime(deps)
+deps = AgentDependencies(
+    chat_model=model,
+    tool_registry=tools,
+    policy=policy,
+    observer=NullObserver(),
+    token_sink=NullTokenSink(),
+    hooks=NullHook(),
+    truncator=HeadTruncator(),
+    truncation_config=TruncationConfig(),
+)
+config = AgentRuntimeConfig(
+    max_iterations=MaxIterations(5),
+    temperature=Temperature(0.0),
+    max_tokens=MaxTokens(512),
+)
+runtime = AgentRuntime(deps, config)
 
-result = runtime.run("What is 144 divided by 12?")
+result = runtime.run(Prompt("What is 144 divided by 12?"))
 print(result.answer)
 ```
 

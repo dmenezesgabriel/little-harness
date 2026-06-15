@@ -1,4 +1,4 @@
-little\_harness.domain.values
+﻿little\_harness.domain.values
 =============================
 
 .. automodule:: little_harness.domain.values
@@ -15,3 +15,4 @@ little\_harness.domain.values
    numeric_values
    role
    text_values
+   truncation

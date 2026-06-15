@@ -58,6 +58,7 @@ alt ToolCall
   AgentPolicy -> AgentRuntime : ToolCall
   AgentRuntime -> AgentTool : run(request)
   AgentTool -> AgentRuntime : ToolRunResult
+  note right of AgentRuntime : Truncate output if it exceeds\nmax_lines/max_bytes
   AgentRuntime -> AgentPolicy : build_tool_observation(result)
   AgentRuntime -> ChatModel : complete_streaming(next request)
 else FinalAnswer

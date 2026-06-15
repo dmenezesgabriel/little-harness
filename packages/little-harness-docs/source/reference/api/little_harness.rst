@@ -12,6 +12,7 @@
 
    application
    composition
+   config_types
    domain
    infrastructure
    plugin_discovery
