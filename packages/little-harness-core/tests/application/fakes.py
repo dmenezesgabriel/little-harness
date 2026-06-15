@@ -25,6 +25,26 @@ from little_harness.domain.values.text_values import (
     ToolName,
     ToolOutput,
 )
+from little_harness.domain.values.truncation import TruncationConfig, TruncationResult
+
+
+class IdentityTruncator:
+    """ToolTruncator that returns content unchanged (no truncation)."""
+
+    def truncate(self, content: str, config: TruncationConfig) -> TruncationResult:
+        total_bytes = len(content.encode("utf-8"))
+        lines = content.split("\n") if content else []
+        if content.endswith("\n"):
+            lines.pop()
+        return TruncationResult(
+            content=content,
+            truncated=False,
+            truncated_by=None,
+            total_lines=len(lines),
+            total_bytes=total_bytes,
+            output_lines=len(lines),
+            output_bytes=total_bytes,
+        )
 
 
 class RecordingChatModel:

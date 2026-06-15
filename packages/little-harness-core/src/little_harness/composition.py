@@ -23,12 +23,14 @@ from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.values.text_values import Prompt
+from little_harness.domain.values.truncation import TruncationConfig
 from little_harness.infrastructure.config.config_loader import ConfigLoader
 from little_harness.infrastructure.hooks.approval_hook import ApprovalHook
 from little_harness.infrastructure.observability.null_observer import NullObserver
 from little_harness.infrastructure.permissions.auto_approve_requester import (
     AutoApprovePermissionRequester,
 )
+from little_harness.infrastructure.truncation.head_truncator import HeadTruncator
 from little_harness.plugin_discovery import (
     default_policy_name,
     default_provider_name,
@@ -128,6 +130,8 @@ def build_dependencies(
         observer=observer,
         token_sink=build_token_sink(config),
         hooks=build_hooks(registry, config),
+        truncator=HeadTruncator(),
+        truncation_config=TruncationConfig(),
     )
 
 

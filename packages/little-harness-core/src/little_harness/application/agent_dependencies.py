@@ -9,16 +9,18 @@ from little_harness.application.ports.agent_policy import AgentPolicy
 from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.ports.token_sink import TokenSink
+from little_harness.application.ports.tool_truncator import ToolTruncator
 from little_harness.application.tool_registry import ToolRegistry
+from little_harness.domain.values.truncation import TruncationConfig
 
 
 @dataclass(frozen=True)
 class AgentDependencies:
-    """The six ports the runtime depends on, grouped so it holds ≤2 fields.
+    """The ports and config the runtime depends on.
 
     Example:
         dependencies = AgentDependencies(
-            model, registry, policy, observer, sink, hooks
+            model, registry, policy, observer, sink, hooks, truncator, config
         )
 
     """
@@ -29,3 +31,5 @@ class AgentDependencies:
     observer: AgentObserver
     token_sink: TokenSink
     hooks: LifecycleHook
+    truncator: ToolTruncator
+    truncation_config: TruncationConfig

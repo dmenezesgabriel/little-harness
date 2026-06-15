@@ -119,13 +119,26 @@ class LoopDecisionVisitor:
         request = ToolRunRequest(decision.tool_name, decision.tool_input)
 
         try:
-            return tool.run(request)
+            result = tool.run(request)
         except Exception as error:  # tool failures become observations, not crashes
             return ToolRunResult(
                 decision.tool_name,
                 ToolOutput(f"Tool error: {error}"),
                 succeeded=False,
             )
+
+        if result.succeeded:
+            truncated = self._dependencies.truncator.truncate(
+                result.output.value, self._dependencies.truncation_config
+            )
+            if truncated.truncated:
+                return ToolRunResult(
+                    decision.tool_name,
+                    ToolOutput(truncated.content),
+                    succeeded=True,
+                )
+
+        return result
 
     def _record(self, decision: ToolCall, result: ToolRunResult) -> None:
         step = AgentStep(

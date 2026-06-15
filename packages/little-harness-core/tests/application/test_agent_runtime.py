@@ -33,12 +33,14 @@ from little_harness.domain.values.text_values import (
     ToolName,
     ToolOutput,
 )
+from little_harness.domain.values.truncation import TruncationConfig
 from little_harness.infrastructure.hooks.null_hook import NullHook
 
 from tests.application.fakes import (
     ChunkedChatModel,
     DecisionQueuePolicy,
     FailingAgentTool,
+    IdentityTruncator,
     RecordingAgentTool,
     RecordingChatModel,
     RecordingObserver,
@@ -67,6 +69,8 @@ def create_runtime(
         observer=observer or RecordingObserver(),
         token_sink=token_sink or RecordingTokenSink(),
         hooks=hooks or NullHook(),
+        truncator=IdentityTruncator(),
+        truncation_config=TruncationConfig(max_lines=2000, max_bytes=51200),
     )
     config = AgentRuntimeConfig(
         max_iterations=MaxIterations(max_iterations),
