@@ -29,20 +29,24 @@ Based on analysis of [pi](https://github.com/earendil-works/pi) vs little-harnes
   - `tests/domain/test_thinking_values.py`
 - **Implementation note**: TDD. Start with value objects (frozen dataclasses/enums matching existing pattern), then port changes, then message integration. No thinking UI or provider support in this phase — just the domain values and ports.
 
-### 1.3 Skills System (pending)
+### 1.3 Skills System (done)
 
 - **New files**:
   - `domain/skill.py` — `Skill` entity (`name`, `description`, `content`, `file_path`)
   - `domain/values/skill_values.py` — `SkillName`, `SkillDescription`
-  - `application/ports/skill_loader.py` — `SkillLoader` protocol, `SkillDiagnostic`
+  - `application/ports/skill_loader.py` — `SkillLoader` protocol, `SkillDiagnostic`, `SkillDiagnosticCode`
   - `infrastructure/skills/file_system_skill_loader.py` — `FileSystemSkillLoader`
 - **Changes**:
-  - `infrastructure/config/config_loader.py` — `skill_paths`
-  - `presentation/cli/repl_command.py` — `/skill` command
+  - `application/agent_dependencies.py` — added `skill_loader: SkillLoader`
+  - `application/agent_runtime.py` — `build_system_message()` appends skills XML block
+  - `composition.py` — wired `FileSystemSkillLoader` with `config.skill_paths`
+  - `presentation/cli/app_config.py` — added `skill_paths` config field
+  - `presentation/cli/argument_parser.py` — passes `skill_paths` to `AppConfig`
 - **Tests**:
-  - `tests/infrastructure/skills/test_file_system_skill_loader.py`
-  - `tests/domain/test_skill_values.py`
-  - `tests/application/test_skills_in_system_prompt.py`
+  - `tests/domain/test_skill_values.py` (8 tests)
+  - `tests/domain/test_skill_entity.py` (3 tests)
+  - `tests/infrastructure/skills/test_file_system_skill_loader.py` (8 tests)
+  - `tests/application/test_skills_in_system_prompt.py` (4 tests)
 
 ## Phase 2: Tool Plugins (new packages)
 
