@@ -58,6 +58,9 @@ class FakeChatModel:
         self.requests: list[ChatCompletionRequest] = []
         self.closed = False
 
+    def supports_thinking(self) -> bool:
+        return False
+
     def complete_streaming(
         self, request: ChatCompletionRequest
     ) -> Iterator[MessageContent]:

@@ -44,6 +44,7 @@ from tests.application.fakes import (
     RecordingAgentTool,
     RecordingChatModel,
     RecordingObserver,
+    RecordingSkillLoader,
     RecordingTokenSink,
     ScriptedHook,
     final_decision,
@@ -61,6 +62,7 @@ def create_runtime(
     hooks: LifecycleHook | None = None,
     top_p: TopP | None = None,
     repeat_penalty: RepeatPenalty | None = None,
+    skill_loader: RecordingSkillLoader | None = None,
 ) -> AgentRuntime:
     dependencies = AgentDependencies(
         chat_model=chat_model,
@@ -71,6 +73,7 @@ def create_runtime(
         hooks=hooks or NullHook(),
         truncator=IdentityTruncator(),
         truncation_config=TruncationConfig(max_lines=2000, max_bytes=51200),
+        skill_loader=skill_loader or RecordingSkillLoader(),
     )
     config = AgentRuntimeConfig(
         max_iterations=MaxIterations(max_iterations),

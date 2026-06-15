@@ -24,6 +24,7 @@ from tests.application.fakes import (
     DecisionQueuePolicy,
     RecordingChatModel,
     RecordingObserver,
+    RecordingSkillLoader,
     RecordingTokenSink,
     final_decision,
     tool_decision,
@@ -78,6 +79,7 @@ class TestTruncationInRuntime:
             hooks=NullHook(),
             truncator=HeadTruncator(),
             truncation_config=TruncationConfig(max_lines=3, max_bytes=51200),
+            skill_loader=RecordingSkillLoader(),
         )
         config = AgentRuntimeConfig(
             max_iterations=MaxIterations(3),
@@ -108,6 +110,7 @@ class TestTruncationInRuntime:
             hooks=NullHook(),
             truncator=HeadTruncator(),
             truncation_config=TruncationConfig(max_lines=10, max_bytes=51200),
+            skill_loader=RecordingSkillLoader(),
         )
         config = AgentRuntimeConfig(
             max_iterations=MaxIterations(3),
@@ -137,6 +140,7 @@ class TestTruncationInRuntime:
             hooks=NullHook(),
             truncator=HeadTruncator(),
             truncation_config=TruncationConfig(max_lines=1, max_bytes=51200),
+            skill_loader=RecordingSkillLoader(),
         )
         config = AgentRuntimeConfig(
             max_iterations=MaxIterations(3),
@@ -164,6 +168,7 @@ class TestTruncationInRuntime:
             hooks=NullHook(),
             truncator=HeadTruncator(),
             truncation_config=TruncationConfig(max_lines=1, max_bytes=51200),
+            skill_loader=RecordingSkillLoader(),
         )
         config = AgentRuntimeConfig(
             max_iterations=MaxIterations(3),

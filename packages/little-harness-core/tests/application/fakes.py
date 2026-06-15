@@ -13,6 +13,7 @@ from little_harness.domain.errors import AgentProtocolError
 from little_harness.domain.hook_decision import HookDecision, Proceed
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.result import AgentResult
+from little_harness.domain.skill import Skill
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
@@ -55,6 +56,9 @@ class RecordingChatModel:
         self.closed = False
         self._outputs = list(outputs)
 
+    def supports_thinking(self) -> bool:
+        return False
+
     def complete_streaming(
         self, request: ChatCompletionRequest
     ) -> Iterator[MessageContent]:
@@ -72,6 +76,9 @@ class ChunkedChatModel:
         self.requests: list[ChatCompletionRequest] = []
         self.closed = False
         self._chunks = list(chunks)
+
+    def supports_thinking(self) -> bool:
+        return False
 
     def complete_streaming(
         self, request: ChatCompletionRequest
@@ -322,3 +329,15 @@ def final_decision(answer: str) -> FinalAnswer:
 
 def tool_decision(name: str, tool_input: str) -> ToolCall:
     return ToolCall(ToolName(name), ToolInput(tool_input))
+
+
+class RecordingSkillLoader:
+    """SkillLoader that returns scripted skills and records load_skills calls."""
+
+    def __init__(self, skills: Sequence[Skill] | None = None) -> None:
+        self.load_call_count = 0
+        self._skills = list(skills) if skills is not None else []
+
+    def load_skills(self) -> Sequence[Skill]:
+        self.load_call_count += 1
+        return list(self._skills)

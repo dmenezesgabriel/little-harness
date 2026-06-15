@@ -227,6 +227,7 @@ def to_app_config(
         ui=merged.get("ui", "default"),
         profile=merged.get("profile"),
         plugin_configs=config.plugins if config is not None else {},
+        skill_paths=merged.get("skill_paths", (".agents/skills",)),
     )
 
 

@@ -30,6 +30,9 @@ from little_harness.infrastructure.observability.null_observer import NullObserv
 from little_harness.infrastructure.permissions.auto_approve_requester import (
     AutoApprovePermissionRequester,
 )
+from little_harness.infrastructure.skills.file_system_skill_loader import (
+    FileSystemSkillLoader,
+)
 from little_harness.infrastructure.truncation.head_truncator import HeadTruncator
 from little_harness.plugin_discovery import (
     default_policy_name,
@@ -132,6 +135,7 @@ def build_dependencies(
         hooks=build_hooks(registry, config),
         truncator=HeadTruncator(),
         truncation_config=TruncationConfig(),
+        skill_loader=FileSystemSkillLoader(config.skill_paths),
     )
 
 

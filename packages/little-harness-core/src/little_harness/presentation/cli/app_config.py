@@ -64,3 +64,5 @@ class AppConfig:
     plugin_configs: Mapping[str, Mapping[str, str]] = field(
         default_factory=_empty_plugin_configs
     )
+    # Directories containing SKILL.md skill files, relative to the project root.
+    skill_paths: tuple[str, ...] = (".agents/skills",)

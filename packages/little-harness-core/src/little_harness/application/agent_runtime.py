@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from little_harness.domain.hook_decision import Block, InjectContext, Proceed
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
+from little_harness.domain.skill import Skill
 from little_harness.domain.step import AgentStep
 from little_harness.domain.steps import AgentSteps
 from little_harness.domain.values.numeric_values import (
@@ -94,9 +96,44 @@ class AgentRuntime:
         self._config = config
 
     def build_system_message(self) -> ChatMessage:
-        """Build the system message from the policy and tool specs."""
+        """Build the system message from the policy, tool specs, and skills."""
         specs = self._dependencies.tool_registry.specs()
-        return ChatMessage(SYSTEM, self._dependencies.policy.system_prompt(specs))
+        prompt = self._dependencies.policy.system_prompt(specs)
+        skills_content = self._format_skills_for_prompt()
+
+        if skills_content:
+            combined = f"{prompt.value}\n\n{skills_content}"
+            return ChatMessage(SYSTEM, MessageContent(combined))
+
+        return ChatMessage(SYSTEM, prompt)
+
+    @staticmethod
+    def _format_skills_content(skills: Sequence[Skill]) -> str:
+        """Format loaded skills as an XML block for the system prompt."""
+        if not skills:
+            return ""
+
+        lines = [
+            "The following skills provide specialized instructions for specific tasks.",
+            "Read the full skill file when the task matches its description.",
+            "",
+            "<available_skills>",
+        ]
+
+        for skill in skills:
+            lines.append("  <skill>")
+            lines.append(f"    <name>{skill.name.value}</name>")
+            lines.append(f"    <description>{skill.description.value}</description>")
+            lines.append(f"    <location>{skill.file_path}</location>")
+            lines.append("  </skill>")
+
+        lines.append("</available_skills>")
+        return "\n".join(lines)
+
+    def _format_skills_for_prompt(self) -> str:
+        """Load skills and format them for the system prompt."""
+        skills = self._dependencies.skill_loader.load_skills()
+        return self._format_skills_content(skills)
 
     def run(self, prompt: Prompt) -> AgentResult:
         """Run a single-turn session from prompt to result."""

@@ -8,6 +8,7 @@ from little_harness.application.ports.agent_observer import AgentObserver
 from little_harness.application.ports.agent_policy import AgentPolicy
 from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
+from little_harness.application.ports.skill_loader import SkillLoader
 from little_harness.application.ports.token_sink import TokenSink
 from little_harness.application.ports.tool_truncator import ToolTruncator
 from little_harness.application.tool_registry import ToolRegistry
@@ -33,3 +34,4 @@ class AgentDependencies:
     hooks: LifecycleHook
     truncator: ToolTruncator
     truncation_config: TruncationConfig
+    skill_loader: SkillLoader
