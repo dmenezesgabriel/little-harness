@@ -302,7 +302,7 @@ class TestCompositionThreadsConfigThroughTheStack:
             return sentinel
 
         def fake_build_application(
-            _config: AppConfig, observer: AgentObserver
+            _config: AppConfig, observer: AgentObserver, _skill_loader: object = None
         ) -> FakeApplication:
             received.append(observer)
             return FakeApplication()
@@ -332,7 +332,9 @@ class TestRunCliInteractive:
             started.append(True)
             return ""
 
-        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+        def fake_build_app(
+            _config: object, _observer: object, _skill_loader: object = None
+        ) -> FakeApplication:
             return FakeApplication()
 
         def fake_build_obs(_config: object) -> None:
@@ -358,7 +360,7 @@ class TestRunCliInteractive:
     ) -> None:
         built: list[object] = []
 
-        def fake_build(_config: AppConfig, _observer: AgentObserver) -> FakeApplication:
+        def fake_build(_config: AppConfig, _observer: AgentObserver, _skill_loader: object = None) -> FakeApplication:
             built.append(_config)
             return FakeApplication()
 
@@ -391,7 +393,7 @@ class TestRunCliInteractive:
         def fake_start_console(_self: object) -> str:
             return ""
 
-        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+        def fake_build_app(_config: object, _observer: object, _skill_loader: object = None) -> FakeApplication:
             return FakeApplication()
 
         monkeypatch.setattr(
@@ -421,6 +423,7 @@ class TestRunCliInteractive:
                 output: object = None,
                 source: object = None,
                 registry: object = None,
+                skill_loader: object = None,
             ) -> None:
                 SpyingInteractiveConsole.received_app = app
                 SpyingInteractiveConsole.received_registry = registry
@@ -428,7 +431,7 @@ class TestRunCliInteractive:
             def start(self) -> str:
                 return ""
 
-        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+        def fake_build_app(_config: object, _observer: object, _skill_loader: object = None) -> FakeApplication:
             return built_app
 
         def fake_build_obs(_config: object) -> None:
@@ -462,7 +465,7 @@ class TestRunCliInteractive:
             def start(self) -> str:
                 return "custom_started"
 
-        def fake_build_app(_config: object, _observer: object) -> FakeApplication:
+        def fake_build_app(_config: object, _observer: object, _skill_loader: object = None) -> FakeApplication:
             return built_app
 
         def fake_build_obs(_config: object) -> None:

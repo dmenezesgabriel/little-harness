@@ -156,6 +156,22 @@ class TestInteractiveConsoleSlashCommands:
 
         assert result is True
 
+    def test_process_skill_without_args_lists_skills(self) -> None:
+        console, _ = console_with()
+        result = console._process_command("/skill")
+        assert result is True
+
+    def test_process_skill_reload_reloads_skills(self) -> None:
+        console, _ = console_with()
+        result = console._process_command("/skill reload")
+        assert result is True
+
+    def test_process_skill_with_reload_triggers_reload(self) -> None:
+        console, output = console_with("/skill reload", "/exit")
+        console.start()
+        text = output.getvalue()
+        assert "No skill loader configured" in text
+
 
 class TestInteractiveConsoleTurnExecution:
     def test_user_prompt_triggers_run_turn(self) -> None:

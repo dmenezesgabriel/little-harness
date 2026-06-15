@@ -22,6 +22,7 @@ from little_harness.presentation.cli.repl_command import (
     HelpCommand,
     HistoryCommand,
     ReplCommand,
+    SkillCommand,
     build_default_registry,
 )
 
@@ -74,6 +75,10 @@ class TestReplCommandStructuralConformance:
     def test_history_command_conforms(self) -> None:
         cmd: ReplCommand = HistoryCommand()
         assert isinstance(cmd, HistoryCommand)
+
+    def test_skill_command_conforms(self) -> None:
+        cmd: ReplCommand = SkillCommand()
+        assert isinstance(cmd, SkillCommand)
 
 
 # ── CommandRegistry ─────────────────────────────────────────────────────────
@@ -209,10 +214,15 @@ class FakeReplConsole:
         self.history_shown = False
         self.written_text = ""
         self._registry = registry or CommandRegistry()
+        self._command_args = ""
 
     @property
     def registry(self) -> CommandRegistry:
         return self._registry
+
+    @property
+    def command_args(self) -> str:
+        return self._command_args
 
     def clear_history(self) -> None:
         self.history_cleared = True
@@ -222,6 +232,12 @@ class FakeReplConsole:
 
     def write(self, text: str) -> None:
         self.written_text += text
+
+    def list_skills(self) -> str:
+        return ""
+
+    def reload_skills(self) -> str:
+        return ""
 
 
 # ── ClearCommand ────────────────────────────────────────────────────────────
@@ -275,6 +291,7 @@ class TestHelpCommand:
         assert "/clear" in text
         assert "/help" in text
         assert "/history" in text
+        assert "/skill" in text
 
     def test_help_mentions_quit_as_alias(self) -> None:
         registry = build_default_registry()
@@ -298,6 +315,7 @@ class TestHelpCommand:
             "  /exit, /quit             Exit the interactive session\n"
             "  /help                    Show this help message\n"
             "  /history                 Show conversation history\n"
+            "  /skill                   List or reload skills\n"
         )
         assert console.written_text == expected
 
@@ -328,12 +346,13 @@ class TestBuildDefaultRegistry:
         assert registry.get("/exit") is not None
         assert registry.get("/help") is not None
         assert registry.get("/history") is not None
+        assert registry.get("/skill") is not None
 
     def test_each_command_is_instantiated(self) -> None:
         registry = build_default_registry()
         names = {c.name for c in registry}
 
-        assert names == {"clear", "exit", "help", "history"}
+        assert names == {"clear", "exit", "help", "history", "skill"}
 
     def test_registered_as_source_built_in(self) -> None:
         registry = build_default_registry()
@@ -349,3 +368,25 @@ class TestBuildDefaultRegistry:
         registry.add(CustomClear(), "plugin:custom")
 
         assert registry.overrides == {"/clear": "built-in \u2192 plugin:custom"}
+
+
+# ── SkillCommand ─────────────────────────────────────────────────────────────
+
+
+class TestSkillCommand:
+    def test_name_and_aliases(self) -> None:
+        cmd = SkillCommand()
+        assert cmd.name == "skill"
+        assert cmd.aliases == ()
+
+    def test_execute_lists_skills(self) -> None:
+        console = FakeReplConsole()
+        SkillCommand().execute(console)
+        # list_skills returns "", so written_text stays empty
+        assert console.written_text == ""
+
+    def test_execute_reloads_skills(self) -> None:
+        console = FakeReplConsole()
+        console._command_args = "reload"
+        SkillCommand().execute(console)
+        assert console.written_text == ""

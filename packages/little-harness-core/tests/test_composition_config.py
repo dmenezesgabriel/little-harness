@@ -132,7 +132,7 @@ class TestRunCliConfigIntegration:
         """--profile flow sets AppConfig.profile."""
         captured: list[AppConfig] = []
 
-        def fake_build_app(cfg: AppConfig, _obs: object) -> object:
+        def fake_build_app(cfg: AppConfig, _obs: object, _skill_loader: object = None) -> object:
             captured.append(cfg)
 
             class FakeApp:
@@ -167,7 +167,7 @@ class TestRunCliConfigIntegration:
         """CLI --profile overrides config default profile."""
         captured: list[AppConfig] = []
 
-        def fake_build_app(cfg: AppConfig, _obs: object) -> object:
+        def fake_build_app(cfg: AppConfig, _obs: object, _skill_loader: object = None) -> object:
             captured.append(cfg)
 
             class FakeApp:

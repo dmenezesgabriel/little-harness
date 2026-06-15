@@ -86,6 +86,14 @@ class ReplConsole(Protocol):
         """Return the command registry."""
         ...
 
+    @property
+    def command_args(self) -> str:
+        """Return the remaining text after the slash command name.
+
+        For ``/skill reload`` this returns ``"reload"``.
+        """
+        ...
+
     def clear_history(self) -> None:
         """Clear the conversation history."""
         ...
@@ -96,6 +104,17 @@ class ReplConsole(Protocol):
 
     def write(self, text: str) -> None:
         """Write text to the console output."""
+        ...
+
+    def list_skills(self) -> str:
+        """Return a formatted list of available skills.
+
+        Returns an empty string when no skills are loaded.
+        """
+        ...
+
+    def reload_skills(self) -> str:
+        """Re-read skills from disk and return a status message."""
         ...
 
 
@@ -175,9 +194,31 @@ class HistoryCommand:
         console.show_history()
 
 
+class SkillCommand:
+    """Built-in ``/skill`` slash command for managing loaded skills.
+
+    Usage:
+        /skill          — list all loaded skills
+        /skill reload   — re-read skills from disk
+    """
+
+    name = "skill"
+    aliases: tuple[str, ...] = ()
+    description = "List or reload skills"
+
+    def execute(self, console: ReplConsole, /) -> None:
+        """List skills or reload them from disk."""
+        args = console.command_args
+        if args == "reload":
+            console.write(console.reload_skills())
+            return
+
+        console.write(console.list_skills())
+
+
 def builtin_commands() -> list[ReplCommand]:
     """Return the default set of built-in slash commands."""
-    return [ClearCommand(), ExitCommand(), HelpCommand(), HistoryCommand()]
+    return [ClearCommand(), ExitCommand(), HelpCommand(), HistoryCommand(), SkillCommand()]
 
 
 def build_default_registry() -> CommandRegistry:

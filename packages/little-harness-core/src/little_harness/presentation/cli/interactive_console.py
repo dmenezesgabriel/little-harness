@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from little_harness.domain.message import ChatMessage
     from little_harness.domain.result import AgentResult
 
+from little_harness.application.ports.skill_loader import SkillLoader
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.text_values import Prompt
 from little_harness.presentation.cli.repl_command import (
@@ -64,6 +65,7 @@ class InteractiveConsole:
         output: TextIO | None = None,
         source: TextIO | None = None,
         registry: CommandRegistry | None = None,
+        skill_loader: SkillLoader | None = None,
     ) -> None:
         """See class docstring for argument descriptions."""
         self._app = application
@@ -74,11 +76,21 @@ class InteractiveConsole:
         self._registry: CommandRegistry = (
             registry if registry is not None else build_default_registry()
         )
+        self._skill_loader = skill_loader
+        self._command_args = ""
 
     @property
     def registry(self) -> CommandRegistry:
         """Return the command registry used by the console."""
         return self._registry
+
+    @property
+    def command_args(self) -> str:
+        """Return the remaining text after the slash command name.
+
+        Set by ``_process_command`` before ``execute`` is called.
+        """
+        return self._command_args
 
     def clear_history(self) -> None:
         """Clear the conversation history and reset the turn count."""
@@ -100,6 +112,31 @@ class InteractiveConsole:
         """Write text to the output stream and flush."""
         self._output.write(text)
         self._output.flush()
+
+    def list_skills(self) -> str:
+        """Return a formatted list of available skills."""
+        if self._skill_loader is None:
+            return "No skill loader configured.\n"
+
+        skills = self._skill_loader.load_skills()
+        if not skills:
+            return "No skills loaded.\n"
+
+        lines = ["Available skills:"]
+        for skill in skills:
+            lines.append(
+                f"  {skill.name.value:<24} {skill.description.value}"
+            )
+        return "\n".join(lines) + "\n"
+
+    def reload_skills(self) -> str:
+        """Re-read skills from disk and return a status message."""
+        if self._skill_loader is None:
+            return "No skill loader configured.\n"
+
+        skills = self._skill_loader.load_skills()
+        count = len(skills)
+        return f"Reloaded {count} skill{'s' if count != 1 else ''}.\n"
 
     def start(self) -> str:
         """Start the REPL loop and return when the session finishes."""
@@ -141,7 +178,9 @@ class InteractiveConsole:
         if not line.startswith("/"):
             return False
 
-        command = self._registry.get(line)
+        parts = line.split(maxsplit=1)
+        command = self._registry.get(parts[0])
+        self._command_args = parts[1] if len(parts) > 1 else ""
 
         if command is None:
             self._output.write(f"Unknown command: {line}. Try /help.\n")

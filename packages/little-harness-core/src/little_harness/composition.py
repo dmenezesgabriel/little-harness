@@ -16,6 +16,7 @@ from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.closeable import Closeable
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.ports.permission_requester import PermissionRequester
+from little_harness.application.ports.skill_loader import SkillLoader
 from little_harness.application.ports.token_sink import TokenSink
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.domain.errors import UnknownPermissionRequesterError
@@ -104,9 +105,10 @@ class Application:
 def build_application(
     config: AppConfig,
     observer: AgentObserver | None = None,
+    skill_loader: SkillLoader | None = None,
 ) -> Application:
     """Build and return an `Application` from config."""
-    dependencies = build_dependencies(config, observer or NullObserver())
+    dependencies = build_dependencies(config, observer or NullObserver(), skill_loader)
     runtime = AgentRuntime(dependencies, to_runtime_config(config))
     return Application(runtime, ResultRenderer(), dependencies.chat_model)
 
@@ -123,6 +125,7 @@ def build_observer(config: AppConfig) -> AgentObserver:
 def build_dependencies(
     config: AppConfig,
     observer: AgentObserver,
+    skill_loader: SkillLoader | None = None,
 ) -> AgentDependencies:
     """Build all agent dependencies from config and observer."""
     registry = ToolRegistry(discover_tools(config.tool_selection))
@@ -135,7 +138,7 @@ def build_dependencies(
         hooks=build_hooks(registry, config),
         truncator=HeadTruncator(),
         truncation_config=TruncationConfig(),
-        skill_loader=FileSystemSkillLoader(config.skill_paths),
+        skill_loader=skill_loader or FileSystemSkillLoader(config.skill_paths),
     )
 
 
@@ -241,11 +244,15 @@ def run_cli(argv: Sequence[str] | None = None) -> str:
     app_config = ArgumentParser(toml_config).parse(argv_seq)
     app_config = replace(app_config, profile=profile_name)
 
-    with build_application(app_config, build_observer(app_config)) as app:
+    skill_loader = FileSystemSkillLoader(app_config.skill_paths)
+
+    with build_application(app_config, build_observer(app_config), skill_loader) as app:
         if app_config.prompt is None:
             registry = build_command_registry()
             if app_config.ui == "default":
-                return InteractiveConsole(app, registry=registry).start()
+                return InteractiveConsole(
+                    app, registry=registry, skill_loader=skill_loader
+                ).start()
             ui_builder = discover_ui(app_config.ui)
             return ui_builder(app, registry).start()
         return app.run(app_config.prompt)

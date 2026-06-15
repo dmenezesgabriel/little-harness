@@ -5,6 +5,7 @@ from __future__ import annotations
 from little_harness.domain.skill import Skill
 from little_harness.domain.values.skill_values import SkillDescription, SkillName
 from little_harness.domain.values.text_values import Prompt
+
 from tests.application.fakes import (
     DecisionQueuePolicy,
     RecordingAgentTool,
@@ -20,7 +21,9 @@ class TestSkillsInSystemPrompt:
         chat_model = RecordingChatModel(["final"])
         policy = DecisionQueuePolicy([final_decision("done")])
         skill_loader = RecordingSkillLoader()
-        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader)
+        runtime = create_runtime(
+            chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader
+        )
 
         msg = runtime.build_system_message()
 
@@ -37,7 +40,9 @@ class TestSkillsInSystemPrompt:
             file_path="/tmp/.agents/skills/my-skill/SKILL.md",
         )
         skill_loader = RecordingSkillLoader([skill])
-        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader)
+        runtime = create_runtime(
+            chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader
+        )
 
         msg = runtime.build_system_message()
 
@@ -64,7 +69,9 @@ class TestSkillsInSystemPrompt:
             ),
         ]
         skill_loader = RecordingSkillLoader(skills)
-        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader)
+        runtime = create_runtime(
+            chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader
+        )
 
         msg = runtime.build_system_message()
 
@@ -82,7 +89,9 @@ class TestSkillsInSystemPrompt:
             file_path="/p/SKILL.md",
         )
         skill_loader = RecordingSkillLoader([skill])
-        runtime = create_runtime(chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader)
+        runtime = create_runtime(
+            chat_model, [RecordingAgentTool()], policy, skill_loader=skill_loader
+        )
 
         result = runtime.run(Prompt("test"))
 
