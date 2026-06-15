@@ -18,7 +18,7 @@ Based on analysis of [pi](https://github.com/earendil-works/pi) vs little-harnes
   - `tests/infrastructure/test_truncators.py`
   - `tests/application/test_truncation_in_runtime.py`
 
-### 1.2 Reasoning/Thinking (pending)
+### 1.2 Reasoning/Thinking (done)
 
 - **New files**:
   - `domain/values/thinking.py` — `ThinkingLevel` enum, `ThinkingBudget`, `ThinkingContent`
@@ -27,6 +27,7 @@ Based on analysis of [pi](https://github.com/earendil-works/pi) vs little-harnes
   - `domain/message.py` — `MessageContent` accepts `ThinkingContent` alongside text
 - **Tests**:
   - `tests/domain/test_thinking_values.py`
+- **Implementation note**: TDD. Start with value objects (frozen dataclasses/enums matching existing pattern), then port changes, then message integration. No thinking UI or provider support in this phase — just the domain values and ports.
 
 ### 1.3 Skills System (pending)
 

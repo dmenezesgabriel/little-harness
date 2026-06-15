@@ -15,6 +15,7 @@ from little_harness.domain.values.numeric_values import (
     TopP,
 )
 from little_harness.domain.values.text_values import MessageContent
+from little_harness.domain.values.thinking import ThinkingBudget, ThinkingLevel
 
 
 @dataclass(frozen=True)
@@ -44,10 +45,21 @@ class ChatCompletionRequest:
     response_schema: ResponseSchema | None = None
     top_p: TopP | None = None
     repeat_penalty: RepeatPenalty | None = None
+    thinking_level: ThinkingLevel | None = None
+    thinking_budget: ThinkingBudget | None = None
 
 
 class ChatModel(Closeable, Protocol):
     """A chat-completion model. Owns native resources, so it is `Closeable`."""
+
+    def supports_thinking(self) -> bool:
+        """Return True when the provider supports reasoning/thinking tokens.
+
+        Example:
+            if model.supports_thinking():
+                # include thinking_level in ChatCompletionRequest
+        """
+        return False
 
     def complete_streaming(
         self, request: ChatCompletionRequest

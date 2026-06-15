@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from little_harness.domain.values.guards import require_non_empty_text
+
+if TYPE_CHECKING:
+    from little_harness.domain.values.thinking import ThinkingContent
 
 
 @dataclass(frozen=True)
@@ -63,7 +67,10 @@ class SessionId:
 
 @dataclass(frozen=True)
 class MessageContent:
-    """Free-form text of a chat message (system/user/assistant or observation).
+    """Free-form text of a chat message, with optional reasoning content.
+
+    When the model supports thinking, `thinking` holds the chain-of-thought
+    tokens the model produced internally before the visible answer.
 
     Example:
         content = MessageContent("You are a strict JSON agent.")
@@ -71,6 +78,7 @@ class MessageContent:
     """
 
     value: str
+    thinking: ThinkingContent | None = None  # type: ignore[misc]
 
 
 @dataclass(frozen=True)
