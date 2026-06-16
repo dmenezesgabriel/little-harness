@@ -25,3 +25,42 @@ Feature: Interactive REPL mode drives the full agent stack
       """
     Then the repl output contains "/exit"
     Then the repl output contains "/clear"
+    Then the repl output contains "/skill"
+
+  Scenario: /skill lists loaded skills
+    Given a workspace file ".agents/skills/python/SKILL.md" with text
+      """
+      ---
+      name: python
+      description: Python expertise
+      ---
+
+      # Python
+
+      Content.
+      """
+    When I run the repl with prompts
+      """
+      /skill
+      """
+    Then the repl output contains "python"
+
+  Scenario: /skill reload re-reads skills from disk
+    Given a workspace file ".agents/skills/python/SKILL.md" with text
+      """
+      ---
+      name: python
+      description: Python expertise
+      ---
+
+      # Python
+
+      Content.
+      """
+    When I run the repl with prompts
+      """
+      /skill
+      /skill reload
+      /skill
+      """
+    Then the repl output contains "python"

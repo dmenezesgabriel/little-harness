@@ -45,3 +45,17 @@ Feature: A real provider selects the correct tool from the full set
     Given a workspace file "greet.py" containing "def greet(): return 1"
     When the agent with all tools is asked to rename the Python function "greet" to "salute" in "greet.py"
     Then the workspace file "greet.py" contains "salute"
+
+  Scenario: find chosen when all tools are available
+    Given a workspace file "main.py" containing "def main(): pass"
+    When the agent with all tools is asked to find files matching "*.py" in the workspace
+    Then the answer contains "main.py"
+
+  Scenario: ls chosen when all tools are available
+    Given a workspace file "hello.py" containing "print('hi')"
+    When the agent with all tools is asked to list the workspace directory
+    Then the answer contains "hello.py"
+
+  Scenario: web_fetch chosen when all tools are available
+    When the agent with all tools is asked to fetch the URL "https://example.com"
+    Then the answer contains "Example Domain"

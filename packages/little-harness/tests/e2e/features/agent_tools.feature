@@ -45,3 +45,17 @@ Feature: A real provider drives every installed tool through the agent core
     Given a workspace file "greet.py" containing "def greet(): return 1"
     When the agent is asked to rename the Python function "greet" to "salute" in "greet.py"
     Then the workspace file "greet.py" contains "salute"
+
+  Scenario: find locates a file by glob pattern
+    Given a workspace file "main.py" containing "def main(): pass"
+    When the agent is asked to find files matching "*.py" in the workspace
+    Then the answer contains "main.py"
+
+  Scenario: ls lists directory contents
+    Given a workspace file "hello.py" containing "print('hi')"
+    When the agent is asked to list the workspace directory
+    Then the answer contains "hello.py"
+
+  Scenario: web_fetch retrieves a URL
+    When the agent is asked to fetch the URL "https://example.com"
+    Then the answer contains "Example Domain"

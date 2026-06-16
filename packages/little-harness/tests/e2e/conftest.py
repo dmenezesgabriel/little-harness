@@ -136,7 +136,17 @@ def run_repl() -> RunRepl:
 
 @given(parsers.parse('a workspace file "{name}" containing "{content}"'))
 def workspace_file(workspace: Path, name: str, content: str) -> None:
-    (workspace / name).write_text(content, encoding="utf-8")
+    path = workspace / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+@given(parsers.parse('a workspace file "{name}" with text'))
+def workspace_file_docstring(workspace: Path, name: str, docstring: str) -> None:
+    """Like workspace_file but uses a Gherkin docstring (preserves newlines)."""
+    path = workspace / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(docstring, encoding="utf-8")
 
 
 @when(parsers.parse('the agent is asked to read "{name}"'), target_fixture="answer")
@@ -239,6 +249,45 @@ def ask_ast_edit(run_agent: RunAgent, old: str, new: str, name: str) -> str:
         f"Rename the function {old} to {new} in {name} using AST edit with query "
         '"(function_definition name: (identifier) @match)". Then say done.',
         "ast_edit",
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent is asked to find files matching "{pattern}" in the workspace'
+    ),
+    target_fixture="answer",
+)
+def ask_find(run_agent: RunAgent, pattern: str) -> str:
+    return run_agent(
+        f"Use the find tool with pattern '{pattern}' (no leading slash, "
+        f"relative to current directory) to search for files. "
+        "Show me the matching file names.",
+        "find",
+    )
+
+
+@when(
+    parsers.parse("the agent is asked to list the workspace directory"),
+    target_fixture="answer",
+)
+def ask_list(run_agent: RunAgent) -> str:
+    return run_agent(
+        "Use the ls tool to list the files in the current directory. "
+        "Show me the file names.",
+        "ls",
+    )
+
+
+@when(
+    parsers.parse('the agent is asked to fetch the URL "{url}"'),
+    target_fixture="answer",
+)
+def ask_web_fetch(run_agent: RunAgent, url: str) -> str:
+    return run_agent(
+        f"Use the web_fetch tool to retrieve the content of {url}. "
+        "Show me the content.",
+        "web_fetch",
     )
 
 
@@ -363,6 +412,50 @@ def ask_ast_edit_all(run_agent: RunAgent, old: str, new: str, name: str) -> str:
     return run_agent(
         f"Rename the function {old} to {new} in {name} using AST edit with query "
         '"(function_definition name: (identifier) @match)". Then say done.',
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent with all tools is asked to find files matching "{pattern}" '
+        "in the workspace"
+    ),
+    target_fixture="answer",
+)
+def ask_find_all(run_agent: RunAgent, pattern: str) -> str:
+    return run_agent(
+        f"Use the find tool with pattern '{pattern}' (no leading slash, "
+        f"relative to current directory) to search for files. "
+        "Show me the matching file names.",
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        "the agent with all tools is asked to list the workspace directory"
+    ),
+    target_fixture="answer",
+)
+def ask_list_all(run_agent: RunAgent) -> str:
+    return run_agent(
+        "Use the ls tool to list the files in the current directory. "
+        "Show me the file names.",
+        None,
+    )
+
+
+@when(
+    parsers.parse(
+        'the agent with all tools is asked to fetch the URL "{url}"'
+    ),
+    target_fixture="answer",
+)
+def ask_web_fetch_all(run_agent: RunAgent, url: str) -> str:
+    return run_agent(
+        f"Use the web_fetch tool to retrieve the content of {url}. "
+        "Show me the content.",
         None,
     )
 
