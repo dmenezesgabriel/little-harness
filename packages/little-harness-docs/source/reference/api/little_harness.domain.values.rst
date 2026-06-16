@@ -14,6 +14,7 @@
    number
    numeric_values
    role
+   skill_values
    text_values
    thinking
    truncation

@@ -19,5 +19,6 @@
    permission_requester
    session_plugin
    session_repository
+   skill_loader
    token_sink
    tool_truncator

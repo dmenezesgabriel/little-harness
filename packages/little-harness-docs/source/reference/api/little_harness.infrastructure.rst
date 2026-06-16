@@ -14,4 +14,5 @@ little\_harness.infrastructure
    hooks
    observability
    permissions
+   skills
    truncation

@@ -17,6 +17,7 @@ little\_harness.domain
    message
    message_history
    result
+   skill
    step
    steps
    tool_result
