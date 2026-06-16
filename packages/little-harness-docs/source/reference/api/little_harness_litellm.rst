@@ -1,4 +1,4 @@
-﻿little\_harness\_litellm
+little\_harness\_litellm
 ========================
 
 .. automodule:: little_harness_litellm

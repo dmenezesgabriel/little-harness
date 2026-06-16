@@ -1,4 +1,4 @@
-﻿little\_harness\_ripgrep
+little\_harness\_ripgrep
 ========================
 
 .. automodule:: little_harness_ripgrep

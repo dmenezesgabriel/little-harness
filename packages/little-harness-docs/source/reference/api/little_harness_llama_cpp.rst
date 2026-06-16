@@ -1,4 +1,4 @@
-﻿little\_harness\_llama\_cpp
+little\_harness\_llama\_cpp
 ===========================
 
 .. automodule:: little_harness_llama_cpp

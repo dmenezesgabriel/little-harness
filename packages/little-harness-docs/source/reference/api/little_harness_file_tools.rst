@@ -1,4 +1,4 @@
-﻿little\_harness\_file\_tools
+little\_harness\_file\_tools
 ============================
 
 .. automodule:: little_harness_file_tools

@@ -1,4 +1,4 @@
-﻿little\_harness\_rich
+little\_harness\_rich
 =====================
 
 .. automodule:: little_harness_rich

@@ -1,4 +1,4 @@
-﻿little\_harness\_logging
+little\_harness\_logging
 ========================
 
 .. automodule:: little_harness_logging

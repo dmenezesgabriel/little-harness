@@ -1,4 +1,4 @@
-﻿little\_harness\_json\_policy
+little\_harness\_json\_policy
 =============================
 
 .. automodule:: little_harness_json_policy
