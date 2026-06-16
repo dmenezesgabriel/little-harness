@@ -16,18 +16,31 @@ from little_harness_session_jsonl.infrastructure.jsonl_appender import JsonlFile
 class JsonlSessionObserver:
     """Observes agent lifecycle events and appends them to a JSONL file."""
 
-    def __init__(self, session_id: SessionId, appender: JsonlFileAppender) -> None:
+    def __init__(
+        self,
+        session_id: SessionId,
+        appender: JsonlFileAppender,
+        parent_id: SessionId | None = None,
+    ) -> None:
         self._session_id = session_id
         self._appender = appender
+        self._parent_id = parent_id
+
+    def _with_parent(self, event: dict[str, object]) -> dict[str, object]:
+        if self._parent_id is not None:
+            event["parent_id"] = self._parent_id.value
+        return event
 
     def on_run_started(self, run_id: RunId, prompt: Prompt) -> None:
         self._appender.append(
-            {
-                "session_id": self._session_id.value,
-                "type": "run_started",
-                "run_id": run_id.value,
-                "prompt": prompt.value,
-            }
+            self._with_parent(
+                {
+                    "session_id": self._session_id.value,
+                    "type": "run_started",
+                    "run_id": run_id.value,
+                    "prompt": prompt.value,
+                }
+            )
         )
 
     def on_model_completed(
@@ -38,27 +51,31 @@ class JsonlSessionObserver:
         elapsed: ElapsedSeconds,
     ) -> None:
         self._appender.append(
-            {
-                "session_id": self._session_id.value,
-                "type": "model_completed",
-                "run_id": run_id.value,
-                "iteration": iteration.value,
-                "output": output.value,
-                "elapsed": elapsed.value,
-            }
+            self._with_parent(
+                {
+                    "session_id": self._session_id.value,
+                    "type": "model_completed",
+                    "run_id": run_id.value,
+                    "iteration": iteration.value,
+                    "output": output.value,
+                    "elapsed": elapsed.value,
+                }
+            )
         )
 
     def on_decision_parsed(
         self, run_id: RunId, iteration: Iteration, decision: AgentDecision
     ) -> None:
         self._appender.append(
-            {
-                "session_id": self._session_id.value,
-                "type": "decision_parsed",
-                "run_id": run_id.value,
-                "iteration": iteration.value,
-                "decision": type(decision).__name__,
-            }
+            self._with_parent(
+                {
+                    "session_id": self._session_id.value,
+                    "type": "decision_parsed",
+                    "run_id": run_id.value,
+                    "iteration": iteration.value,
+                    "decision": type(decision).__name__,
+                }
+            )
         )
 
     def on_tool_invoked(
@@ -69,37 +86,43 @@ class JsonlSessionObserver:
         elapsed: ElapsedSeconds,
     ) -> None:
         self._appender.append(
-            {
-                "session_id": self._session_id.value,
-                "type": "tool_invoked",
-                "run_id": run_id.value,
-                "iteration": iteration.value,
-                "tool_name": result.tool_name.value,
-                "output": result.output.value,
-                "succeeded": result.succeeded,
-                "elapsed": elapsed.value,
-            }
+            self._with_parent(
+                {
+                    "session_id": self._session_id.value,
+                    "type": "tool_invoked",
+                    "run_id": run_id.value,
+                    "iteration": iteration.value,
+                    "tool_name": result.tool_name.value,
+                    "output": result.output.value,
+                    "succeeded": result.succeeded,
+                    "elapsed": elapsed.value,
+                }
+            )
         )
 
     def on_repair(self, run_id: RunId, iteration: Iteration, error: Exception) -> None:
         self._appender.append(
-            {
-                "session_id": self._session_id.value,
-                "type": "repair",
-                "run_id": run_id.value,
-                "iteration": iteration.value,
-                "error": type(error).__name__,
-                "message": str(error),
-            }
+            self._with_parent(
+                {
+                    "session_id": self._session_id.value,
+                    "type": "repair",
+                    "run_id": run_id.value,
+                    "iteration": iteration.value,
+                    "error": type(error).__name__,
+                    "message": str(error),
+                }
+            )
         )
 
     def on_run_finished(self, run_id: RunId, result: AgentResult) -> None:
         self._appender.append(
-            {
-                "session_id": self._session_id.value,
-                "type": "run_finished",
-                "run_id": run_id.value,
-                "answer": result.answer.value,
-                "elapsed": result.elapsed.value,
-            }
+            self._with_parent(
+                {
+                    "session_id": self._session_id.value,
+                    "type": "run_finished",
+                    "run_id": run_id.value,
+                    "answer": result.answer.value,
+                    "elapsed": result.elapsed.value,
+                }
+            )
         )

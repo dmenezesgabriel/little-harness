@@ -1,5 +1,7 @@
 """JSONL implementation of SessionPlugin."""
 
+from __future__ import annotations
+
 import os
 import uuid
 from pathlib import Path
@@ -27,6 +29,7 @@ class JsonlSessionPlugin(SessionPlugin):
         storage_dir: Path,
         policy: AgentPolicy,
         session_id: SessionId | None = None,
+        parent_id: SessionId | None = None,
     ) -> None:
         """Initialize the plugin with storage directory, session ID, and policy."""
         self._storage_dir = storage_dir
@@ -34,6 +37,7 @@ class JsonlSessionPlugin(SessionPlugin):
         self._session_id = session_id or SessionId(
             str(uuid.uuid4())  # pragma: no mutate
         )
+        self._parent_id = parent_id
         self._storage_dir.mkdir(parents=True, exist_ok=True)  # pragma: no mutate
 
         file_path = (
@@ -46,13 +50,26 @@ class JsonlSessionPlugin(SessionPlugin):
         """Get the current session ID."""
         return self._session_id
 
+    @property
+    def parent_id(self) -> SessionId | None:
+        """Get the parent session ID, if this session was forked."""
+        return self._parent_id
+
     def observer(self) -> AgentObserver:
         """Create and return a JSONL-backed observer."""
-        return JsonlSessionObserver(self._session_id, self._appender)
+        return JsonlSessionObserver(self._session_id, self._appender, self._parent_id)
 
     def repository(self) -> SessionRepository:
         """Create and return a JSONL-backed repository."""
         return JsonlSessionRepository(self._storage_dir, self._policy)
+
+    def fork(self) -> JsonlSessionPlugin:
+        """Create a new session forked from this one, referencing it as parent."""
+        return JsonlSessionPlugin(
+            storage_dir=self._storage_dir,
+            policy=self._policy,
+            parent_id=self._session_id,
+        )
 
 
 def build_plugin(

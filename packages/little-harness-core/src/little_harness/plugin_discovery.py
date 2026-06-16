@@ -29,6 +29,7 @@ from little_harness.domain.errors import (
     UnknownPermissionRequesterError,
     UnknownPolicyError,
     UnknownProviderError,
+    UnknownSessionPluginError,
     UnknownToolError,
     UnknownUiError,
 )
@@ -44,6 +45,7 @@ POLICY_GROUP = "little_harness.agent_policies"
 OBSERVER_GROUP = "little_harness.observers"
 REPL_COMMAND_GROUP = "little_harness.repl_commands"
 UI_GROUP = "little_harness.uis"
+SESSION_PLUGIN_GROUP = "little_harness.session_plugins"
 PERMISSION_REQUESTER_GROUP = "little_harness.ui_permission_requesters"
 
 # A UI builder takes Application and CommandRegistry, returning a runner.
@@ -95,6 +97,30 @@ def discover_repl_commands() -> Sequence[ReplCommand]:
     """
     points = entry_points(group=REPL_COMMAND_GROUP)
     return [point.load()() for point in points]
+
+
+def discover_session_plugin(name: str | None = None) -> Callable[..., Any]:
+    """Return the session plugin builder registered under `name`.
+
+    Example:
+        builder = discover_session_plugin("jsonl")
+
+    """
+    if name is None:
+        name = default_session_plugin_name()
+    return resolve_builder(
+        SESSION_PLUGIN_GROUP, name, UnknownSessionPluginError, "session plugin"
+    )
+
+
+def default_session_plugin_name() -> str:
+    """Name the session plugin to use when none is selected."""
+    return require_sole_installed(
+        SESSION_PLUGIN_GROUP,
+        UnknownSessionPluginError,
+        "session plugin",
+        "--session",
+    )
 
 
 def discover_ui(name: str) -> UiBuilder:

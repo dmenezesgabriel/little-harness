@@ -28,4 +28,5 @@ class Config:
     approve_all: bool | None = None
     ui: str | None = None
     profile: str | None = None
+    session_id: str | None = None
     plugins: Mapping[str, Mapping[str, str]] = field(default_factory=_no_plugins)
