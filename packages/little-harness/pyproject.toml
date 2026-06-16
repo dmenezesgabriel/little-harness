@@ -24,13 +24,14 @@ file-tools = ["little-harness-file-tools"]
 ripgrep = ["little-harness-ripgrep"]
 find = ["little-harness-find"]
 ls = ["little-harness-ls"]
+web-fetch = ["little-harness-web-fetch"]
 ast = ["little-harness-ast"]
 json-policy = ["little-harness-json-policy"]
 logging = ["little-harness-logging"]
 rich = ["little-harness-rich"]
 session-jsonl = ["little-harness-session-jsonl"]
 all = [
-    "little-harness[llama-cpp,litellm,calculator,file-tools,ripgrep,find,ls,ast,json-policy,logging,rich,session-jsonl]",
+    "little-harness[llama-cpp,litellm,calculator,file-tools,ripgrep,find,ls,web-fetch,ast,json-policy,logging,rich,session-jsonl]",
 ]
 
 [build-system]
@@ -50,6 +51,7 @@ little-harness-file-tools = { workspace = true }
 little-harness-ripgrep = { workspace = true }
 little-harness-find = { workspace = true }
 little-harness-ls = { workspace = true }
+little-harness-web-fetch = { workspace = true }
 little-harness-ast = { workspace = true }
 little-harness-json-policy = { workspace = true }
 little-harness-logging = { workspace = true }

@@ -1,0 +1,64 @@
+[project]
+name = "little-harness-web-fetch"
+version = "0.1.0"
+description = "Web fetch tool for little-harness — HTTP GET via stdlib urllib."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+dependencies = ["little-harness-core"]
+
+[project.urls]
+Homepage = "https://github.com/dmenezesgabriel/little-harness"
+Repository = "https://github.com/dmenezesgabriel/little-harness"
+Issues = "https://github.com/dmenezesgabriel/little-harness/issues"
+
+[project.entry-points."little_harness.tools"]
+web_fetch = "little_harness_web_fetch.provider:build"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/little_harness_web_fetch"]
+
+[tool.pyright]
+include = ["src/little_harness_web_fetch", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportPrivateUsage = false
+venvPath = "../.."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["src"]
+addopts = "--strict-config --strict-markers --tb=short -q -ra --cov=little_harness_web_fetch --cov-report=term-missing"
+
+[tool.coverage.report]
+exclude_also = ["if __name__ == .__main__.:"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "SIM"]
+ignore = []
+
+[tool.deptry]
+known_first_party = ["little_harness_web_fetch"]
+
+[tool.vulture]
+paths = ["src/little_harness_web_fetch", "tests"]
+min_confidence = 80
+
+[tool.importlinter]
+root_package = "little_harness_web_fetch"
+
+[[tool.importlinter.contracts]]
+name = "Core stays free of outer layers"
+type = "forbidden"
+source_modules = ["little_harness_web_fetch"]
+forbidden_modules = ["little_harness.infrastructure", "little_harness.presentation"]
