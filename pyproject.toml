@@ -6,6 +6,7 @@ members = [
     "packages/little-harness-litellm",
     "packages/little-harness-file-tools",
     "packages/little-harness-ripgrep",
+    "packages/little-harness-find",
     "packages/little-harness-ast",
     "packages/little-harness-json-policy",
     "packages/little-harness-logging",
