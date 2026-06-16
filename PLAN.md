@@ -84,10 +84,35 @@ Based on analysis of [pi](https://github.com/earendil-works/pi) vs little-harnes
 - `packages/little-harness-web-fetch/src/little_harness_web_fetch/`
 - URL opener injectable for testing (`FakeUrlOpener`)
 
-## Phase 3: Session Plugin Fix (pending)
+## Phase 3: Session Plugin Fix (done)
 
-- Wire `session-jsonl` into composition root
-- Add tree/branching with JSONL id/parentId
+### 3.1 CLI and Config
+- **`presentation/cli/argument_parser.py`** — Added `-s` / `--session` CLI arg (dest=`session_id`)
+- **`presentation/cli/app_config.py`** — Added `session_id: SessionId | None = None`
+- **`config_types.py`** — Added `session_id: str | None = None`
+- **Tests**: `tests/presentation/test_argument_parser.py` — session arg parsing tests
+
+### 3.2 Plugin Discovery
+- **`plugin_discovery.py`** — Added `SESSION_PLUGIN_GROUP`, `discover_session_plugin()`, `default_session_plugin_name()`
+- Uses `require_sole_installed` pattern matching existing observer/provider discovery
+
+### 3.3 Composition Wiring
+- **`composition.py`** — Added `_build_session_plugin()` and `_load_session_history()`
+- `run_cli()`: always builds session plugin in interactive mode, uses its observer, loads saved history on resume
+- One-shot mode (`--prompt`): builds plugin only if `--session` provided; uses `run_turn()` with loaded history
+- Falls back to configured/null observer when no session plugin installed
+- **Tests**: `tests/test_composition.py` — 7 tests for wiring, observer threading, history loading
+
+### 3.4 Interactive Console
+- **`interactive_console.py`** — Accepts `_initial_messages` to pre-populate conversation on resume
+
+### 3.5 Session Protocol
+- **`application/ports/session_plugin.py`** — Added `session_id` property and `fork()` method to protocol
+
+### 3.6 Tree/Branching (session-jsonl)
+- **`plugin.py`** — `JsonlSessionPlugin.fork()` creates child session with `parent_id`
+- **`jsonl_observer.py`** — `_with_parent()` helper adds `parent_id` to every event when set
+- **Tests**: 14 existing + structural conformance to updated protocol
 
 ## Phase 4: Hook System Enhancement (pending)
 
