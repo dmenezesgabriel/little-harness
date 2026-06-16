@@ -8,6 +8,12 @@ little\_harness\_rich.state
 
    .. autosummary::
    
-      get_active_status
-      set_active_status
+      get_active_app
+      set_active_app
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      ActiveAppState
    

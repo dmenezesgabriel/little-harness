@@ -10,7 +10,9 @@
    :toctree:
    :recursive:
 
+   app
    console
    permission
    provider
    state
+   theme

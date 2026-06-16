@@ -1,4 +1,4 @@
-little\_harness.application.ports.skill\_loader
+﻿little\_harness.application.ports.skill\_loader
 ===============================================
 
 .. automodule:: little_harness.application.ports.skill_loader
@@ -11,4 +11,4 @@ little\_harness.application.ports.skill\_loader
       SkillDiagnostic
       SkillDiagnosticCode
       SkillLoader
-
+   

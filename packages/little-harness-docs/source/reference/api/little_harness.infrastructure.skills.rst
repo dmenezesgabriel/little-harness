@@ -1,4 +1,4 @@
-little\_harness.infrastructure.skills
+﻿little\_harness.infrastructure.skills
 =====================================
 
 .. automodule:: little_harness.infrastructure.skills
@@ -11,4 +11,3 @@ little\_harness.infrastructure.skills
    :recursive:
 
    file_system_skill_loader
-

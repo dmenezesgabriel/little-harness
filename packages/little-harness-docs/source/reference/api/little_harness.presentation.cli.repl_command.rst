@@ -1,4 +1,4 @@
-little\_harness.presentation.cli.repl\_command
+﻿little\_harness.presentation.cli.repl\_command
 ==============================================
 
 .. automodule:: little_harness.presentation.cli.repl_command
@@ -22,6 +22,7 @@ little\_harness.presentation.cli.repl\_command
       HistoryCommand
       ReplCommand
       ReplConsole
+      SkillCommand
    
    .. rubric:: Exceptions
 

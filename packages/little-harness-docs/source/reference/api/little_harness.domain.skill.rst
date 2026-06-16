@@ -1,4 +1,4 @@
-little\_harness.domain.skill
+﻿little\_harness.domain.skill
 ============================
 
 .. automodule:: little_harness.domain.skill
@@ -9,4 +9,4 @@ little\_harness.domain.skill
    .. autosummary::
    
       Skill
-
+   
