@@ -87,6 +87,8 @@ Type prompts directly and see responses. Slash commands are available:
 | `/clear`      | Clear conversation history               |
 | `/help`       | Show available commands                  |
 | `/history`    | Show conversation history                |
+| `/skill`      | List loaded skills                       |
+| `/skill reload` | Re-read skills from disk               |
 
 ### UI Plugins
 
