@@ -20,7 +20,7 @@ from little_harness.domain.values.numeric_values import (
     Temperature,
     TopP,
 )
-from little_harness.domain.values.text_values import Prompt
+from little_harness.domain.values.text_values import Prompt, SessionId
 from little_harness.presentation.cli.app_config import AppConfig
 
 OPTION_SEPARATOR = "="
@@ -54,6 +54,7 @@ _CONFIG_FIELD_MAP: dict[str, str] = {
     "tools": "tools",
     "approve_all": "approve_all",
     "ui": "ui",
+    "session_id": "session_id",
 }
 
 # CLI dests that have special handling not covered by the generic loop.
@@ -159,6 +160,12 @@ def add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
         "--ui",
         help="Interactive UI plugin to use (e.g. 'rich', 'default'). Default: default.",
     )
+    parser.add_argument(
+        "-s",
+        "--session",
+        dest="session_id",
+        help="Session ID to resume (a previously saved session identifier).",
+    )
 
 
 def add_provider_arguments(parser: argparse.ArgumentParser) -> None:
@@ -226,6 +233,9 @@ def to_app_config(
         approve_all=merged.get("approve_all", False),
         ui=merged.get("ui", "default"),
         profile=merged.get("profile"),
+        session_id=SessionId(merged["session_id"])
+        if merged.get("session_id") is not None
+        else None,
         plugin_configs=config.plugins if config is not None else {},
         skill_paths=merged.get("skill_paths", (".agents/skills",)),
     )

@@ -17,7 +17,7 @@ from little_harness.domain.values.numeric_values import (
     Temperature,
     TopP,
 )
-from little_harness.domain.values.text_values import Prompt
+from little_harness.domain.values.text_values import Prompt, SessionId
 
 
 def _no_options() -> dict[str, str]:
@@ -64,5 +64,7 @@ class AppConfig:
     plugin_configs: Mapping[str, Mapping[str, str]] = field(
         default_factory=_empty_plugin_configs
     )
+    # Session ID for resuming a previous session.
+    session_id: SessionId | None = None
     # Directories containing SKILL.md skill files, relative to the project root.
     skill_paths: tuple[str, ...] = (".agents/skills",)

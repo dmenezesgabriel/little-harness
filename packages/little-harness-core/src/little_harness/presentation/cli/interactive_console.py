@@ -66,12 +66,13 @@ class InteractiveConsole:
         source: TextIO | None = None,
         registry: CommandRegistry | None = None,
         skill_loader: SkillLoader | None = None,
+        _initial_messages: MessageHistory | None = None,
     ) -> None:
         """See class docstring for argument descriptions."""
         self._app = application
         self._output = output if output is not None else sys.stdout
         self._source = source if source is not None else sys.stdin
-        self._messages: MessageHistory | None = None
+        self._messages: MessageHistory | None = _initial_messages
         self._turn_count = 0
         self._registry: CommandRegistry = (
             registry if registry is not None else build_default_registry()
@@ -124,9 +125,7 @@ class InteractiveConsole:
 
         lines = ["Available skills:"]
         for skill in skills:
-            lines.append(
-                f"  {skill.name.value:<24} {skill.description.value}"
-            )
+            lines.append(f"  {skill.name.value:<24} {skill.description.value}")
         return "\n".join(lines) + "\n"
 
     def reload_skills(self) -> str:

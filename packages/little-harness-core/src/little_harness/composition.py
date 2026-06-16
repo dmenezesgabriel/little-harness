@@ -16,10 +16,14 @@ from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.closeable import Closeable
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.ports.permission_requester import PermissionRequester
+from little_harness.application.ports.session_plugin import SessionPlugin
 from little_harness.application.ports.skill_loader import SkillLoader
 from little_harness.application.ports.token_sink import TokenSink
 from little_harness.application.tool_registry import ToolRegistry
-from little_harness.domain.errors import UnknownPermissionRequesterError
+from little_harness.domain.errors import (
+    UnknownPermissionRequesterError,
+    UnknownSessionPluginError,
+)
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
@@ -42,6 +46,7 @@ from little_harness.plugin_discovery import (
     discover_permission_requester,
     discover_policy,
     discover_repl_commands,
+    discover_session_plugin,
     discover_tools,
     discover_ui,
     load_chat_model_builder,
@@ -246,15 +251,18 @@ def run_cli(argv: Sequence[str] | None = None) -> str:
 
     skill_loader = FileSystemSkillLoader(app_config.skill_paths)
 
-    with build_application(app_config, build_observer(app_config), skill_loader) as app:
+    session_plugin = _build_session_plugin(app_config)
+    observer = (
+        session_plugin.observer() if session_plugin else build_observer(app_config)
+    )
+
+    with build_application(app_config, observer, skill_loader) as app:
         if app_config.prompt is None:
-            registry = build_command_registry()
-            if app_config.ui == "default":
-                return InteractiveConsole(
-                    app, registry=registry, skill_loader=skill_loader
-                ).start()
-            ui_builder = discover_ui(app_config.ui)
-            return ui_builder(app, registry).start()
+            return _run_interactive(app, app_config, session_plugin, skill_loader)
+
+        if session_plugin and app_config.session_id is not None:
+            return _run_session_turn(app, app_config, session_plugin)
+
         return app.run(app_config.prompt)
 
 
@@ -271,3 +279,66 @@ def _extract_profile(argv: Sequence[str]) -> str | None:
     pre.add_argument("--profile", default=None)
     known, _remaining = pre.parse_known_args(argv)
     return known.profile
+
+
+def _run_interactive(
+    app: Application,
+    app_config: AppConfig,
+    session_plugin: SessionPlugin | None,
+    skill_loader: FileSystemSkillLoader,
+) -> str:
+    """Run interactive console, optionally with resumed session history."""
+    registry = build_command_registry()
+    initial_messages = _load_session_history(session_plugin, app, app_config)
+
+    if app_config.ui == "default":
+        return InteractiveConsole(
+            app,
+            registry=registry,
+            skill_loader=skill_loader,
+            _initial_messages=initial_messages,
+        ).start()
+    ui_builder = discover_ui(app_config.ui)
+    return ui_builder(app, registry).start()
+
+
+def _run_session_turn(
+    app: Application,
+    app_config: AppConfig,
+    session_plugin: SessionPlugin,
+) -> str:
+    """Run a single turn with session history loaded."""
+    history = _load_session_history(session_plugin, app, app_config)
+    result, _ = app.run_turn(app_config.prompt, history)
+    return ResultRenderer().render(result)
+
+
+def _build_session_plugin(app_config: AppConfig) -> SessionPlugin | None:
+    """Discover and build a session plugin, or return None if none installed."""
+    if app_config.prompt is None or app_config.session_id is not None:
+        try:
+            builder = discover_session_plugin()
+        except UnknownSessionPluginError:
+            return None
+
+        policy = build_policy(app_config)
+        return builder(policy, app_config.session_id)
+
+    return None
+
+
+def _load_session_history(
+    session_plugin: SessionPlugin | None,
+    app: Application,
+    app_config: AppConfig,
+) -> MessageHistory | None:
+    """Load session history when resuming, or return None for a fresh session."""
+    if session_plugin is None or app_config.session_id is None:
+        return None
+
+    loaded = session_plugin.repository().load(app_config.session_id)
+    system_msg = app.build_system_message()
+    history = MessageHistory().with_message(system_msg)
+    for msg in loaded:
+        history = history.with_message(msg)
+    return history

@@ -218,7 +218,13 @@ class SkillCommand:
 
 def builtin_commands() -> list[ReplCommand]:
     """Return the default set of built-in slash commands."""
-    return [ClearCommand(), ExitCommand(), HelpCommand(), HistoryCommand(), SkillCommand()]
+    return [
+        ClearCommand(),
+        ExitCommand(),
+        HelpCommand(),
+        HistoryCommand(),
+        SkillCommand(),
+    ]
 
 
 def build_default_registry() -> CommandRegistry:
