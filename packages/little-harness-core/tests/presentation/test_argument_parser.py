@@ -8,7 +8,7 @@ from little_harness.domain.values.numeric_values import (
     Temperature,
     TopP,
 )
-from little_harness.domain.values.text_values import Prompt
+from little_harness.domain.values.text_values import Prompt, SessionId
 from little_harness.presentation.cli.app_config import AppConfig
 from little_harness.presentation.cli.argument_parser import (
     ArgumentParser,
@@ -131,6 +131,13 @@ EXPECTED_ARGUMENTS: list[tuple[str, list[str], str, object, type | None]] = [
         "ui",
         ["--ui"],
         "Interactive UI plugin to use (e.g. 'rich', 'default'). Default: default.",
+        None,
+        None,
+    ),
+    (
+        "session_id",
+        ["-s", "--session"],
+        "Session ID to resume (a previously saved session identifier).",
         None,
         None,
     ),
@@ -316,3 +323,19 @@ class TestArgumentParser:
     def test_enables_approve_all_with_the_yes_flag(self) -> None:
         # Act / Assert
         assert ArgumentParser().parse(["--yes"]).approve_all is True
+
+    def test_reads_session_id(self) -> None:
+        # Act / Assert
+        assert ArgumentParser().parse(["--session", "abc123"]).session_id == SessionId(
+            "abc123"
+        )
+
+    def test_session_id_defaults_to_none(self) -> None:
+        # Act / Assert
+        assert ArgumentParser().parse([]).session_id is None
+
+    def test_session_id_short_form(self) -> None:
+        # Act / Assert
+        assert ArgumentParser().parse(["-s", "abc123"]).session_id == SessionId(
+            "abc123"
+        )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import ClassVar
 
 import pytest
 from little_harness.application.agent_runtime import AgentRuntimeConfig
@@ -10,8 +11,10 @@ from little_harness.application.ports.agent_tool import AgentTool
 from little_harness.application.ports.chat_model import ChatModel
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.application.ports.permission_requester import PermissionRequester
+from little_harness.application.ports.session_plugin import SessionPlugin
 from little_harness.application.tool_registry import ToolRegistry
 from little_harness.composition import (
+    _build_session_plugin,
     build_application,
     build_chat_model,
     build_command_registry,
@@ -32,10 +35,14 @@ from little_harness.domain.errors import (
     UnknownProviderError,
 )
 from little_harness.domain.hook_decision import Proceed
+from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
+from little_harness.domain.result import AgentResult
+from little_harness.domain.steps import AgentSteps
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
 from little_harness.domain.values.numeric_values import (
+    ElapsedSeconds,
     Iteration,
     MaxIterations,
     MaxTokens,
@@ -43,11 +50,12 @@ from little_harness.domain.values.numeric_values import (
     Temperature,
     TopP,
 )
-from little_harness.domain.values.role import SYSTEM
+from little_harness.domain.values.role import SYSTEM, USER
 from little_harness.domain.values.text_values import (
     MessageContent,
     Prompt,
     RunId,
+    SessionId,
     ToolInput,
     ToolName,
     ToolOutput,
@@ -62,6 +70,7 @@ from little_harness.plugin_discovery import (
     POLICY_GROUP,
     PROVIDER_GROUP,
     REPL_COMMAND_GROUP,
+    SESSION_PLUGIN_GROUP,
 )
 from little_harness.presentation.cli.app_config import AppConfig
 from little_harness.presentation.cli.argument_parser import ArgumentParser
@@ -75,6 +84,7 @@ from tests.plugin_fakes import (
     FakeChatModel,
     FakeEntryPoint,
     FakeObserver,
+    FakeSessionPlugin,
     install_entry_points,
     make_observer_builder,
     make_policy_builder,
@@ -349,6 +359,9 @@ class TestRunCliInteractive:
             fake_build_app,
         )
         monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin", lambda _: None
+        )
 
         result = run_cli([])
 
@@ -360,7 +373,9 @@ class TestRunCliInteractive:
     ) -> None:
         built: list[object] = []
 
-        def fake_build(_config: AppConfig, _observer: AgentObserver, _skill_loader: object = None) -> FakeApplication:
+        def fake_build(
+            _config: AppConfig, _observer: AgentObserver, _skill_loader: object = None
+        ) -> FakeApplication:
             built.append(_config)
             return FakeApplication()
 
@@ -376,6 +391,9 @@ class TestRunCliInteractive:
         )
         monkeypatch.setattr("little_harness.composition.build_application", fake_build)
         monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin", lambda _: None
+        )
 
         run_cli([])
 
@@ -393,7 +411,9 @@ class TestRunCliInteractive:
         def fake_start_console(_self: object) -> str:
             return ""
 
-        def fake_build_app(_config: object, _observer: object, _skill_loader: object = None) -> FakeApplication:
+        def fake_build_app(
+            _config: object, _observer: object, _skill_loader: object = None
+        ) -> FakeApplication:
             return FakeApplication()
 
         monkeypatch.setattr(
@@ -405,6 +425,9 @@ class TestRunCliInteractive:
             fake_build_app,
         )
         monkeypatch.setattr("little_harness.composition.build_observer", fake_build)
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin", lambda _: None
+        )
 
         run_cli([])
 
@@ -424,6 +447,7 @@ class TestRunCliInteractive:
                 source: object = None,
                 registry: object = None,
                 skill_loader: object = None,
+                _initial_messages: object = None,
             ) -> None:
                 SpyingInteractiveConsole.received_app = app
                 SpyingInteractiveConsole.received_registry = registry
@@ -431,7 +455,9 @@ class TestRunCliInteractive:
             def start(self) -> str:
                 return ""
 
-        def fake_build_app(_config: object, _observer: object, _skill_loader: object = None) -> FakeApplication:
+        def fake_build_app(
+            _config: object, _observer: object, _skill_loader: object = None
+        ) -> FakeApplication:
             return built_app
 
         def fake_build_obs(_config: object) -> None:
@@ -446,6 +472,9 @@ class TestRunCliInteractive:
         monkeypatch.setattr(
             "little_harness.composition.InteractiveConsole",
             SpyingInteractiveConsole,
+        )
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin", lambda _: None
         )
 
         run_cli([])
@@ -465,7 +494,9 @@ class TestRunCliInteractive:
             def start(self) -> str:
                 return "custom_started"
 
-        def fake_build_app(_config: object, _observer: object, _skill_loader: object = None) -> FakeApplication:
+        def fake_build_app(
+            _config: object, _observer: object, _skill_loader: object = None
+        ) -> FakeApplication:
             return built_app
 
         def fake_build_obs(_config: object) -> None:
@@ -483,6 +514,9 @@ class TestRunCliInteractive:
         monkeypatch.setattr(
             "little_harness.composition.discover_ui",
             fake_discover_ui,
+        )
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin", lambda _: None
         )
 
         result = run_cli(["--ui", "custom"])
@@ -839,3 +873,267 @@ class TestCommandRegistryComposition:
         registry = build_command_registry()
         assert registry.get("/plugged") is not None
         assert registry.get("/exit") is not None
+
+
+class _PrePopulatedRepo:
+    @staticmethod
+    def load(_sid: SessionId) -> MessageHistory:
+        return MessageHistory().with_message(
+            ChatMessage(USER, MessageContent("previous message"))
+        )
+
+
+class _PrePopulatedPlugin:
+    @property
+    def session_id(self) -> SessionId:
+        return SessionId("test-session")
+
+    @staticmethod
+    def observer() -> AgentObserver:
+        return RecordingObserver()
+
+    @staticmethod
+    def repository() -> _PrePopulatedRepo:
+        return _PrePopulatedRepo()
+
+    def fork(self) -> SessionPlugin:
+        return self
+
+
+class _SpyingConsole:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        _SpyingConsole.received_initial.append(kwargs.get("_initial_messages"))
+
+    @staticmethod
+    def start() -> str:
+        return ""
+
+
+class _RecordingApp:
+    calls: ClassVar[list[str]] = []
+
+    def __enter__(self) -> _RecordingApp:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        pass
+
+    @staticmethod
+    def build_system_message() -> object:
+        return ChatMessage(SYSTEM, MessageContent("system"))
+
+    @staticmethod
+    def run_turn(
+        prompt: Prompt, messages: MessageHistory
+    ) -> tuple[object, MessageHistory]:
+        _RecordingApp.calls.append("run_turn")
+        return (
+            AgentResult(MessageContent("resumed"), ElapsedSeconds(0.0), AgentSteps()),
+            messages,
+        )
+
+    @staticmethod
+    def run(_prompt: Prompt) -> str:
+        _RecordingApp.calls.append("run")
+        return "normal"
+
+
+class TestSessionPluginWiring:
+    """Session plugin discovery and wiring through the composition root."""
+
+    def test_build_session_plugin_returns_none_when_no_plugin_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: no session plugin entry points.
+        install_entry_points(monkeypatch, {})
+        config = ArgumentParser().parse(["--prompt", "hi"])
+
+        plugin = _build_session_plugin(config)
+
+        assert plugin is None
+
+    def test_build_session_plugin_creates_plugin_in_interactive_mode(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: install a fake session plugin builder.
+        install_entry_points(
+            monkeypatch,
+            {
+                POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())],
+                SESSION_PLUGIN_GROUP: [
+                    FakeEntryPoint(
+                        "jsonl",
+                        lambda policy, session_id=None: FakeSessionPlugin(
+                            session_id=session_id
+                        ),
+                    )
+                ],
+            },
+        )
+        config = ArgumentParser().parse([])  # Interactive mode (no prompt)
+
+        plugin = _build_session_plugin(config)
+
+        assert isinstance(plugin, FakeSessionPlugin)
+
+    def test_build_session_plugin_creates_plugin_when_session_id_given(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arrange: install a fake session plugin builder.
+        install_entry_points(
+            monkeypatch,
+            {
+                POLICY_GROUP: [FakeEntryPoint("json", make_policy_builder())],
+                SESSION_PLUGIN_GROUP: [
+                    FakeEntryPoint(
+                        "jsonl",
+                        lambda policy, session_id=None: FakeSessionPlugin(
+                            session_id=session_id
+                        ),
+                    )
+                ],
+            },
+        )
+        config = ArgumentParser().parse(["--prompt", "hi", "--session", "my-session"])
+
+        plugin = _build_session_plugin(config)
+
+        assert isinstance(plugin, FakeSessionPlugin)
+        assert plugin.session_id == SessionId("my-session")
+
+    def test_run_cli_creates_session_plugin_in_interactive_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        created_models: list[FakeChatModel],
+    ) -> None:
+        # Arrange: capture whether _build_session_plugin is called.
+        called: list[bool] = []
+
+        def fake_build_session_plugin(_config: AppConfig) -> SessionPlugin | None:
+            called.append(True)
+            return None
+
+        def fake_start_console(_self: object) -> str:
+            return ""
+
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin",
+            fake_build_session_plugin,
+        )
+        monkeypatch.setattr(
+            "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
+            fake_start_console,
+        )
+
+        run_cli([])
+
+        assert called == [True]
+
+    def test_run_cli_returns_none_from_session_plugin_in_one_shot_without_session(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        created_models: list[FakeChatModel],
+    ) -> None:
+        # Arrange: spy on _build_session_plugin.
+        returned: list[SessionPlugin | None] = []
+
+        def fake_build_session_plugin(_config: AppConfig) -> SessionPlugin | None:
+            result = None
+            returned.append(result)
+            return result
+
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin",
+            fake_build_session_plugin,
+        )
+
+        run_cli(["--prompt", "hi"])
+
+        assert returned == [None]
+
+    def test_run_cli_wires_session_observer_when_plugin_built(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        created_models: list[FakeChatModel],
+    ) -> None:
+        # Arrange: a recognizable observer from the session plugin.
+        sentinel = RecordingObserver()
+        session_plugin = FakeSessionPlugin(observer=sentinel)
+        received: list[AgentObserver] = []
+
+        def fake_build_session_plugin(_config: AppConfig) -> SessionPlugin:
+            return session_plugin
+
+        def fake_build_application(
+            _config: AppConfig,
+            observer: AgentObserver,
+            _skill_loader: object = None,
+        ) -> FakeApplication:
+            received.append(observer)
+            return FakeApplication()
+
+        def fake_start_console(_self: object) -> str:
+            return ""
+
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin",
+            fake_build_session_plugin,
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_application", fake_build_application
+        )
+        monkeypatch.setattr(
+            "little_harness.presentation.cli.interactive_console.InteractiveConsole.start",
+            fake_start_console,
+        )
+
+        run_cli([])
+
+        assert received == [sentinel]
+
+    def test_run_cli_passes_initial_messages_when_resuming(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        created_models: list[FakeChatModel],
+    ) -> None:
+        _SpyingConsole.received_initial = []
+
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin",
+            lambda _config: _PrePopulatedPlugin(),
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.InteractiveConsole", _SpyingConsole
+        )
+
+        run_cli(["--session", "test-session"])
+
+        assert len(_SpyingConsole.received_initial) == 1
+        assert _SpyingConsole.received_initial[0] is not None
+
+    def test_run_cli_one_shot_with_session_uses_run_turn(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        created_models: list[FakeChatModel],
+    ) -> None:
+        _RecordingApp.calls = []
+
+        def fake_build_app(
+            _config: object, _observer: object, _skill_loader: object = None
+        ) -> _RecordingApp:
+            return _RecordingApp()
+
+        monkeypatch.setattr(
+            "little_harness.composition._build_session_plugin",
+            lambda _config: FakeSessionPlugin(session_id=SessionId("test-session")),
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_application", fake_build_app
+        )
+        monkeypatch.setattr(
+            "little_harness.composition.build_observer", lambda _config: None
+        )
+
+        run_cli(["--prompt", "hi", "--session", "test-session"])
+
+        assert _RecordingApp.calls == ["run_turn"]

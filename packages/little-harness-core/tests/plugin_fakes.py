@@ -16,12 +16,15 @@ from little_harness.application.ports.chat_model import (
     ChatModel,
     ResponseSchema,
 )
+from little_harness.application.ports.session_plugin import SessionPlugin
+from little_harness.application.ports.session_repository import SessionRepository
 from little_harness.domain.decision import AgentDecision, FinalAnswer
 from little_harness.domain.message import ChatMessage
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.tool_result import ToolRunResult
 from little_harness.domain.tool_spec import ToolSpec
 from little_harness.domain.values.role import USER
-from little_harness.domain.values.text_values import MessageContent, Prompt
+from little_harness.domain.values.text_values import MessageContent, Prompt, SessionId
 from little_harness.plugin_discovery import ChatModelBuilder
 
 EntryPointRegistry = dict[str, list["FakeEntryPoint"]]
@@ -134,3 +137,36 @@ def make_observer_builder() -> Callable[[], AgentObserver]:
         return FakeObserver()
 
     return build
+
+
+class FakeSessionRepository:
+    """SessionRepository that returns an empty MessageHistory for any session."""
+
+    def load(self, session_id: SessionId) -> MessageHistory:
+        return MessageHistory()
+
+
+class FakeSessionPlugin:
+    """SessionPlugin double that returns scripted observer and repository."""
+
+    def __init__(
+        self,
+        observer: AgentObserver | None = None,
+        session_id: SessionId | None = None,
+    ) -> None:
+        self._observer = observer or FakeObserver()
+        self._repo = FakeSessionRepository()
+        self._session_id = session_id or SessionId("test-session")
+
+    @property
+    def session_id(self) -> SessionId:
+        return self._session_id
+
+    def observer(self) -> AgentObserver:
+        return self._observer
+
+    def repository(self) -> SessionRepository:
+        return self._repo
+
+    def fork(self) -> SessionPlugin:
+        return FakeSessionPlugin(observer=self._observer)
