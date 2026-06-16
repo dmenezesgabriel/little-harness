@@ -62,21 +62,27 @@ Based on analysis of [pi](https://github.com/earendil-works/pi) vs little-harnes
 
 ## Phase 2: Tool Plugins (new packages)
 
-### 2.1 `little-harness-find` (pending)
+### 2.1 `little-harness-find` (done)
 
 - Pure Python glob search (no external deps)
-- Optional `fd` subprocess fallback
 - `name: "find"`, parameters: `pattern`, `path`, `limit`
+- 15 tests, 98% coverage
+- `packages/little-harness-find/src/little_harness_find/`
 
-### 2.2 `little-harness-ls` (pending)
+### 2.2 `little-harness-ls` (done)
 
 - Pure Python: `os.listdir` + `os.stat`
 - `name: "ls"`, parameters: `path`, `limit`
+- 17 tests, 96% coverage
+- `packages/little-harness-ls/src/little_harness_ls/`
 
-### 2.3 `little-harness-web-fetch` (optional)
+### 2.3 `little-harness-web-fetch` (done)
 
 - Stdlib `urllib.request` for GET
-- Optional `web_search` tool
+- `name: "web_fetch"`, parameters: `url`, `timeout`, `format`
+- 17 tests, 100% coverage
+- `packages/little-harness-web-fetch/src/little_harness_web_fetch/`
+- URL opener injectable for testing (`FakeUrlOpener`)
 
 ## Phase 3: Session Plugin Fix (pending)
 
