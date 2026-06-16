@@ -28,6 +28,7 @@ Exit codes: `0` on success, `1` on error.
 | `--tools` | `str` | all installed | Comma-separated tool names to enable |
 | `--ui` | `str` | `"default"` | Interactive UI plugin to use (e.g. `rich`, `default`) |
 | `--yes` | flag | `False` | Auto-approve every sensitive tool without prompting |
+| `-s, --session` | `str` | `None` | Resume or fork a past session by ID |
 
 ### Provider-specific options (`-o`)
 
@@ -143,4 +144,11 @@ little-harness --provider litellm --model gemini/gemini-2.5-flash \
 little-harness --provider litellm --model gemini/gemini-2.5-flash \
   --tools all --yes \
   -p "List the current directory contents."
+```
+
+### Resume a session
+
+```bash
+little-harness --provider llama_cpp --model models/LFM2.5-8B-A1B-Q4_K_M.gguf \
+  --session abc12345-...
 ```

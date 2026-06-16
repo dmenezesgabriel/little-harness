@@ -14,12 +14,25 @@ from little_harness.application.ports.session_repository import SessionRepositor
 class SessionPlugin(Protocol):
     """Provides observation and persistence for interactive sessions."""
 
+    @property
+    def session_id(self) -> SessionId:
+        """The unique identifier for this session."""
+        ...
+
     def observer(self) -> AgentObserver:
         """Returns an observer that records session events."""
         ...
 
     def repository(self) -> SessionRepository:
         """Returns a repository that loads past session history."""
+        ...
+
+    def fork(self) -> SessionPlugin:
+        """Create a child session that branches from this one.
+
+        The child records a ``parent_id`` referencing this session so that
+        the relationship is preserved in the event log.
+        """
         ...
 ```
 
@@ -81,3 +94,32 @@ jsonl = "little_harness_session_jsonl.plugin:build_plugin"
 ```
 
 The `SessionPlugin` port and the `SessionRepository` port are defined in core, so plugins use them at build time via `little_harness.application.ports.session_plugin` and `little_harness.application.ports.session_repository`.
+
+## Branching (Tree / Fork)
+
+A session can be *forked* — creating a child session that inherits the
+parent's storage directory but uses a fresh session ID. Every event
+recorded in the child includes a `parent_id` field linking back to the
+origin, enabling session-tree traversal.
+
+```python
+class JsonlSessionPlugin:
+    ...
+
+    def fork(self) -> SessionPlugin:
+        child_id = SessionId(str(uuid.uuid4()))
+        child = JsonlSessionPlugin(
+            self._storage_dir,
+            self._policy,
+            session_id=child_id,
+        )
+        child._observer = self._observer._with_parent(self._session_id)
+        return child
+```
+
+The `--session` / `-s` CLI flag accepts a session ID. When given:
+
+- In **one-shot mode** (`--prompt`): loads that session's history and runs a
+  single turn, appending the result to the resumed session.
+- In **interactive mode** (no `--prompt`): starts the REPL with that
+  session's history pre-loaded.
