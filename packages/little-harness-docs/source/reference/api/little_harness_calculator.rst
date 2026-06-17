@@ -13,5 +13,6 @@ little\_harness\_calculator
    ast_node_evaluator
    calculator_tool
    expression_evaluator
+   number
    operators
    provider

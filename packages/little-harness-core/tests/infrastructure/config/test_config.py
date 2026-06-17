@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from little_harness.config_types import Config
+from little_harness.infrastructure.config.config_types import Config
 
 
 class TestConfig:

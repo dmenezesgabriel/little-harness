@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from little_harness.config_types import Config
+from little_harness.infrastructure.config.config_types import Config
 from little_harness.infrastructure.config.config_loader import ConfigLoader
 
 

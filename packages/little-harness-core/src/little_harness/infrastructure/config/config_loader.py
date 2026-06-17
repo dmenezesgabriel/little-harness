@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from little_harness.config_types import Config
+from little_harness.infrastructure.config.config_types import Config
 
 GLOBAL_DIR_NAME = ".little-harness"
 CONFIG_FILENAME = "config.toml"
@@ -17,7 +17,6 @@ PROFILES_TOP_KEY = "profiles"
 
 FIELD_ALIASES: dict[str, str] = {
     "yes": "approve_all",
-    "model": "model",
 }
 
 
