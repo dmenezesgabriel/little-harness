@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Callable
 
-from little_harness.domain.values.number import Number
+from little_harness_calculator.number import Number
 
 BinaryOperation = Callable[[Number, Number], Number]
 UnaryOperation = Callable[[Number], Number]
