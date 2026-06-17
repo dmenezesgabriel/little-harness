@@ -58,9 +58,7 @@ class ApprovalHook:
         """Proceed with turn end without approval check."""
         return Proceed()
 
-    def on_model_request(
-        self, _run_id: RunId, _iteration: Iteration
-    ) -> HookDecision:
+    def on_model_request(self, _run_id: RunId, _iteration: Iteration) -> HookDecision:
         """Proceed with model request without approval check."""
         return Proceed()
 

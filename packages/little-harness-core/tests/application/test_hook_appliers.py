@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from little_harness.application.agent_runtime import SessionDecisionApplier
-from little_harness.application.decision_handler import (
+from little_harness.application.decision_appliers import (
     MessageInjectingApplier,
     PreToolDecisionApplier,
+    SessionDecisionApplier,
     StopDecisionApplier,
 )
 from little_harness.application.loop_state import AgentLoopState

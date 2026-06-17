@@ -76,9 +76,7 @@ class HookChain:
 
         return self._fold(run_hook)
 
-    def on_model_request(
-        self, run_id: RunId, iteration: Iteration
-    ) -> HookDecision:
+    def on_model_request(self, run_id: RunId, iteration: Iteration) -> HookDecision:
         """Fold `on_model_request` across all hooks."""
 
         def run_hook(hook: LifecycleHook) -> HookDecision:

@@ -518,8 +518,8 @@ class TestAgentRuntimeToolHooks:
             Iteration(2),  # stop(2)
         ]
         assert hook.outputs == [
-            MessageContent("tool"),   # model_response(1)
-            MessageContent("tool"),   # turn_end(1)
+            MessageContent("tool"),  # model_response(1)
+            MessageContent("tool"),  # turn_end(1)
             MessageContent("final"),  # model_response(2)
             MessageContent("final"),  # turn_end(2)
         ]

@@ -316,9 +316,7 @@ class ScriptedHook:
         self.outputs.append(output)
         return self._turn_end
 
-    def on_model_request(
-        self, run_id: RunId, iteration: Iteration
-    ) -> HookDecision:
+    def on_model_request(self, run_id: RunId, iteration: Iteration) -> HookDecision:
         self.calls.append("model_request")
         self.run_ids.append(run_id)
         self.iterations.append(iteration)

@@ -59,9 +59,7 @@ class LifecycleHook(Protocol):
         """
         ...
 
-    def on_model_request(
-        self, run_id: RunId, iteration: Iteration, /
-    ) -> HookDecision:
+    def on_model_request(self, run_id: RunId, iteration: Iteration, /) -> HookDecision:
         """Decide right before the model API call.
 
         Block skips the API call and uses the reason as fake model output.

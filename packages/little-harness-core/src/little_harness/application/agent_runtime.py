@@ -8,18 +8,19 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from little_harness.application.agent_dependencies import AgentDependencies
-from little_harness.application.decision_handler import (
-    ContextBuildApplier,
-    IterationContext,
-    LoopDecisionVisitor,
+from little_harness.application.decision_appliers import (
     ModelRequestApplier,
     OutputReplacingApplier,
+    SessionDecisionApplier,
+)
+from little_harness.application.decision_handler import (
+    IterationContext,
+    LoopDecisionVisitor,
 )
 from little_harness.application.loop_state import AgentLoopState
 from little_harness.application.ports.chat_model import ChatCompletionRequest
 from little_harness.domain.decision import AgentDecision
 from little_harness.domain.errors import AgentProtocolError
-from little_harness.domain.hook_decision import Block, InjectContext, Proceed
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
@@ -35,7 +36,7 @@ from little_harness.domain.values.numeric_values import (
     Temperature,
     TopP,
 )
-from little_harness.domain.values.role import ASSISTANT, SYSTEM, USER, Role
+from little_harness.domain.values.role import ASSISTANT, SYSTEM, USER
 from little_harness.domain.values.text_values import MessageContent, Prompt, RunId
 
 FALLBACK_ANSWER = MessageContent(
@@ -53,32 +54,6 @@ class AgentRuntimeConfig:
     max_tokens: MaxTokens
     top_p: TopP | None = None
     repeat_penalty: RepeatPenalty | None = None
-
-
-class SessionDecisionApplier:
-    """Applies a session hook's decision: inject a message, or report a block.
-
-    Implements `HookDecisionVisitor[MessageContent | None]`; the returned reason
-    is the answer the run aborts with, or None to continue.
-    """
-
-    def __init__(self, state: AgentLoopState, role: Role) -> None:
-        """See class docstring for argument descriptions."""
-        self._state = state
-        self._role = role
-
-    def visit_proceed(self, _decision: Proceed) -> MessageContent | None:
-        """Continue without injecting or blocking."""
-        return None
-
-    def visit_inject_context(self, decision: InjectContext) -> MessageContent | None:
-        """Inject the context message under the configured role."""
-        self._state.append_message(ChatMessage(self._role, decision.content))
-        return None
-
-    def visit_block(self, decision: Block) -> MessageContent | None:
-        """Abort the run with the block reason."""
-        return decision.reason
 
 
 class AgentRuntime:
@@ -202,7 +177,7 @@ class AgentRuntime:
         ctx_build = self._dependencies.hooks.on_context_build(
             run_id, iteration, state.messages
         )
-        fake_from_ctx = ctx_build.accept(ContextBuildApplier(state))
+        fake_from_ctx = ctx_build.accept(ModelRequestApplier(state))
 
         output = fake_output or fake_from_ctx
         if output is None:
@@ -210,15 +185,11 @@ class AgentRuntime:
             model_resp = self._dependencies.hooks.on_model_response(
                 run_id, iteration, output
             )
-            output = model_resp.accept(
-                OutputReplacingApplier(state, output)
-            )
+            output = model_resp.accept(OutputReplacingApplier(state, output))
 
         state.append_message(ChatMessage(ASSISTANT, output))
 
-        turn_end = self._dependencies.hooks.on_turn_end(
-            run_id, iteration, output
-        )
+        turn_end = self._dependencies.hooks.on_turn_end(run_id, iteration, output)
         output = turn_end.accept(OutputReplacingApplier(state, output))
 
         decision = self._parse_or_repair(run_id, state, prompt, output, iteration)
