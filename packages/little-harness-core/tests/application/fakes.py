@@ -255,6 +255,10 @@ class ScriptedHook:
         *,
         session_start: HookDecision | None = None,
         user_prompt_submit: HookDecision | None = None,
+        turn_start: HookDecision | None = None,
+        turn_end: HookDecision | None = None,
+        model_request: HookDecision | None = None,
+        model_response: HookDecision | None = None,
         pre_tool_use: HookDecision | None = None,
         post_tool_use: HookDecision | None = None,
         stop: HookDecision | None = None,
@@ -263,12 +267,17 @@ class ScriptedHook:
         self.run_ids: list[RunId] = []
         self.prompts: list[Prompt] = []
         self.iterations: list[Iteration] = []
+        self.outputs: list[MessageContent] = []
         self.tool_calls: list[ToolCall] = []
         self.tool_results: list[ToolRunResult] = []
         self.answers: list[MessageContent] = []
         self.ended_with: list[AgentResult] = []
         self._session_start = session_start or Proceed()
         self._user_prompt_submit = user_prompt_submit or Proceed()
+        self._turn_start = turn_start or Proceed()
+        self._turn_end = turn_end or Proceed()
+        self._model_request = model_request or Proceed()
+        self._model_response = model_response or Proceed()
         self._pre_tool_use = pre_tool_use or Proceed()
         self._post_tool_use = post_tool_use or Proceed()
         self._stop = stop or Proceed()
@@ -284,6 +293,41 @@ class ScriptedHook:
         self.run_ids.append(run_id)
         self.prompts.append(prompt)
         return self._user_prompt_submit
+
+    def on_turn_start(
+        self, run_id: RunId, iteration: Iteration, prompt: Prompt
+    ) -> HookDecision:
+        self.calls.append("turn_start")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        self.prompts.append(prompt)
+        return self._turn_start
+
+    def on_turn_end(
+        self, run_id: RunId, iteration: Iteration, output: MessageContent
+    ) -> HookDecision:
+        self.calls.append("turn_end")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        self.outputs.append(output)
+        return self._turn_end
+
+    def on_model_request(
+        self, run_id: RunId, iteration: Iteration
+    ) -> HookDecision:
+        self.calls.append("model_request")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        return self._model_request
+
+    def on_model_response(
+        self, run_id: RunId, iteration: Iteration, output: MessageContent
+    ) -> HookDecision:
+        self.calls.append("model_response")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        self.outputs.append(output)
+        return self._model_response
 
     def on_pre_tool_use(
         self, run_id: RunId, iteration: Iteration, call: ToolCall

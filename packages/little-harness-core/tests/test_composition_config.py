@@ -133,7 +133,10 @@ class TestRunCliConfigIntegration:
         captured: list[AppConfig] = []
 
         def fake_build_app(
-            cfg: AppConfig, _obs: object, _skill_loader: object = None
+            cfg: AppConfig,
+            _obs: object,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> object:
             captured.append(cfg)
 
@@ -170,7 +173,10 @@ class TestRunCliConfigIntegration:
         captured: list[AppConfig] = []
 
         def fake_build_app(
-            cfg: AppConfig, _obs: object, _skill_loader: object = None
+            cfg: AppConfig,
+            _obs: object,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> object:
             captured.append(cfg)
 

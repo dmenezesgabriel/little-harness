@@ -38,6 +38,30 @@ class NullHook:
         """Proceed with the user prompt submission."""
         return Proceed()
 
+    def on_turn_start(
+        self, _run_id: RunId, _iteration: Iteration, _prompt: Prompt, /
+    ) -> HookDecision:
+        """Proceed with the turn."""
+        return Proceed()
+
+    def on_turn_end(
+        self, _run_id: RunId, _iteration: Iteration, _output: MessageContent, /
+    ) -> HookDecision:
+        """Proceed with the turn end."""
+        return Proceed()
+
+    def on_model_request(
+        self, _run_id: RunId, _iteration: Iteration, /
+    ) -> HookDecision:
+        """Proceed with the model request."""
+        return Proceed()
+
+    def on_model_response(
+        self, _run_id: RunId, _iteration: Iteration, _output: MessageContent, /
+    ) -> HookDecision:
+        """Proceed with the model response."""
+        return Proceed()
+
     def on_pre_tool_use(
         self, _run_id: RunId, _iteration: Iteration, _call: ToolCall, /
     ) -> HookDecision:

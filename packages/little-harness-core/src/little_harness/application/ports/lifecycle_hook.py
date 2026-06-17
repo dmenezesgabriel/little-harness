@@ -40,6 +40,42 @@ class LifecycleHook(Protocol):
         """Decide as the prompt is incorporated. Block aborts with the reason."""
         ...
 
+    def on_turn_start(
+        self, run_id: RunId, iteration: Iteration, prompt: Prompt, /
+    ) -> HookDecision:
+        """Decide at the start of each iteration, before the model call.
+
+        Block aborts this iteration with the reason as the answer.
+        """
+        ...
+
+    def on_turn_end(
+        self, run_id: RunId, iteration: Iteration, output: MessageContent, /
+    ) -> HookDecision:
+        """Decide after the model output, before parsing.
+
+        Block replaces the model output with the reason.
+        """
+        ...
+
+    def on_model_request(
+        self, run_id: RunId, iteration: Iteration, /
+    ) -> HookDecision:
+        """Decide right before the model API call.
+
+        Block skips the API call and uses the reason as fake model output.
+        """
+        ...
+
+    def on_model_response(
+        self, run_id: RunId, iteration: Iteration, output: MessageContent, /
+    ) -> HookDecision:
+        """Decide right after the model API call returns.
+
+        Block replaces the model response with the reason.
+        """
+        ...
+
     def on_pre_tool_use(
         self, run_id: RunId, iteration: Iteration, call: ToolCall, /
     ) -> HookDecision:

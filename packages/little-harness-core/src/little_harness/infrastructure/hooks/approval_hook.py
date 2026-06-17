@@ -45,6 +45,30 @@ class ApprovalHook:
         """Proceed with the user prompt without approval check."""
         return Proceed()
 
+    def on_turn_start(
+        self, _run_id: RunId, _iteration: Iteration, _prompt: Prompt
+    ) -> HookDecision:
+        """Proceed with turn start without approval check."""
+        return Proceed()
+
+    def on_turn_end(
+        self, _run_id: RunId, _iteration: Iteration, _output: MessageContent
+    ) -> HookDecision:
+        """Proceed with turn end without approval check."""
+        return Proceed()
+
+    def on_model_request(
+        self, _run_id: RunId, _iteration: Iteration
+    ) -> HookDecision:
+        """Proceed with model request without approval check."""
+        return Proceed()
+
+    def on_model_response(
+        self, _run_id: RunId, _iteration: Iteration, _output: MessageContent
+    ) -> HookDecision:
+        """Proceed with model response without approval check."""
+        return Proceed()
+
     def on_pre_tool_use(
         self, _run_id: RunId, _iteration: Iteration, call: ToolCall
     ) -> HookDecision:

@@ -367,10 +367,14 @@ class TestAgentRuntimeSessionHooks:
         # Act
         runtime.run(Prompt("question"))
 
-        # Assert: the final answer routes through the stop hook before the end.
+        # Assert: the final answer routes through the iteration hooks before the end.
         assert hook.calls == [
             "session_start",
             "user_prompt_submit",
+            "turn_start",
+            "model_request",
+            "model_response",
+            "turn_end",
             "stop",
             "session_end",
         ]
@@ -475,14 +479,45 @@ class TestAgentRuntimeToolHooks:
         assert hook.calls == [
             "session_start",
             "user_prompt_submit",
+            "turn_start",
+            "model_request",
+            "model_response",
+            "turn_end",
             "pre_tool_use",
             "post_tool_use",
+            "turn_start",
+            "model_request",
+            "model_response",
+            "turn_end",
             "stop",
             "session_end",
         ]
         assert len(set(hook.run_ids)) == 1
-        assert hook.prompts == [Prompt("question"), Prompt("question")]
-        assert hook.iterations == [Iteration(1), Iteration(1), Iteration(2)]
+        assert hook.prompts == [
+            Prompt("question"),
+            Prompt("question"),
+            Prompt("question"),  # turn_start(1)
+            Prompt("question"),  # turn_start(2)
+        ]
+        assert hook.iterations == [
+            Iteration(1),  # turn_start(1)
+            Iteration(1),  # model_request(1)
+            Iteration(1),  # model_response(1)
+            Iteration(1),  # turn_end(1)
+            Iteration(1),  # pre_tool_use(1)
+            Iteration(1),  # post_tool_use(1)
+            Iteration(2),  # turn_start(2)
+            Iteration(2),  # model_request(2)
+            Iteration(2),  # model_response(2)
+            Iteration(2),  # turn_end(2)
+            Iteration(2),  # stop(2)
+        ]
+        assert hook.outputs == [
+            MessageContent("tool"),   # model_response(1)
+            MessageContent("tool"),   # turn_end(1)
+            MessageContent("final"),  # model_response(2)
+            MessageContent("final"),  # turn_end(2)
+        ]
         assert hook.tool_calls == [
             tool_decision("calculator", "2 + 2"),
             tool_decision("calculator", "2 + 2"),
@@ -517,6 +552,116 @@ class TestAgentRuntimeToolHooks:
         # The fallback finish threads one real run id through to session end.
         assert all(isinstance(rid, RunId) and rid.value for rid in hook.run_ids)
         assert len(set(hook.run_ids)) == 1
+
+
+class TestAgentRuntimeTurnModelHooks:
+    def test_turn_start_block_aborts_iteration_with_reason(self) -> None:
+        chat_model = RecordingChatModel(["unused"])
+        policy = DecisionQueuePolicy([final_decision("unused")])
+        hook = ScriptedHook(turn_start=Block(MessageContent("aborted")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        result = runtime.run(Prompt("question"))
+
+        assert result.answer == MessageContent("aborted")
+        assert chat_model.requests == []
+        assert hook.calls == [
+            "session_start",
+            "user_prompt_submit",
+            "turn_start",
+            "session_end",
+        ]
+
+    def test_turn_start_injects_system_context_before_model_call(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(turn_start=InjectContext(MessageContent("ctx")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        runtime.run(Prompt("question"))
+
+        assert ChatMessage(SYSTEM, MessageContent("ctx")) in list(
+            chat_model.requests[0].messages
+        )
+
+    def test_model_request_block_skips_api_call_and_uses_reason(self) -> None:
+        chat_model = RecordingChatModel(["unused"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(model_request=Block(MessageContent("canned")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        result = runtime.run(Prompt("question"))
+
+        assert result.answer == MessageContent("done")
+        assert chat_model.requests == []
+
+    def test_model_request_inject_adds_context_and_still_calls_model(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(model_request=InjectContext(MessageContent("hint")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        runtime.run(Prompt("question"))
+
+        assert len(chat_model.requests) == 1
+        assert ChatMessage(USER, MessageContent("hint")) in list(
+            chat_model.requests[0].messages
+        )
+
+    def test_model_response_block_replaces_output_with_reason(self) -> None:
+        chat_model = RecordingChatModel(["original"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(model_response=Block(MessageContent("replaced")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        result = runtime.run(Prompt("question"))
+
+        assert result.answer == MessageContent("done")
+        # The policy parsed "replaced" (not "original") — the output was replaced
+        # before it reached the message history or parser.
+        assert len(chat_model.requests) == 1
+
+    def test_model_response_inject_adds_feedback_for_next_turn(self) -> None:
+        # Inject after model call: message reaches the second turn's request.
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("ok")]
+        )
+        tool = RecordingAgentTool()
+        hook = ScriptedHook(model_response=InjectContext(MessageContent("audited")))
+        runtime = create_runtime(chat_model, [tool], policy, hooks=hook)
+
+        runtime.run(Prompt("question"))
+
+        assert ChatMessage(USER, MessageContent("audited")) in list(
+            chat_model.requests[1].messages
+        )
+
+    def test_turn_end_block_replaces_output_before_parsing(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("replaced")])
+        hook = ScriptedHook(turn_end=Block(MessageContent("adjusted")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        result = runtime.run(Prompt("question"))
+
+        assert result.answer == MessageContent("replaced")
+
+    def test_turn_end_inject_adds_context_for_next_turn(self) -> None:
+        # Inject at turn end: message reaches the second turn's request.
+        chat_model = RecordingChatModel(["tool", "final"])
+        policy = DecisionQueuePolicy(
+            [tool_decision("calculator", "2 + 2"), final_decision("ok")]
+        )
+        tool = RecordingAgentTool()
+        hook = ScriptedHook(turn_end=InjectContext(MessageContent("reviewed")))
+        runtime = create_runtime(chat_model, [tool], policy, hooks=hook)
+
+        runtime.run(Prompt("question"))
+
+        assert ChatMessage(USER, MessageContent("reviewed")) in list(
+            chat_model.requests[1].messages
+        )
 
 
 class TestAgentRuntimeObservability:

@@ -200,6 +200,61 @@ class MessageInjectingApplier:
         self._state.append_message(ChatMessage(USER, decision.reason))
 
 
+class ModelRequestApplier:
+    """Applies a model-request hook decision; Block skips the API call.
+
+    Implements `HookDecisionVisitor[MessageContent | None]`: None means call
+    the model, a `MessageContent` means use it as fake model output.
+    """
+
+    def __init__(self, state: AgentLoopState) -> None:
+        """See class docstring for argument descriptions."""
+        self._state = state
+
+    def visit_proceed(self, _decision: Proceed) -> MessageContent | None:
+        """Call the model normally."""
+        return None
+
+    def visit_inject_context(
+        self, decision: InjectContext
+    ) -> MessageContent | None:
+        """Inject context and call the model."""
+        self._state.append_message(ChatMessage(USER, decision.content))
+        return None
+
+    def visit_block(self, decision: Block) -> MessageContent | None:
+        """Skip the model call and use the reason as output."""
+        return decision.reason
+
+
+class OutputReplacingApplier:
+    """Applies a hook decision where Block replaces the output.
+
+    Used by on_turn_end and on_model_response. Returns the original output
+    unchanged for Proceed/InjectContext, or the block reason as replacement.
+
+    Implements `HookDecisionVisitor[MessageContent]`.
+    """
+
+    def __init__(self, state: AgentLoopState, original: MessageContent) -> None:
+        """See class docstring for argument descriptions."""
+        self._state = state
+        self._original = original
+
+    def visit_proceed(self, _decision: Proceed) -> MessageContent:
+        """Return the original output unchanged."""
+        return self._original
+
+    def visit_inject_context(self, decision: InjectContext) -> MessageContent:
+        """Inject the context and return the original output."""
+        self._state.append_message(ChatMessage(USER, decision.content))
+        return self._original
+
+    def visit_block(self, decision: Block) -> MessageContent:
+        """Replace the output with the block reason."""
+        return decision.reason
+
+
 class StopDecisionApplier:
     """Applies a stop hook decision; a block keeps looping by returning None.
 

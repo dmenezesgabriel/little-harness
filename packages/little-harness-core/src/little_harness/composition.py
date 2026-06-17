@@ -111,9 +111,12 @@ def build_application(
     config: AppConfig,
     observer: AgentObserver | None = None,
     skill_loader: SkillLoader | None = None,
+    extra_hooks: Sequence[LifecycleHook] | None = None,
 ) -> Application:
     """Build and return an `Application` from config."""
-    dependencies = build_dependencies(config, observer or NullObserver(), skill_loader)
+    dependencies = build_dependencies(
+        config, observer or NullObserver(), skill_loader, extra_hooks
+    )
     runtime = AgentRuntime(dependencies, to_runtime_config(config))
     return Application(runtime, ResultRenderer(), dependencies.chat_model)
 
@@ -131,6 +134,7 @@ def build_dependencies(
     config: AppConfig,
     observer: AgentObserver,
     skill_loader: SkillLoader | None = None,
+    extra_hooks: Sequence[LifecycleHook] | None = None,
 ) -> AgentDependencies:
     """Build all agent dependencies from config and observer."""
     registry = ToolRegistry(discover_tools(config.tool_selection))
@@ -140,28 +144,42 @@ def build_dependencies(
         policy=build_policy(config),
         observer=observer,
         token_sink=build_token_sink(config),
-        hooks=build_hooks(registry, config),
+        hooks=build_hooks(registry, config, extra_hooks),
         truncator=HeadTruncator(),
         truncation_config=TruncationConfig(),
         skill_loader=skill_loader or FileSystemSkillLoader(config.skill_paths),
     )
 
 
-def build_hooks(registry: ToolRegistry, config: AppConfig) -> LifecycleHook:
+def build_hooks(
+    registry: ToolRegistry,
+    config: AppConfig,
+    extra_hooks: Sequence[LifecycleHook] | None = None,
+) -> LifecycleHook:
     """Build the lifecycle hook chain from config."""
     # The seam: every lifecycle hook is composed here. An empty chain folds to
     # `Proceed` (like the null hook), so adding a second hook needs no rewiring.
-    return HookChain(build_hook_list(registry, config))
+    return HookChain(build_hook_list(registry, config, extra_hooks))
 
 
-def build_hook_list(registry: ToolRegistry, config: AppConfig) -> list[LifecycleHook]:
+def build_hook_list(
+    registry: ToolRegistry,
+    config: AppConfig,
+    extra_hooks: Sequence[LifecycleHook] | None = None,
+) -> list[LifecycleHook]:
     """Build the list of lifecycle hooks from config."""
+    hooks: list[LifecycleHook] = []
+
     names_requiring_approval = approval_required_names(registry)
+    if names_requiring_approval:
+        hooks.append(
+            ApprovalHook(build_permission_requester(config), names_requiring_approval)
+        )
 
-    if not names_requiring_approval:
-        return []
+    if extra_hooks:
+        hooks.extend(extra_hooks)
 
-    return [ApprovalHook(build_permission_requester(config), names_requiring_approval)]
+    return hooks
 
 
 def approval_required_names(registry: ToolRegistry) -> frozenset[str]:
@@ -234,7 +252,10 @@ def to_runtime_config(config: AppConfig) -> AgentRuntimeConfig:
     )
 
 
-def run_cli(argv: Sequence[str] | None = None) -> str:
+def run_cli(
+    argv: Sequence[str] | None = None,
+    extra_hooks: Sequence[LifecycleHook] | None = None,
+) -> str:
     """Parse CLI args, load TOML config, resolve profile, and run the application."""
     argv_seq = list(argv) if argv is not None else []
 
@@ -256,7 +277,7 @@ def run_cli(argv: Sequence[str] | None = None) -> str:
         session_plugin.observer() if session_plugin else build_observer(app_config)
     )
 
-    with build_application(app_config, observer, skill_loader) as app:
+    with build_application(app_config, observer, skill_loader, extra_hooks) as app:
         if app_config.prompt is None:
             return _run_interactive(app, app_config, session_plugin, skill_loader)
 

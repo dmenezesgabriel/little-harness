@@ -250,7 +250,9 @@ class TestCompositionThreadsConfigThroughTheStack:
         # Arrange
         received: list[AppConfig] = []
 
-        def fake_build_hooks(_registry: ToolRegistry, config: AppConfig) -> HookChain:
+        def fake_build_hooks(
+            _registry: ToolRegistry, config: AppConfig, _extra: object = None
+        ) -> HookChain:
             received.append(config)
             return HookChain([])
 
@@ -270,7 +272,7 @@ class TestCompositionThreadsConfigThroughTheStack:
         received: list[AppConfig] = []
 
         def fake_build_hook_list(
-            _registry: ToolRegistry, config: AppConfig
+            _registry: ToolRegistry, config: AppConfig, _extra: object = None
         ) -> list[LifecycleHook]:
             received.append(config)
             return []
@@ -312,7 +314,10 @@ class TestCompositionThreadsConfigThroughTheStack:
             return sentinel
 
         def fake_build_application(
-            _config: AppConfig, observer: AgentObserver, _skill_loader: object = None
+            _config: AppConfig,
+            observer: AgentObserver,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> FakeApplication:
             received.append(observer)
             return FakeApplication()
@@ -343,7 +348,10 @@ class TestRunCliInteractive:
             return ""
 
         def fake_build_app(
-            _config: object, _observer: object, _skill_loader: object = None
+            _config: object,
+            _observer: object,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> FakeApplication:
             return FakeApplication()
 
@@ -374,7 +382,10 @@ class TestRunCliInteractive:
         built: list[object] = []
 
         def fake_build(
-            _config: AppConfig, _observer: AgentObserver, _skill_loader: object = None
+            _config: AppConfig,
+            _observer: AgentObserver,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> FakeApplication:
             built.append(_config)
             return FakeApplication()
@@ -412,7 +423,10 @@ class TestRunCliInteractive:
             return ""
 
         def fake_build_app(
-            _config: object, _observer: object, _skill_loader: object = None
+            _config: object,
+            _observer: object,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> FakeApplication:
             return FakeApplication()
 
@@ -456,7 +470,10 @@ class TestRunCliInteractive:
                 return ""
 
         def fake_build_app(
-            _config: object, _observer: object, _skill_loader: object = None
+            _config: object,
+            _observer: object,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> FakeApplication:
             return built_app
 
@@ -495,7 +512,10 @@ class TestRunCliInteractive:
                 return "custom_started"
 
         def fake_build_app(
-            _config: object, _observer: object, _skill_loader: object = None
+            _config: object,
+            _observer: object,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> FakeApplication:
             return built_app
 
@@ -1068,6 +1088,7 @@ class TestSessionPluginWiring:
             _config: AppConfig,
             observer: AgentObserver,
             _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> FakeApplication:
             received.append(observer)
             return FakeApplication()
@@ -1119,7 +1140,10 @@ class TestSessionPluginWiring:
         _RecordingApp.calls = []
 
         def fake_build_app(
-            _config: object, _observer: object, _skill_loader: object = None
+            _config: object,
+            _observer: object,
+            _skill_loader: object = None,
+            _extra_hooks: object = None,
         ) -> _RecordingApp:
             return _RecordingApp()
 

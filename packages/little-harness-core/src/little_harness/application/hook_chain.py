@@ -55,6 +55,46 @@ class HookChain:
 
         return self._fold(run_hook)
 
+    def on_turn_start(
+        self, run_id: RunId, iteration: Iteration, prompt: Prompt
+    ) -> HookDecision:
+        """Fold `on_turn_start` across all hooks."""
+
+        def run_hook(hook: LifecycleHook) -> HookDecision:
+            return hook.on_turn_start(run_id, iteration, prompt)
+
+        return self._fold(run_hook)
+
+    def on_turn_end(
+        self, run_id: RunId, iteration: Iteration, output: MessageContent
+    ) -> HookDecision:
+        """Fold `on_turn_end` across all hooks."""
+
+        def run_hook(hook: LifecycleHook) -> HookDecision:
+            return hook.on_turn_end(run_id, iteration, output)
+
+        return self._fold(run_hook)
+
+    def on_model_request(
+        self, run_id: RunId, iteration: Iteration
+    ) -> HookDecision:
+        """Fold `on_model_request` across all hooks."""
+
+        def run_hook(hook: LifecycleHook) -> HookDecision:
+            return hook.on_model_request(run_id, iteration)
+
+        return self._fold(run_hook)
+
+    def on_model_response(
+        self, run_id: RunId, iteration: Iteration, output: MessageContent
+    ) -> HookDecision:
+        """Fold `on_model_response` across all hooks."""
+
+        def run_hook(hook: LifecycleHook) -> HookDecision:
+            return hook.on_model_response(run_id, iteration, output)
+
+        return self._fold(run_hook)
+
     def on_pre_tool_use(
         self, run_id: RunId, iteration: Iteration, call: ToolCall
     ) -> HookDecision:

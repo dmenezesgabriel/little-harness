@@ -11,6 +11,8 @@ from little_harness.application.agent_dependencies import AgentDependencies
 from little_harness.application.decision_handler import (
     IterationContext,
     LoopDecisionVisitor,
+    ModelRequestApplier,
+    OutputReplacingApplier,
 )
 from little_harness.application.loop_state import AgentLoopState
 from little_harness.application.ports.chat_model import ChatCompletionRequest
@@ -187,8 +189,31 @@ class AgentRuntime:
         prompt: Prompt,
         iteration: Iteration,
     ) -> MessageContent | None:
-        output = self._complete_timed(run_id, iteration, state.messages)
+        start = self._dependencies.hooks.on_turn_start(run_id, iteration, prompt)
+        blocked = start.accept(SessionDecisionApplier(state, SYSTEM))
+
+        if blocked is not None:
+            return blocked
+
+        model_req = self._dependencies.hooks.on_model_request(run_id, iteration)
+        fake_output = model_req.accept(ModelRequestApplier(state))
+
+        output = fake_output
+        if output is None:
+            output = self._complete_timed(run_id, iteration, state.messages)
+            model_resp = self._dependencies.hooks.on_model_response(
+                run_id, iteration, output
+            )
+            output = model_resp.accept(
+                OutputReplacingApplier(state, output)
+            )
+
         state.append_message(ChatMessage(ASSISTANT, output))
+
+        turn_end = self._dependencies.hooks.on_turn_end(
+            run_id, iteration, output
+        )
+        output = turn_end.accept(OutputReplacingApplier(state, output))
 
         decision = self._parse_or_repair(run_id, state, prompt, output, iteration)
 

@@ -78,6 +78,10 @@ class TestHookChainFold:
         hook = ScriptedHook(
             session_start=InjectContext(MessageContent("s")),
             user_prompt_submit=InjectContext(MessageContent("u")),
+            turn_start=InjectContext(MessageContent("ts")),
+            turn_end=InjectContext(MessageContent("te")),
+            model_request=InjectContext(MessageContent("mr")),
+            model_response=InjectContext(MessageContent("mrs")),
             pre_tool_use=InjectContext(MessageContent("pre")),
             post_tool_use=InjectContext(MessageContent("post")),
             stop=InjectContext(MessageContent("stop")),
@@ -90,6 +94,18 @@ class TestHookChainFold:
         assert chain.on_user_prompt_submit(RUN_ID, PROMPT) == InjectContext(
             MessageContent("u")
         )
+        assert chain.on_turn_start(RUN_ID, ITERATION, PROMPT) == InjectContext(
+            MessageContent("ts")
+        )
+        assert chain.on_turn_end(RUN_ID, ITERATION, ANSWER) == InjectContext(
+            MessageContent("te")
+        )
+        assert chain.on_model_request(RUN_ID, ITERATION) == InjectContext(
+            MessageContent("mr")
+        )
+        assert chain.on_model_response(RUN_ID, ITERATION, ANSWER) == InjectContext(
+            MessageContent("mrs")
+        )
         assert chain.on_pre_tool_use(RUN_ID, ITERATION, CALL) == InjectContext(
             MessageContent("pre")
         )
@@ -101,12 +117,13 @@ class TestHookChainFold:
         )
         chain.on_session_end(RUN_ID, RUN_RESULT)
 
-        assert hook.run_ids == [RUN_ID] * 6
-        assert hook.prompts == [PROMPT, PROMPT]
-        assert hook.iterations == [ITERATION, ITERATION, ITERATION]
+        assert hook.run_ids == [RUN_ID] * 10
+        assert hook.prompts == [PROMPT, PROMPT, PROMPT]
+        assert hook.iterations == [ITERATION] * 7
         assert hook.tool_calls == [CALL, CALL]
         assert hook.tool_results == [TOOL_RESULT]
         assert hook.answers == [ANSWER]
+        assert hook.outputs == [ANSWER, ANSWER]
         assert hook.ended_with == [RUN_RESULT]
 
     def test_session_end_fans_out_to_every_hook(self) -> None:

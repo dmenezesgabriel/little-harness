@@ -38,6 +38,10 @@ class TestNullHook:
 
         assert hook.on_session_start(RUN_ID, PROMPT) == Proceed()
         assert hook.on_user_prompt_submit(RUN_ID, PROMPT) == Proceed()
+        assert hook.on_turn_start(RUN_ID, ITERATION, PROMPT) == Proceed()
+        assert hook.on_turn_end(RUN_ID, ITERATION, ANSWER) == Proceed()
+        assert hook.on_model_request(RUN_ID, ITERATION) == Proceed()
+        assert hook.on_model_response(RUN_ID, ITERATION, ANSWER) == Proceed()
         assert hook.on_pre_tool_use(RUN_ID, ITERATION, CALL) == Proceed()
         assert hook.on_post_tool_use(RUN_ID, ITERATION, CALL, RESULT) == Proceed()
         assert hook.on_stop(RUN_ID, ITERATION, ANSWER) == Proceed()
