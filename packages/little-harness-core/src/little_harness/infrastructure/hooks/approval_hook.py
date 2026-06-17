@@ -14,6 +14,7 @@ from __future__ import annotations
 from little_harness.application.ports.permission_requester import PermissionRequester
 from little_harness.domain.decision import ToolCall
 from little_harness.domain.hook_decision import Block, HookDecision, Proceed
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.tool_result import ToolRunResult
 from little_harness.domain.values.numeric_values import Iteration
@@ -67,6 +68,12 @@ class ApprovalHook:
         self, _run_id: RunId, _iteration: Iteration, _output: MessageContent
     ) -> HookDecision:
         """Proceed with model response without approval check."""
+        return Proceed()
+
+    def on_context_build(
+        self, _run_id: RunId, _iteration: Iteration, _messages: MessageHistory
+    ) -> HookDecision:
+        """Proceed with context build without approval check."""
         return Proceed()
 
     def on_pre_tool_use(

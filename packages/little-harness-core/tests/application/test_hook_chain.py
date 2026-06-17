@@ -5,6 +5,7 @@ from __future__ import annotations
 from little_harness.application.hook_chain import HookChain
 from little_harness.domain.decision import ToolCall
 from little_harness.domain.hook_decision import Block, InjectContext, Proceed
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.steps import AgentSteps
 from little_harness.domain.tool_result import ToolRunResult
@@ -82,6 +83,7 @@ class TestHookChainFold:
             turn_end=InjectContext(MessageContent("te")),
             model_request=InjectContext(MessageContent("mr")),
             model_response=InjectContext(MessageContent("mrs")),
+            context_build=InjectContext(MessageContent("cb")),
             pre_tool_use=InjectContext(MessageContent("pre")),
             post_tool_use=InjectContext(MessageContent("post")),
             stop=InjectContext(MessageContent("stop")),
@@ -106,6 +108,9 @@ class TestHookChainFold:
         assert chain.on_model_response(RUN_ID, ITERATION, ANSWER) == InjectContext(
             MessageContent("mrs")
         )
+        assert chain.on_context_build(
+            RUN_ID, ITERATION, MessageHistory()
+        ) == InjectContext(MessageContent("cb"))
         assert chain.on_pre_tool_use(RUN_ID, ITERATION, CALL) == InjectContext(
             MessageContent("pre")
         )
@@ -117,9 +122,9 @@ class TestHookChainFold:
         )
         chain.on_session_end(RUN_ID, RUN_RESULT)
 
-        assert hook.run_ids == [RUN_ID] * 10
+        assert hook.run_ids == [RUN_ID] * 11
         assert hook.prompts == [PROMPT, PROMPT, PROMPT]
-        assert hook.iterations == [ITERATION] * 7
+        assert hook.iterations == [ITERATION] * 8
         assert hook.tool_calls == [CALL, CALL]
         assert hook.tool_results == [TOOL_RESULT]
         assert hook.answers == [ANSWER]

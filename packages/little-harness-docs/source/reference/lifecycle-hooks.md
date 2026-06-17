@@ -12,6 +12,7 @@ change what happens next — unlike `AgentObserver`, which only observes.
 | `on_turn_start(run_id, iteration, prompt)` | `-> HookDecision` | Aborts this iteration with the reason |
 | `on_turn_end(run_id, iteration, output)` | `-> HookDecision` | Replaces model output with the reason |
 | `on_model_request(run_id, iteration)` | `-> HookDecision` | Skips the API call, reason becomes fake output |
+| `on_context_build(run_id, iteration, messages)` | `-> HookDecision` | Skips the API call, reason becomes fake output |
 | `on_model_response(run_id, iteration, output)` | `-> HookDecision` | Replaces model response with the reason |
 | `on_pre_tool_use(run_id, iteration, call)` | `-> HookDecision` | Skips the tool, reason becomes observation |
 | `on_post_tool_use(run_id, iteration, call, result)` | `-> HookDecision` | Injects/block feedback for the model |

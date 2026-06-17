@@ -15,6 +15,7 @@ from __future__ import annotations
 import pytest
 from little_harness.composition import run_cli
 from little_harness.domain.hook_decision import Block, HookDecision, InjectContext
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.values.numeric_values import Iteration
 from little_harness.domain.values.text_values import MessageContent, Prompt, RunId
 from little_harness.infrastructure.hooks.null_hook import NullHook
@@ -76,6 +77,24 @@ class InjectHintBeforeModelCall(NullHook):
         self, run_id: RunId, iteration: Iteration, /
     ) -> HookDecision:
         return InjectContext(MessageContent("Reply with just: hint-received"))
+
+
+class BlockFirstContextBuild(NullHook):
+    """Blocks on_context_build so the model is never called."""
+
+    def on_context_build(
+        self, run_id: RunId, iteration: Iteration, messages: MessageHistory, /
+    ) -> HookDecision:
+        return Block(MessageContent(CANNED_ANSWER))
+
+
+class InjectInstructionsAtContextBuild(NullHook):
+    """Injects hint at context build before the model call."""
+
+    def on_context_build(
+        self, run_id: RunId, iteration: Iteration, messages: MessageHistory, /
+    ) -> HookDecision:
+        return InjectContext(MessageContent("Reply with just: ctx-injected"))
 
 
 # ---------------------------------------------------------------------------
@@ -193,3 +212,59 @@ class TestTurnEndHookBlock:
         )
 
         assert "hook-works" in result
+
+
+class TestContextBuildHookBlock:
+    """on_context_build Block: model call is skipped, canned answer returned."""
+
+    def test_canned_answer_returned_without_model_call(
+        self, local_llama_options: list[str]
+    ) -> None:
+        provider_options = [
+            item for option in local_llama_options for item in ("-o", option)
+        ]
+        result = run_cli(
+            [
+                "--provider",
+                "llama_cpp",
+                "--prompt",
+                "say hello",
+                "--yes",
+                "--max-tokens",
+                "512",
+                "--max-iterations",
+                "3",
+                *provider_options,
+            ],
+            extra_hooks=[BlockFirstContextBuild()],
+        )
+
+        assert "hook-works" in result
+
+
+class TestContextBuildHookInject:
+    """on_context_build InjectContext: context is added before the model call."""
+
+    def test_injected_context_appears_in_output(
+        self, local_llama_options: list[str]
+    ) -> None:
+        provider_options = [
+            item for option in local_llama_options for item in ("-o", option)
+        ]
+        result = run_cli(
+            [
+                "--provider",
+                "llama_cpp",
+                "--prompt",
+                "say hello",
+                "--yes",
+                "--max-tokens",
+                "512",
+                "--max-iterations",
+                "3",
+                *provider_options,
+            ],
+            extra_hooks=[InjectInstructionsAtContextBuild()],
+        )
+
+        assert "ctx-injected" in result

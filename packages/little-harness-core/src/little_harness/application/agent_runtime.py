@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from little_harness.application.agent_dependencies import AgentDependencies
 from little_harness.application.decision_handler import (
+    ContextBuildApplier,
     IterationContext,
     LoopDecisionVisitor,
     ModelRequestApplier,
@@ -198,7 +199,12 @@ class AgentRuntime:
         model_req = self._dependencies.hooks.on_model_request(run_id, iteration)
         fake_output = model_req.accept(ModelRequestApplier(state))
 
-        output = fake_output
+        ctx_build = self._dependencies.hooks.on_context_build(
+            run_id, iteration, state.messages
+        )
+        fake_from_ctx = ctx_build.accept(ContextBuildApplier(state))
+
+        output = fake_output or fake_from_ctx
         if output is None:
             output = self._complete_timed(run_id, iteration, state.messages)
             model_resp = self._dependencies.hooks.on_model_response(

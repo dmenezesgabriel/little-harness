@@ -227,6 +227,33 @@ class ModelRequestApplier:
         return decision.reason
 
 
+class ContextBuildApplier:
+    """Applies a context-build hook decision; Block skips the API call.
+
+    Implements ``HookDecisionVisitor[MessageContent | None]``: None means call
+    the model, a ``MessageContent`` means use it as fake model output.
+    """
+
+    def __init__(self, state: AgentLoopState) -> None:
+        """See class docstring for argument descriptions."""
+        self._state = state
+
+    def visit_proceed(self, _decision: Proceed) -> MessageContent | None:
+        """Call the model normally."""
+        return None
+
+    def visit_inject_context(
+        self, decision: InjectContext
+    ) -> MessageContent | None:
+        """Inject context and call the model."""
+        self._state.append_message(ChatMessage(USER, decision.content))
+        return None
+
+    def visit_block(self, decision: Block) -> MessageContent | None:
+        """Skip the model call and use the reason as output."""
+        return decision.reason
+
+
 class OutputReplacingApplier:
     """Applies a hook decision where Block replaces the output.
 

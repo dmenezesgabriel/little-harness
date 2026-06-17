@@ -18,6 +18,7 @@ from little_harness.domain.hook_decision import (
     InjectContext,
     Proceed,
 )
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.tool_result import ToolRunResult
 from little_harness.domain.values.numeric_values import Iteration
@@ -92,6 +93,16 @@ class HookChain:
 
         def run_hook(hook: LifecycleHook) -> HookDecision:
             return hook.on_model_response(run_id, iteration, output)
+
+        return self._fold(run_hook)
+
+    def on_context_build(
+        self, run_id: RunId, iteration: Iteration, messages: MessageHistory
+    ) -> HookDecision:
+        """Fold `on_context_build` across all hooks."""
+
+        def run_hook(hook: LifecycleHook) -> HookDecision:
+            return hook.on_context_build(run_id, iteration, messages)
 
         return self._fold(run_hook)
 

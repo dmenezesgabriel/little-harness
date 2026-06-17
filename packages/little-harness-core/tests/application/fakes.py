@@ -12,6 +12,7 @@ from little_harness.domain.decision import AgentDecision, FinalAnswer, ToolCall
 from little_harness.domain.errors import AgentProtocolError
 from little_harness.domain.hook_decision import HookDecision, Proceed
 from little_harness.domain.message import ChatMessage
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.skill import Skill
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
@@ -259,6 +260,7 @@ class ScriptedHook:
         turn_end: HookDecision | None = None,
         model_request: HookDecision | None = None,
         model_response: HookDecision | None = None,
+        context_build: HookDecision | None = None,
         pre_tool_use: HookDecision | None = None,
         post_tool_use: HookDecision | None = None,
         stop: HookDecision | None = None,
@@ -272,12 +274,14 @@ class ScriptedHook:
         self.tool_results: list[ToolRunResult] = []
         self.answers: list[MessageContent] = []
         self.ended_with: list[AgentResult] = []
+        self.histories: list[MessageHistory] = []
         self._session_start = session_start or Proceed()
         self._user_prompt_submit = user_prompt_submit or Proceed()
         self._turn_start = turn_start or Proceed()
         self._turn_end = turn_end or Proceed()
         self._model_request = model_request or Proceed()
         self._model_response = model_response or Proceed()
+        self._context_build = context_build or Proceed()
         self._pre_tool_use = pre_tool_use or Proceed()
         self._post_tool_use = post_tool_use or Proceed()
         self._stop = stop or Proceed()
@@ -328,6 +332,15 @@ class ScriptedHook:
         self.iterations.append(iteration)
         self.outputs.append(output)
         return self._model_response
+
+    def on_context_build(
+        self, run_id: RunId, iteration: Iteration, messages: MessageHistory
+    ) -> HookDecision:
+        self.calls.append("context_build")
+        self.run_ids.append(run_id)
+        self.iterations.append(iteration)
+        self.histories.append(messages)
+        return self._context_build
 
     def on_pre_tool_use(
         self, run_id: RunId, iteration: Iteration, call: ToolCall

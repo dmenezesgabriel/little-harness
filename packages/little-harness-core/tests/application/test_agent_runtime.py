@@ -373,6 +373,7 @@ class TestAgentRuntimeSessionHooks:
             "user_prompt_submit",
             "turn_start",
             "model_request",
+            "context_build",
             "model_response",
             "turn_end",
             "stop",
@@ -481,12 +482,14 @@ class TestAgentRuntimeToolHooks:
             "user_prompt_submit",
             "turn_start",
             "model_request",
+            "context_build",
             "model_response",
             "turn_end",
             "pre_tool_use",
             "post_tool_use",
             "turn_start",
             "model_request",
+            "context_build",
             "model_response",
             "turn_end",
             "stop",
@@ -502,12 +505,14 @@ class TestAgentRuntimeToolHooks:
         assert hook.iterations == [
             Iteration(1),  # turn_start(1)
             Iteration(1),  # model_request(1)
+            Iteration(1),  # context_build(1)
             Iteration(1),  # model_response(1)
             Iteration(1),  # turn_end(1)
             Iteration(1),  # pre_tool_use(1)
             Iteration(1),  # post_tool_use(1)
             Iteration(2),  # turn_start(2)
             Iteration(2),  # model_request(2)
+            Iteration(2),  # context_build(2)
             Iteration(2),  # model_response(2)
             Iteration(2),  # turn_end(2)
             Iteration(2),  # stop(2)
@@ -646,6 +651,30 @@ class TestAgentRuntimeTurnModelHooks:
         result = runtime.run(Prompt("question"))
 
         assert result.answer == MessageContent("replaced")
+
+    def test_context_build_inject_appends_message_before_api_call(self) -> None:
+        chat_model = RecordingChatModel(["final"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(context_build=InjectContext(MessageContent("ctx-hint")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        runtime.run(Prompt("question"))
+
+        assert len(chat_model.requests) == 1
+        assert ChatMessage(USER, MessageContent("ctx-hint")) in list(
+            chat_model.requests[0].messages
+        )
+
+    def test_context_build_block_skips_api_call_with_reason(self) -> None:
+        chat_model = RecordingChatModel(["unused"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        hook = ScriptedHook(context_build=Block(MessageContent("ctx-canned")))
+        runtime = create_runtime(chat_model, [], policy, hooks=hook)
+
+        result = runtime.run(Prompt("question"))
+
+        assert result.answer == MessageContent("done")
+        assert chat_model.requests == []
 
     def test_turn_end_inject_adds_context_for_next_turn(self) -> None:
         # Inject at turn end: message reaches the second turn's request.

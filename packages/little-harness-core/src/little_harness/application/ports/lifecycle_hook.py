@@ -19,6 +19,7 @@ from typing import Protocol
 
 from little_harness.domain.decision import ToolCall
 from little_harness.domain.hook_decision import HookDecision
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.tool_result import ToolRunResult
 from little_harness.domain.values.numeric_values import Iteration
@@ -73,6 +74,16 @@ class LifecycleHook(Protocol):
         """Decide right after the model API call returns.
 
         Block replaces the model response with the reason.
+        """
+        ...
+
+    def on_context_build(
+        self, run_id: RunId, iteration: Iteration, messages: MessageHistory, /
+    ) -> HookDecision:
+        """Decide after model request, before the API call, with full context.
+
+        ``InjectContext`` appends additional context messages before the model
+        call. ``Block`` skips the API call same as ``on_model_request``.
         """
         ...
 

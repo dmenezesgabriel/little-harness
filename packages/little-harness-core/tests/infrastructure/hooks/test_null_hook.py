@@ -5,6 +5,7 @@ from __future__ import annotations
 from little_harness.application.ports.lifecycle_hook import LifecycleHook
 from little_harness.domain.decision import ToolCall
 from little_harness.domain.hook_decision import Proceed
+from little_harness.domain.message_history import MessageHistory
 from little_harness.domain.result import AgentResult
 from little_harness.domain.steps import AgentSteps
 from little_harness.domain.tool_result import ToolRunResult
@@ -42,6 +43,7 @@ class TestNullHook:
         assert hook.on_turn_end(RUN_ID, ITERATION, ANSWER) == Proceed()
         assert hook.on_model_request(RUN_ID, ITERATION) == Proceed()
         assert hook.on_model_response(RUN_ID, ITERATION, ANSWER) == Proceed()
+        assert hook.on_context_build(RUN_ID, ITERATION, MessageHistory()) == Proceed()
         assert hook.on_pre_tool_use(RUN_ID, ITERATION, CALL) == Proceed()
         assert hook.on_post_tool_use(RUN_ID, ITERATION, CALL, RESULT) == Proceed()
         assert hook.on_stop(RUN_ID, ITERATION, ANSWER) == Proceed()
