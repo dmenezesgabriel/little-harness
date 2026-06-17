@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from little_harness.domain.values.skill_values import SkillDescription, SkillName
@@ -114,3 +115,48 @@ class TestFileSystemSkillLoader:
         skills = loader.load_skills()
 
         assert len(skills) == 0
+
+
+class TestFileSystemSkillLoaderWarnings:
+    """Diagnostic warnings are logged on parse failures (not silently swallowed)."""
+
+    def test_warns_on_os_error(
+        self, tmp_path: Path, caplog: logging.LogCaptureFixture
+    ) -> None:
+        d = tmp_path / "skills" / "unreadable"
+        d.mkdir(parents=True)
+        skill_file = d / "SKILL.md"
+        skill_file.write_text("---\nname: test\ndescription: test\n---\n\nBody")
+        skill_file.chmod(0o000)
+
+        loader = FileSystemSkillLoader([str(tmp_path / "skills")])
+        loader.load_skills()
+
+        assert len(caplog.records) >= 1
+        assert "Failed to read skill file" in caplog.records[0].message
+
+    def test_warns_on_missing_frontmatter(
+        self, tmp_path: Path, caplog: logging.LogCaptureFixture
+    ) -> None:
+        d = tmp_path / "skills" / "no-fm"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text("Just content without frontmatter.")
+
+        loader = FileSystemSkillLoader([str(tmp_path / "skills")])
+        loader.load_skills()
+
+        assert len(caplog.records) >= 1
+        assert "No valid frontmatter" in caplog.records[0].message
+
+    def test_warns_on_invalid_metadata(
+        self, tmp_path: Path, caplog: logging.LogCaptureFixture
+    ) -> None:
+        d = tmp_path / "skills" / "bad-meta"
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text("---\nname: \ndescription: \n---\n\nBody")
+
+        loader = FileSystemSkillLoader([str(tmp_path / "skills")])
+        loader.load_skills()
+
+        assert len(caplog.records) >= 1
+        assert "Invalid skill metadata" in caplog.records[0].message

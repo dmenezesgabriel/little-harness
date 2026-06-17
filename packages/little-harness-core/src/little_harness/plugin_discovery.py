@@ -33,11 +33,12 @@ from little_harness.domain.errors import (
     UnknownToolError,
     UnknownUiError,
 )
-from little_harness.presentation.cli.repl_command import ReplCommand
-
 if TYPE_CHECKING:
     from little_harness.composition import Application
-    from little_harness.presentation.cli.repl_command import CommandRegistry
+    from little_harness.presentation.cli.repl_command import (
+        CommandRegistry,
+        ReplCommand,
+    )
 
 PROVIDER_GROUP = "little_harness.chat_model_providers"
 TOOL_GROUP = "little_harness.tools"

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from pathlib import Path
 
 from little_harness.domain.skill import Skill
 from little_harness.domain.values.skill_values import SkillDescription, SkillName
+
+logger = logging.getLogger(__name__)
 
 
 class FileSystemSkillLoader:
@@ -50,11 +53,17 @@ class FileSystemSkillLoader:
         """Parse a SKILL.md file and return a Skill, or None on failure."""
         try:
             content = file_path.read_text(encoding="utf-8")
-        except OSError:
+        except OSError as error:
+            logger.warning("Failed to read skill file %s: %s", file_path, error)
             return None
 
         frontmatter, body = _parse_frontmatter(content)
         if frontmatter is None:
+            logger.warning(
+                "No valid frontmatter found in skill file %s. "
+                "Expected a SKILL.md starting with ---",
+                file_path,
+            )
             return None
 
         name_str = frontmatter.get("name") or file_path.parent.name
@@ -63,7 +72,13 @@ class FileSystemSkillLoader:
         try:
             name = SkillName(name_str)
             description = SkillDescription(desc_str)
-        except ValueError:
+        except ValueError as error:
+            logger.warning(
+                "Invalid skill metadata in %s: %s. "
+                "Expected a non-empty name and description.",
+                file_path,
+                error,
+            )
             return None
 
         return Skill(

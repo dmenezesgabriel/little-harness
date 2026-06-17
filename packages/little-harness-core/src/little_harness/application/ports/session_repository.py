@@ -20,5 +20,4 @@ class SessionRepository(Protocol):
 
         Returns an empty MessageHistory if the session is not found or is new.
         """
-        del session_id
-        raise NotImplementedError
+        ...
