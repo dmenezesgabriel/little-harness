@@ -6,6 +6,7 @@ from little_harness.domain.decision import FinalAnswer
 from little_harness.domain.result import AgentResult
 from little_harness.domain.steps import AgentSteps
 from little_harness.domain.tool_result import ToolRunResult
+from little_harness.domain.values.model_call_metrics import ModelCallMetrics
 from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
 from little_harness.domain.values.text_values import (
     MessageContent,
@@ -98,6 +99,52 @@ class TestStructuredLoggingObserver:
             ),
             ("repair", {"run_id": "run-1", "iteration": 2, "error": "bad output"}),
         ]
+
+    def test_logs_model_metrics_with_ttft_tokens_and_throughput(self) -> None:
+        # Arrange
+        logger = RecordingLogger()
+        observer = StructuredLoggingObserver(logger)
+        metrics = ModelCallMetrics(
+            elapsed=ElapsedSeconds(2.0),
+            time_to_first_token=ElapsedSeconds(0.4),
+            output_tokens=20,
+        )
+
+        # Act
+        observer.on_model_metrics(RUN_ID, Iteration(1), metrics)
+
+        # Assert
+        assert logger.records == [
+            (
+                "model_metrics",
+                {
+                    "run_id": "run-1",
+                    "iteration": 1,
+                    "time_to_first_token_seconds": 0.4,
+                    "output_tokens": 20,
+                    "tokens_per_second": 10.0,
+                    "elapsed_seconds": 2.0,
+                },
+            )
+        ]
+
+    def test_logs_model_metrics_with_null_ttft_when_absent(self) -> None:
+        # Arrange
+        logger = RecordingLogger()
+        observer = StructuredLoggingObserver(logger)
+        metrics = ModelCallMetrics(
+            elapsed=ElapsedSeconds(1.0),
+            time_to_first_token=None,
+            output_tokens=0,
+        )
+
+        # Act
+        observer.on_model_metrics(RUN_ID, Iteration(1), metrics)
+
+        # Assert
+        event, fields = logger.records[0]
+        assert event == "model_metrics"
+        assert fields["time_to_first_token_seconds"] is None
 
     def test_logs_run_finished_with_elapsed_and_step_count(self) -> None:
         # Arrange

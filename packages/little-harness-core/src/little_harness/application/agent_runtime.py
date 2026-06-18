@@ -19,6 +19,7 @@ from little_harness.application.decision_handler import (
 )
 from little_harness.application.loop_state import AgentLoopState
 from little_harness.application.ports.chat_model import ChatCompletionRequest
+from little_harness.application.stream_timing import StreamMeasurement, measure_stream
 from little_harness.domain.decision import AgentDecision
 from little_harness.domain.errors import AgentProtocolError
 from little_harness.domain.message import ChatMessage
@@ -27,6 +28,7 @@ from little_harness.domain.result import AgentResult
 from little_harness.domain.skill import Skill
 from little_harness.domain.step import AgentStep
 from little_harness.domain.steps import AgentSteps
+from little_harness.domain.values.model_call_metrics import ModelCallMetrics
 from little_harness.domain.values.numeric_values import (
     ElapsedSeconds,
     Iteration,
@@ -225,14 +227,21 @@ class AgentRuntime:
         messages: MessageHistory,
     ) -> MessageContent:
         started_at = time.perf_counter()
-        output = self._complete(messages)
+        measurement = self._complete(messages)
         elapsed = ElapsedSeconds(time.perf_counter() - started_at)
         self._dependencies.observer.on_model_completed(
-            run_id, iteration, output, elapsed
+            run_id, iteration, measurement.content, elapsed
         )
-        return output
+        self._dependencies.observer.on_model_metrics(
+            run_id,
+            iteration,
+            ModelCallMetrics(
+                elapsed, measurement.time_to_first_token, measurement.output_tokens
+            ),
+        )
+        return measurement.content
 
-    def _complete(self, messages: MessageHistory) -> MessageContent:
+    def _complete(self, messages: MessageHistory) -> StreamMeasurement:
         specs = self._dependencies.tool_registry.specs()
         request = ChatCompletionRequest(
             messages,
@@ -242,11 +251,8 @@ class AgentRuntime:
             top_p=self._config.top_p,
             repeat_penalty=self._config.repeat_penalty,
         )
-        chunks: list[str] = []
-        for chunk in self._dependencies.chat_model.complete_streaming(request):
-            chunks.append(chunk.value)
-            self._dependencies.token_sink.emit(chunk)
-        return MessageContent("".join(chunks))
+        stream = self._dependencies.chat_model.complete_streaming(request)
+        return measure_stream(stream, self._dependencies.token_sink.emit)
 
     def _finish(
         self,

@@ -2,6 +2,7 @@
 from little_harness.domain.decision import AgentDecision
 from little_harness.domain.result import AgentResult
 from little_harness.domain.tool_result import ToolRunResult
+from little_harness.domain.values.model_call_metrics import ModelCallMetrics
 from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
 from little_harness.domain.values.text_values import (
     MessageContent,
@@ -59,6 +60,29 @@ class JsonlSessionObserver:
                     "iteration": iteration.value,
                     "output": output.value,
                     "elapsed": elapsed.value,
+                }
+            )
+        )
+
+    def on_model_metrics(
+        self, run_id: RunId, iteration: Iteration, metrics: ModelCallMetrics
+    ) -> None:
+        time_to_first_token = metrics.time_to_first_token
+        self._appender.append(
+            self._with_parent(
+                {
+                    "session_id": self._session_id.value,
+                    "type": "model_metrics",
+                    "run_id": run_id.value,
+                    "iteration": iteration.value,
+                    "time_to_first_token": (
+                        None
+                        if time_to_first_token is None
+                        else time_to_first_token.value
+                    ),
+                    "output_tokens": metrics.output_tokens,
+                    "tokens_per_second": metrics.tokens_per_second,
+                    "elapsed": metrics.elapsed.value,
                 }
             )
         )

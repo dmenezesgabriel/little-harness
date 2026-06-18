@@ -5,6 +5,7 @@ from __future__ import annotations
 from little_harness.domain.decision import AgentDecision
 from little_harness.domain.result import AgentResult
 from little_harness.domain.tool_result import ToolRunResult
+from little_harness.domain.values.model_call_metrics import ModelCallMetrics
 from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
 from little_harness.domain.values.text_values import MessageContent, Prompt, RunId
 
@@ -46,6 +47,25 @@ class StructuredLoggingObserver:
                 "iteration": iteration.value,
                 "output_chars": len(output.value),
                 "elapsed_seconds": elapsed.value,
+            },
+        )
+
+    def on_model_metrics(
+        self, run_id: RunId, iteration: Iteration, metrics: ModelCallMetrics
+    ) -> None:
+        """Log a model_metrics event with TTFT, token count, and throughput."""
+        time_to_first_token = metrics.time_to_first_token
+        self._logger.log(
+            "model_metrics",
+            {
+                "run_id": run_id.value,
+                "iteration": iteration.value,
+                "time_to_first_token_seconds": (
+                    None if time_to_first_token is None else time_to_first_token.value
+                ),
+                "output_tokens": metrics.output_tokens,
+                "tokens_per_second": metrics.tokens_per_second,
+                "elapsed_seconds": metrics.elapsed.value,
             },
         )
 

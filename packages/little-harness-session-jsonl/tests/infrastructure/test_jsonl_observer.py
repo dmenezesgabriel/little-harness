@@ -7,6 +7,7 @@ from little_harness.domain.errors import AgentProtocolError
 from little_harness.domain.result import AgentResult
 from little_harness.domain.steps import AgentSteps
 from little_harness.domain.tool_result import ToolRunResult
+from little_harness.domain.values.model_call_metrics import ModelCallMetrics
 from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
 from little_harness.domain.values.text_values import (
     MessageContent,
@@ -56,6 +57,29 @@ class TestJsonlSessionObserver:
             "iteration": 1,
             "output": "out",
             "elapsed": 1.5,
+        }
+
+    def test_logs_model_metrics(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "test.jsonl"
+        appender = JsonlFileAppender(file_path)
+        observer = JsonlSessionObserver(SessionId("test"), appender)
+
+        observer.on_model_metrics(
+            RunId("r1"),
+            Iteration(1),
+            ModelCallMetrics(ElapsedSeconds(2.0), ElapsedSeconds(0.4), 20),
+        )
+
+        content = json.loads(file_path.read_text())
+        assert content == {
+            "session_id": "test",
+            "type": "model_metrics",
+            "run_id": "r1",
+            "iteration": 1,
+            "time_to_first_token": 0.4,
+            "output_tokens": 20,
+            "tokens_per_second": 10.0,
+            "elapsed": 2.0,
         }
 
     def test_logs_decision_parsed(self, tmp_path: Path) -> None:

@@ -608,6 +608,11 @@ class OriginalObserver:
     ) -> None:
         self.events.append("completed")
 
+    def on_model_metrics(
+        self, run_id: object, iteration: object, metrics: object
+    ) -> None:
+        self.events.append("metrics")
+
     def on_decision_parsed(
         self, run_id: object, iteration: object, decision: object
     ) -> None:

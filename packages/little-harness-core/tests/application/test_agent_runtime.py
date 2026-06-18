@@ -710,9 +710,11 @@ class TestAgentRuntimeObservability:
         assert observer.events == [
             "run_started:question",
             "model_completed",
+            "model_metrics",
             "decision_parsed",
             "tool_invoked",
             "model_completed",
+            "model_metrics",
             "decision_parsed",
             "run_finished",
         ]
@@ -768,6 +770,26 @@ class TestAgentRuntimeObservability:
         assert observer.model_elapsed and observer.tool_elapsed
         assert all(0.0 <= e.value < upper_bound_seconds for e in observer.model_elapsed)
         assert all(0.0 <= e.value < upper_bound_seconds for e in observer.tool_elapsed)
+
+    def test_emits_model_metrics_with_streamed_token_count(self) -> None:
+        # Arrange: three streamed chunks count as three generated tokens.
+        chat_model = ChunkedChatModel(["fi", "na", "l"])
+        policy = DecisionQueuePolicy([final_decision("done")])
+        observer = RecordingObserver()
+        runtime = create_runtime(chat_model, [], policy, observer)
+
+        # Act
+        runtime.run(Prompt("question"))
+
+        # Assert: one metrics event per model call, carrying the chunk count and
+        # a measured (non-negative) time-to-first-token.
+        assert len(observer.model_metrics) == observer.events.count("model_completed")
+        iteration, metrics = observer.model_metrics[0]
+        assert iteration == Iteration(1)
+        assert metrics.output_tokens == 3
+        assert metrics.time_to_first_token is not None
+        assert metrics.time_to_first_token.value >= 0.0
+        assert metrics.tokens_per_second >= 0.0
 
 
 class TestAgentRuntimeMultiTurn:

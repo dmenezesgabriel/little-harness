@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from little_harness.domain.decision import AgentDecision, ToolCall
     from little_harness.domain.result import AgentResult
     from little_harness.domain.tool_result import ToolRunResult
+    from little_harness.domain.values.model_call_metrics import ModelCallMetrics
     from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
     from little_harness.domain.values.text_values import MessageContent, RunId
     from little_harness.presentation.cli.interactive_console import Application
@@ -494,6 +495,13 @@ class _TuiObserver:
             self._delegate.on_model_completed(  # type: ignore
                 run_id, iteration, output, elapsed
             )
+
+    def on_model_metrics(
+        self, run_id: RunId, iteration: Iteration, metrics: ModelCallMetrics
+    ) -> None:
+        """Forward model metrics event to the delegate (no TUI widget)."""
+        if hasattr(self._delegate, "on_model_metrics"):
+            self._delegate.on_model_metrics(run_id, iteration, metrics)  # type: ignore
 
     def on_decision_parsed(
         self, run_id: RunId, iteration: Iteration, decision: AgentDecision

@@ -17,6 +17,7 @@ from little_harness.domain.result import AgentResult
 from little_harness.domain.skill import Skill
 from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
 from little_harness.domain.tool_spec import ToolInputSchema, ToolSpec
+from little_harness.domain.values.model_call_metrics import ModelCallMetrics
 from little_harness.domain.values.numeric_values import ElapsedSeconds, Iteration
 from little_harness.domain.values.role import USER
 from little_harness.domain.values.text_values import (
@@ -191,6 +192,7 @@ class RecordingObserver:
         self.run_ids: list[RunId] = []
         self.model_outputs: list[tuple[Iteration, MessageContent]] = []
         self.model_elapsed: list[ElapsedSeconds] = []
+        self.model_metrics: list[tuple[Iteration, ModelCallMetrics]] = []
         self.parsed: list[tuple[Iteration, AgentDecision]] = []
         self.tool_invocations: list[tuple[Iteration, ToolRunResult]] = []
         self.tool_elapsed: list[ElapsedSeconds] = []
@@ -212,6 +214,13 @@ class RecordingObserver:
         self.events.append("model_completed")
         self.model_outputs.append((iteration, output))
         self.model_elapsed.append(elapsed)
+
+    def on_model_metrics(
+        self, run_id: RunId, iteration: Iteration, metrics: ModelCallMetrics
+    ) -> None:
+        self.run_ids.append(run_id)
+        self.events.append("model_metrics")
+        self.model_metrics.append((iteration, metrics))
 
     def on_decision_parsed(
         self, run_id: RunId, iteration: Iteration, decision: AgentDecision
