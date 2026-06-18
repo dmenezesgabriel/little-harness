@@ -15,7 +15,7 @@ from little_harness.application.tool_registry import ToolRegistry
 from little_harness.domain.values.truncation import TruncationConfig
 
 
-@dataclass(frozen=True)
+@dataclass
 class AgentDependencies:
     """The ports and config the runtime depends on.
 
