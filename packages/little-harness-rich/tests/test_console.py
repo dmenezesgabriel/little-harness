@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from little_harness.application.agent_dependencies import AgentDependencies
+from little_harness.application.hook_chain import HookChain
+from little_harness.application.tool_registry import ToolRegistry
 from little_harness.domain.decision import ToolCall
 from little_harness.domain.message import ChatMessage
 from little_harness.domain.message_history import MessageHistory
@@ -21,6 +25,11 @@ from little_harness.domain.values.text_values import (
 from little_harness.domain.values.text_values import (
     Prompt as AgentPrompt,
 )
+from little_harness.domain.values.truncation import TruncationConfig
+from little_harness.infrastructure.skills.file_system_skill_loader import (
+    FileSystemSkillLoader,
+)
+from little_harness.infrastructure.truncation.head_truncator import HeadTruncator
 from little_harness.presentation.cli.repl_command import (
     CommandRegistry,
     build_default_registry,
@@ -397,6 +406,45 @@ class TestTuiAppAndConsole:
             content = cast(object, tool_widget._status._Static__content)  # type: ignore
             assert "Rejected" in str(content)
 
+    @pytest.mark.asyncio
+    async def test_input_disabled_during_agent_turn(self) -> None:
+        """Regression: chat input must be disabled while a turn is running.
+
+        Without this guard, sending a second message while the model is still
+        processing spawns a second worker and both threads call into the model
+        concurrently — not thread-safe for llama.cpp.
+        """
+
+        class SlowFakeApplication(FakeApplication):
+            def run_turn(
+                self, prompt: AgentPrompt, messages: MessageHistory
+            ) -> tuple[AgentResult, MessageHistory]:
+                # Simulate a slow model; asyncio.to_thread runs this in a thread
+                time.sleep(0.4)
+                return FakeApplication.run_turn(self, prompt, messages)
+
+        app_core = SlowFakeApplication()
+        app = HarnessTuiApp(app_core, build_default_registry())
+
+        async with app.run_test() as pilot:
+            chat_input = app.query_one(ChatInputWidget)
+
+            chat_input.value = "Hello"
+            await pilot.press("enter")
+
+            # Yield control so the worker starts and disables input,
+            # but not long enough for the 0.4s sleep to finish
+            await pilot.pause(0.1)
+            assert chat_input.input.disabled, (
+                "Input should be disabled during agent turn"
+            )
+
+            # Now wait for the slow turn to finish
+            await pilot.pause(0.6)
+            assert not chat_input.input.disabled, (
+                "Input should be re-enabled after turn"
+            )
+
 
 class TestConsoleAdapter:
     """Test console wrapper matching the InteractiveRunner interface."""
@@ -643,6 +691,54 @@ class TestTuiObserver:
             )
             await pilot.pause()
             assert reasoning._accumulated_text == "Token stream content"
+
+
+class TestWrapObserverWithRealDependencies:
+    """Regression: _wrap_observer must work with the real (non-fake) AgentDependencies.
+
+    Previously AgentDependencies was frozen=True, so the assignment in
+    _wrap_observer raised FrozenInstanceError and was silently swallowed —
+    meaning the TUI never received agent events or streamed tokens.
+    """
+
+    def test_wrap_observer_works_with_real_agent_dependencies(self) -> None:
+        orig_observer = OriginalObserver()
+        orig_sink = FakeTokenSink()
+        deps = AgentDependencies(
+            chat_model=None,  # type: ignore[arg-type]
+            tool_registry=ToolRegistry([]),
+            policy=None,  # type: ignore[arg-type]
+            observer=orig_observer,
+            token_sink=orig_sink,
+            hooks=HookChain([]),
+            truncator=HeadTruncator(),
+            truncation_config=TruncationConfig(),
+            skill_loader=FileSystemSkillLoader([]),
+        )
+
+        class _FakeRuntime:
+            def __init__(self) -> None:
+                self._dependencies = deps
+
+        class _AppWithRealDeps:
+            def __init__(self) -> None:
+                self._runtime = _FakeRuntime()
+
+            def build_system_message(self) -> ChatMessage:
+                return ChatMessage(SYSTEM, MessageContent("sys"))
+
+            def run_turn(
+                self, _prompt: AgentPrompt, _messages: MessageHistory
+            ) -> tuple[AgentResult, MessageHistory]:
+                raise NotImplementedError
+
+        # _wrap_observer is called during __init__; it must mutate deps
+        HarnessTuiApp(_AppWithRealDeps(), build_default_registry())  # type: ignore[arg-type]
+
+        assert isinstance(deps.observer, _TuiObserver), (
+            "_wrap_observer silently failed — AgentDependencies may be frozen again"
+        )
+        assert isinstance(deps.token_sink, _TuiTokenSink)
 
 
 class TestAppActionClearHistory:
