@@ -5,7 +5,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from little_harness.infrastructure.config.config_types import Config
 
@@ -87,13 +87,15 @@ class ConfigLoader:
 
 def _normalize_value(key: str, value: object) -> object:
     if key == "plugins" and isinstance(value, dict):
+        plugins_dict = cast(dict[str, Any], value)
         result: dict[str, dict[str, str]] = {}
-        for plugin, opts in value.items():
+        for plugin, opts in plugins_dict.items():
             if isinstance(opts, dict):
-                result[str(plugin)] = {str(k): str(v) for k, v in opts.items()}
+                opts_dict = cast(dict[str, Any], opts)
+                result[str(plugin)] = {str(k): str(v) for k, v in opts_dict.items()}
         return result
     if key == "tools" and isinstance(value, list):
-        return tuple(str(v) for v in value)
+        return tuple(str(v) for v in cast(list[Any], value))
     return value
 
 
@@ -108,9 +110,10 @@ def _flatten_toml(raw: dict[str, Any]) -> dict[str, Any]:
 
     for key, value in raw.items():
         if key == PLUGIN_TOP_KEY and isinstance(value, dict):
-            for plugin_name, plugin_opts in value.items():
+            for plugin_name, plugin_opts in cast(dict[str, Any], value).items():
                 if isinstance(plugin_opts, dict):
-                    plugins[plugin_name] = {k: str(v) for k, v in plugin_opts.items()}
+                    opts = cast(dict[str, Any], plugin_opts)
+                    plugins[plugin_name] = {k: str(v) for k, v in opts.items()}
             continue
         if key == PROFILES_TOP_KEY:
             continue

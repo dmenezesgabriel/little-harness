@@ -30,6 +30,21 @@ ANSWER = MessageContent("done")
 RUN_RESULT = AgentResult(ANSWER, ElapsedSeconds(0.0), AgentSteps())
 
 
+def _invoke_all_hook_methods(chain: HookChain) -> None:
+    """Call every HookChain method once with fixed test arguments."""
+    chain.on_session_start(RUN_ID, PROMPT)
+    chain.on_user_prompt_submit(RUN_ID, PROMPT)
+    chain.on_turn_start(RUN_ID, ITERATION, PROMPT)
+    chain.on_turn_end(RUN_ID, ITERATION, ANSWER)
+    chain.on_model_request(RUN_ID, ITERATION)
+    chain.on_model_response(RUN_ID, ITERATION, ANSWER)
+    chain.on_context_build(RUN_ID, ITERATION, MessageHistory())
+    chain.on_pre_tool_use(RUN_ID, ITERATION, CALL)
+    chain.on_post_tool_use(RUN_ID, ITERATION, CALL, TOOL_RESULT)
+    chain.on_stop(RUN_ID, ITERATION, ANSWER)
+    chain.on_session_end(RUN_ID, RUN_RESULT)
+
+
 class TestHookChainFold:
     def test_proceeds_when_every_hook_proceeds(self) -> None:
         chain = HookChain([ScriptedHook(), ScriptedHook()])
@@ -73,7 +88,7 @@ class TestHookChainFold:
             MessageContent("b")
         )
 
-    def test_each_method_delegates_with_its_arguments_and_folds(self) -> None:
+    def test_each_method_delegates_and_folds(self) -> None:
         # Every method must call the matching hook method with the right args and
         # return the folded decision, not just session_start.
         hook = ScriptedHook(
@@ -120,7 +135,21 @@ class TestHookChainFold:
         assert chain.on_stop(RUN_ID, ITERATION, ANSWER) == InjectContext(
             MessageContent("stop")
         )
-        chain.on_session_end(RUN_ID, RUN_RESULT)
+
+    def test_each_method_records_the_correct_arguments(self) -> None:
+        hook = ScriptedHook(
+            session_start=InjectContext(MessageContent("s")),
+            user_prompt_submit=InjectContext(MessageContent("u")),
+            turn_start=InjectContext(MessageContent("ts")),
+            turn_end=InjectContext(MessageContent("te")),
+            model_request=InjectContext(MessageContent("mr")),
+            model_response=InjectContext(MessageContent("mrs")),
+            context_build=InjectContext(MessageContent("cb")),
+            pre_tool_use=InjectContext(MessageContent("pre")),
+            post_tool_use=InjectContext(MessageContent("post")),
+            stop=InjectContext(MessageContent("stop")),
+        )
+        _invoke_all_hook_methods(HookChain([hook]))
 
         assert hook.run_ids == [RUN_ID] * 11
         assert hook.prompts == [PROMPT, PROMPT, PROMPT]

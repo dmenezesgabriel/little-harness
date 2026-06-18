@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import stat as stat_module
 from pathlib import Path
 
 import pytest
-from little_harness.domain.tool_result import ToolRunRequest, ToolRunResult
+from little_harness.domain.tool_result import ToolRunRequest
 from little_harness.domain.values.text_values import ToolInput, ToolName
 
 from little_harness_ls.ls_tool import LsTool
+from little_harness_ls.provider import build as build_ls_tool
 
 
 def ls_request(raw: str) -> ToolRunRequest:
@@ -90,15 +90,15 @@ class TestLsToolRun:
         for i in range(20):
             (tmp_path / f"file_{i:02d}.txt").write_text("content\n")
         tool = LsTool()
-        request = ls_request(
-            f'{{"path": "{tmp_path!s}", "limit": 5}}'
-        )
+        request = ls_request(f'{{"path": "{tmp_path!s}", "limit": 5}}')
         result = tool.run(request)
         assert result.succeeded is True
         lines = [ln for ln in result.output.value.splitlines() if ln]
         assert len(lines) == 5
 
-    def test_defaults_to_current_directory(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_defaults_to_current_directory(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.chdir(tmp_path)
         (tmp_path / "hello.txt").write_text("content\n")
         tool = LsTool()
@@ -151,8 +151,6 @@ class TestLsToolRun:
 
 
 def test_build_returns_ls_tool() -> None:
-    from little_harness_ls.provider import build
-    from little_harness_ls.ls_tool import LsTool
-    tool = build()
+    tool = build_ls_tool()
     assert isinstance(tool, LsTool)
     assert tool.spec.name == ToolName("ls")

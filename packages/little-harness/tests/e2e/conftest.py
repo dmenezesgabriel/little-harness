@@ -433,9 +433,7 @@ def ask_find_all(run_agent: RunAgent, pattern: str) -> str:
 
 
 @when(
-    parsers.parse(
-        "the agent with all tools is asked to list the workspace directory"
-    ),
+    parsers.parse("the agent with all tools is asked to list the workspace directory"),
     target_fixture="answer",
 )
 def ask_list_all(run_agent: RunAgent) -> str:
@@ -447,9 +445,7 @@ def ask_list_all(run_agent: RunAgent) -> str:
 
 
 @when(
-    parsers.parse(
-        'the agent with all tools is asked to fetch the URL "{url}"'
-    ),
+    parsers.parse('the agent with all tools is asked to fetch the URL "{url}"'),
     target_fixture="answer",
 )
 def ask_web_fetch_all(run_agent: RunAgent, url: str) -> str:

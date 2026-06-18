@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import ast
 
-from little_harness_calculator.number import Number
-
 from little_harness_calculator.ast_node_evaluator import (
     ExpressionTreeEvaluator,
 )
+from little_harness_calculator.number import Number
 
 
 class ExpressionEvaluator:

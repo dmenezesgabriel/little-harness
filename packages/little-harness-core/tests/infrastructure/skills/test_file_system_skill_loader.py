@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
+import pytest
 from little_harness.domain.values.skill_values import SkillDescription, SkillName
 from little_harness.infrastructure.skills.file_system_skill_loader import (
     FileSystemSkillLoader,
@@ -121,7 +121,7 @@ class TestFileSystemSkillLoaderWarnings:
     """Diagnostic warnings are logged on parse failures (not silently swallowed)."""
 
     def test_warns_on_os_error(
-        self, tmp_path: Path, caplog: logging.LogCaptureFixture
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
         d = tmp_path / "skills" / "unreadable"
         d.mkdir(parents=True)
@@ -136,7 +136,7 @@ class TestFileSystemSkillLoaderWarnings:
         assert "Failed to read skill file" in caplog.records[0].message
 
     def test_warns_on_missing_frontmatter(
-        self, tmp_path: Path, caplog: logging.LogCaptureFixture
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
         d = tmp_path / "skills" / "no-fm"
         d.mkdir(parents=True)
@@ -149,7 +149,7 @@ class TestFileSystemSkillLoaderWarnings:
         assert "No valid frontmatter" in caplog.records[0].message
 
     def test_warns_on_invalid_metadata(
-        self, tmp_path: Path, caplog: logging.LogCaptureFixture
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
         d = tmp_path / "skills" / "bad-meta"
         d.mkdir(parents=True)

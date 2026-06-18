@@ -78,6 +78,11 @@ forbidden_modules = ["little_harness.infrastructure", "little_harness.presentati
 name = "Infrastructure and presentation are independent"
 type = "independence"
 modules = ["little_harness.infrastructure", "little_harness.presentation"]
+# ArgumentParser accepts Config as a TYPE_CHECKING-only annotation for the
+# TOML overlay pattern; no runtime dependency crosses the boundary.
+ignore_imports = [
+    "little_harness.presentation.cli.argument_parser -> little_harness.infrastructure.config.config_types",
+]
 
 [dependency-groups]
 dev = [

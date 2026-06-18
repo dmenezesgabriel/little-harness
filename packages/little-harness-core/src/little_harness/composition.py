@@ -329,8 +329,11 @@ def _run_session_turn(
     session_plugin: SessionPlugin,
 ) -> str:
     """Run a single turn with session history loaded."""
+    # Callers verify prompt is set before dispatching here; None is unreachable.
+    assert app_config.prompt is not None  # nosec B101
     history = _load_session_history(session_plugin, app, app_config)
-    result, _ = app.run_turn(app_config.prompt, history)
+    resolved = history if history is not None else MessageHistory()
+    result, _ = app.run_turn(app_config.prompt, resolved)
     return ResultRenderer().render(result)
 
 

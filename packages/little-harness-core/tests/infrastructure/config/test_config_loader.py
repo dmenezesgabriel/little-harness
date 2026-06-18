@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from little_harness.infrastructure.config.config_types import Config
 from little_harness.infrastructure.config.config_loader import ConfigLoader
+from little_harness.infrastructure.config.config_types import Config
 
 
 def write_toml(path: Path, data: dict[str, Any]) -> None:
@@ -20,14 +20,15 @@ def _serialize_toml(lines: list[str], data: dict[str, Any], prefix: str) -> None
     for key, value in data.items():
         full_key = f"{prefix}.{key}" if prefix else key
         if isinstance(value, dict):
-            is_section = any(isinstance(v, dict) for v in value.values())
+            value_dict = cast(dict[str, Any], value)
+            is_section = any(isinstance(v, dict) for v in value_dict.values())
             if is_section:
                 lines.append(f"[{full_key}]")
-                _serialize_toml(lines, value, "")
+                _serialize_toml(lines, value_dict, "")
             else:
-                _serialize_toml(lines, value, full_key)
+                _serialize_toml(lines, value_dict, full_key)
         elif isinstance(value, list):
-            items = ", ".join(repr(v) for v in value)
+            items = ", ".join(repr(v) for v in cast(list[Any], value))
             lines.append(f"{key} = [{items}]")
         elif isinstance(value, bool):
             lines.append(f"{key} = {'true' if value else 'false'}")

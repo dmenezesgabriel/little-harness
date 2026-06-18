@@ -29,16 +29,19 @@ class WebFetchTool:
             ToolName("web_fetch"),
             ToolInput('{"url": "https://example.com", "timeout": 15}'),
         ))
+
     """
 
     def __init__(
         self,
         urlopen: Callable[..., Any] = urlopen,
     ) -> None:
+        """Accept an injectable URL opener; defaults to stdlib urlopen."""
         self._urlopen = urlopen
 
     @property
     def spec(self) -> ToolSpec:
+        """Return the tool specification with name, description, and schema."""
         return ToolSpec(
             ToolName("web_fetch"),
             "Fetch content from a URL via HTTP GET. "
@@ -46,10 +49,12 @@ class WebFetchTool:
             "Configure `timeout` (default 30s) for slow servers.",
             ToolInputSchema(
                 'A JSON object {"url": "...", "format": "...", "timeout": N}.',
-                ToolExamples((
-                    '{"url": "https://example.com"}',
-                    '{"url": "https://api.example.com/data", "timeout": 15}',
-                )),
+                ToolExamples(
+                    (
+                        '{"url": "https://example.com"}',
+                        '{"url": "https://api.example.com/data", "timeout": 15}',
+                    )
+                ),
                 {
                     "type": "object",
                     "properties": {
@@ -68,6 +73,7 @@ class WebFetchTool:
         )
 
     def run(self, request: ToolRunRequest) -> ToolRunResult:
+        """Execute the HTTP GET; errors are captured into ToolRunResult, not raised."""
         try:
             return self._execute(request)
         except (HTTPError, URLError, ValueError, OSError) as error:
@@ -82,14 +88,17 @@ class WebFetchTool:
 
         url_str = fields.fields.get("url")
         if not url_str or not isinstance(url_str, str):
-            raise ValueError("Field 'url' must be a non-empty string.")
+            raise ValueError(
+                f"Field 'url' must be a non-empty string, got {url_str!r};"
+                " expected a URL string."
+            )
 
         timeout = 30
         if "timeout" in fields.fields:
             raw = fields.fields["timeout"]
             if not isinstance(raw, int):
                 raise ValueError(
-                    f"Field 'timeout' must be an integer, got {raw!r}."
+                    f"Field 'timeout' must be an integer, got {raw!r}; expected int."
                 )
             timeout = raw
 
@@ -97,6 +106,4 @@ class WebFetchTool:
         resp = self._urlopen(req, timeout=timeout)
         body = resp.read().decode("utf-8", errors="replace")
 
-        return ToolRunResult(
-            request.tool_name, ToolOutput(body), succeeded=True
-        )
+        return ToolRunResult(request.tool_name, ToolOutput(body), succeeded=True)

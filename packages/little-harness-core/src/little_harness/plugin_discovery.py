@@ -33,6 +33,7 @@ from little_harness.domain.errors import (
     UnknownToolError,
     UnknownUiError,
 )
+
 if TYPE_CHECKING:
     from little_harness.composition import Application
     from little_harness.presentation.cli.repl_command import (

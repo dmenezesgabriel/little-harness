@@ -58,6 +58,10 @@ class LlamaCppChatModel:
             if content is not None:
                 yield MessageContent(content)
 
+    def supports_thinking(self) -> bool:
+        """llama.cpp does not support reasoning/thinking tokens."""
+        return False
+
     def close(self) -> None:
         """Close the underlying model."""
         self._llm.close()

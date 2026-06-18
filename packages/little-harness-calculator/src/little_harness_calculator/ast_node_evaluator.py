@@ -15,7 +15,6 @@ import ast
 from typing import Protocol
 
 from little_harness_calculator.number import Number
-
 from little_harness_calculator.operators import (
     binary_operations,
     unary_operations,

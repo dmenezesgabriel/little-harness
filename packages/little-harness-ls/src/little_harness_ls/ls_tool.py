@@ -31,6 +31,7 @@ class LsTool:
             ToolName("ls"),
             ToolInput('{"path": "src", "limit": 50}'),
         ))
+
     """
 
     @property
@@ -43,11 +44,13 @@ class LsTool:
             "Output truncates at 500 entries (configure via `limit`).",
             ToolInputSchema(
                 'A JSON object {"path": "...", "limit": N}.',
-                ToolExamples((
-                    "{}",
-                    '{"path": "src"}',
-                    '{"path": ".", "limit": 100}',
-                )),
+                ToolExamples(
+                    (
+                        "{}",
+                        '{"path": "src"}',
+                        '{"path": ".", "limit": 100}',
+                    )
+                ),
                 {
                     "type": "object",
                     "properties": {
@@ -80,30 +83,23 @@ class LsTool:
         if "limit" in fields.fields:
             limit_raw = fields.fields["limit"]
             if not isinstance(limit_raw, int):
-                raise ValueError(
-                    f"Field 'limit' must be an integer, got {limit_raw!r}."
-                )
+                raise ValueError(f"Field 'limit': expected int, got {limit_raw!r}.")
             limit = limit_raw
 
         if not root.is_dir():
             raise ValueError(
-                f"Not a directory or does not exist: {root}"
+                f"Not a directory: {root!r}; expected an existing directory."
             )
 
         entries: list[str] = []
         for name in sorted(os.listdir(root), key=lambda s: s.lower()):
             entry_path = root / name
             try:
-                if entry_path.is_dir():
-                    entries.append(f"{name}/")
-                else:
-                    entries.append(name)
+                entries.append(f"{name}/" if entry_path.is_dir() else name)
             except OSError:
                 continue
             if len(entries) >= limit:
                 break
 
         output = "\n".join(entries) + ("\n" if entries else "")
-        return ToolRunResult(
-            request.tool_name, ToolOutput(output), succeeded=True
-        )
+        return ToolRunResult(request.tool_name, ToolOutput(output), succeeded=True)

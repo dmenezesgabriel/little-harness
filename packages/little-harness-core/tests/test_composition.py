@@ -368,7 +368,8 @@ class TestRunCliInteractive:
         )
         monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
         monkeypatch.setattr(
-            "little_harness.composition._build_session_plugin", lambda _: None
+            "little_harness.composition._build_session_plugin",
+            lambda _: None,  # type: ignore[reportUnknownLambdaType]
         )
 
         result = run_cli([])
@@ -403,7 +404,8 @@ class TestRunCliInteractive:
         monkeypatch.setattr("little_harness.composition.build_application", fake_build)
         monkeypatch.setattr("little_harness.composition.build_observer", fake_build_obs)
         monkeypatch.setattr(
-            "little_harness.composition._build_session_plugin", lambda _: None
+            "little_harness.composition._build_session_plugin",
+            lambda _: None,  # type: ignore[reportUnknownLambdaType]
         )
 
         run_cli([])
@@ -440,7 +442,8 @@ class TestRunCliInteractive:
         )
         monkeypatch.setattr("little_harness.composition.build_observer", fake_build)
         monkeypatch.setattr(
-            "little_harness.composition._build_session_plugin", lambda _: None
+            "little_harness.composition._build_session_plugin",
+            lambda _: None,  # type: ignore[reportUnknownLambdaType]
         )
 
         run_cli([])
@@ -491,7 +494,8 @@ class TestRunCliInteractive:
             SpyingInteractiveConsole,
         )
         monkeypatch.setattr(
-            "little_harness.composition._build_session_plugin", lambda _: None
+            "little_harness.composition._build_session_plugin",
+            lambda _: None,  # type: ignore[reportUnknownLambdaType]
         )
 
         run_cli([])
@@ -536,7 +540,8 @@ class TestRunCliInteractive:
             fake_discover_ui,
         )
         monkeypatch.setattr(
-            "little_harness.composition._build_session_plugin", lambda _: None
+            "little_harness.composition._build_session_plugin",
+            lambda _: None,  # type: ignore[reportUnknownLambdaType]
         )
 
         result = run_cli(["--ui", "custom"])
@@ -908,19 +913,19 @@ class _PrePopulatedPlugin:
     def session_id(self) -> SessionId:
         return SessionId("test-session")
 
-    @staticmethod
-    def observer() -> AgentObserver:
+    def observer(self) -> AgentObserver:
         return RecordingObserver()
 
-    @staticmethod
-    def repository() -> _PrePopulatedRepo:
+    def repository(self) -> _PrePopulatedRepo:
         return _PrePopulatedRepo()
 
-    def fork(self) -> SessionPlugin:
+    def fork(self) -> _PrePopulatedPlugin:
         return self
 
 
 class _SpyingConsole:
+    received_initial: ClassVar[list[object]] = []
+
     def __init__(self, *args: object, **kwargs: object) -> None:
         _SpyingConsole.received_initial.append(kwargs.get("_initial_messages"))
 
@@ -983,8 +988,8 @@ class TestSessionPluginWiring:
                 SESSION_PLUGIN_GROUP: [
                     FakeEntryPoint(
                         "jsonl",
-                        lambda policy, session_id=None: FakeSessionPlugin(
-                            session_id=session_id
+                        lambda policy, session_id=None: FakeSessionPlugin(  # type: ignore[reportUnknownLambdaType]
+                            session_id=session_id  # type: ignore[reportUnknownArgumentType]
                         ),
                     )
                 ],
@@ -1007,8 +1012,8 @@ class TestSessionPluginWiring:
                 SESSION_PLUGIN_GROUP: [
                     FakeEntryPoint(
                         "jsonl",
-                        lambda policy, session_id=None: FakeSessionPlugin(
-                            session_id=session_id
+                        lambda policy, session_id=None: FakeSessionPlugin(  # type: ignore[reportUnknownLambdaType]
+                            session_id=session_id  # type: ignore[reportUnknownArgumentType]
                         ),
                     )
                 ],
@@ -1121,7 +1126,7 @@ class TestSessionPluginWiring:
 
         monkeypatch.setattr(
             "little_harness.composition._build_session_plugin",
-            lambda _config: _PrePopulatedPlugin(),
+            lambda _config: _PrePopulatedPlugin(),  # type: ignore[reportUnknownLambdaType]
         )
         monkeypatch.setattr(
             "little_harness.composition.InteractiveConsole", _SpyingConsole
@@ -1149,13 +1154,14 @@ class TestSessionPluginWiring:
 
         monkeypatch.setattr(
             "little_harness.composition._build_session_plugin",
-            lambda _config: FakeSessionPlugin(session_id=SessionId("test-session")),
+            lambda _config: FakeSessionPlugin(session_id=SessionId("test-session")),  # type: ignore[reportUnknownLambdaType]
         )
         monkeypatch.setattr(
             "little_harness.composition.build_application", fake_build_app
         )
         monkeypatch.setattr(
-            "little_harness.composition.build_observer", lambda _config: None
+            "little_harness.composition.build_observer",
+            lambda _config: None,  # type: ignore[reportUnknownLambdaType]
         )
 
         run_cli(["--prompt", "hi", "--session", "test-session"])

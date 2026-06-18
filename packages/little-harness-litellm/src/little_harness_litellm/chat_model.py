@@ -73,6 +73,11 @@ class LiteLLMChatModel:
             if content is not None:
                 yield MessageContent(content)
 
+    def supports_thinking(self) -> bool:
+        """Return True for Anthropic models that support extended thinking."""
+        model = self._settings.model.lower()
+        return "anthropic" in model or "claude" in model
+
     def close(self) -> None:
         """LiteLLM holds no persistent native resource; nothing to release."""
 

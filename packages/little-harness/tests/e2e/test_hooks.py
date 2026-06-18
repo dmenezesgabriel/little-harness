@@ -37,9 +37,7 @@ class BlockFirstTurnStart(NullHook):
 class BlockFirstModelRequest(NullHook):
     """Blocks on_model_request so the model is never called."""
 
-    def on_model_request(
-        self, run_id: RunId, iteration: Iteration, /
-    ) -> HookDecision:
+    def on_model_request(self, run_id: RunId, iteration: Iteration, /) -> HookDecision:
         return Block(MessageContent(CANNED_ANSWER))
 
 
@@ -73,9 +71,7 @@ class InjectInstructionsAtTurnStart(NullHook):
 class InjectHintBeforeModelCall(NullHook):
     """Injects a hint before the model API call."""
 
-    def on_model_request(
-        self, run_id: RunId, iteration: Iteration, /
-    ) -> HookDecision:
+    def on_model_request(self, run_id: RunId, iteration: Iteration, /) -> HookDecision:
         return InjectContext(MessageContent("Reply with just: hint-received"))
 
 
@@ -189,9 +185,7 @@ class TestModelResponseHookBlock:
 class TestTurnEndHookBlock:
     """on_turn_end Block: model output replaced at end of turn."""
 
-    def test_output_replaced_at_turn_end(
-        self, local_llama_options: list[str]
-    ) -> None:
+    def test_output_replaced_at_turn_end(self, local_llama_options: list[str]) -> None:
         provider_options = [
             item for option in local_llama_options for item in ("-o", option)
         ]

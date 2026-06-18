@@ -32,6 +32,7 @@ class FindTool:
             ToolName("find"),
             ToolInput('{"pattern": "*.py", "limit": 10}'),
         ))
+
     """
 
     @property
@@ -44,10 +45,12 @@ class FindTool:
             "Skips .git/ and node_modules/ automatically.",
             ToolInputSchema(
                 'A JSON object {"pattern": "...", "path": "...", "limit": N}.',
-                ToolExamples((
-                    '{"pattern": "*.py"}',
-                    '{"pattern": "**/*.md", "path": "docs", "limit": 50}',
-                )),
+                ToolExamples(
+                    (
+                        '{"pattern": "*.py"}',
+                        '{"pattern": "**/*.md", "path": "docs", "limit": 50}',
+                    )
+                ),
                 {
                     "type": "object",
                     "properties": {
@@ -83,14 +86,12 @@ class FindTool:
         if "limit" in fields.fields:
             limit_raw = fields.fields["limit"]
             if not isinstance(limit_raw, int):
-                raise ValueError(
-                    f"Field 'limit' must be an integer, got {limit_raw!r}."
-                )
+                raise ValueError(f"Field 'limit': expected int, got {limit_raw!r}.")
             limit = limit_raw
 
         if not root.is_dir():
             raise ValueError(
-                f"Path is not a directory or does not exist: {root}"
+                f"Path not a directory: {root!r}; expected an existing directory."
             )
 
         matches: list[str] = []
@@ -107,9 +108,7 @@ class FindTool:
                 break
 
         output = "\n".join(matches) + ("\n" if matches else "")
-        return ToolRunResult(
-            request.tool_name, ToolOutput(output), succeeded=True
-        )
+        return ToolRunResult(request.tool_name, ToolOutput(output), succeeded=True)
 
 
 def _is_ignored(entry: Path, root: Path) -> bool:

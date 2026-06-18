@@ -10,6 +10,7 @@ from urllib.request import Request
 from little_harness.domain.tool_result import ToolRunRequest
 from little_harness.domain.values.text_values import ToolInput, ToolName
 
+from little_harness_web_fetch.provider import build as build_web_fetch_tool
 from little_harness_web_fetch.web_fetch_tool import WebFetchTool
 
 
@@ -31,9 +32,7 @@ class FakeUrlOpener:
         self.last_timeout = timeout
         if self._status >= 400:
             msg = HTTPMessage()
-            raise HTTPError(
-                url.full_url, self._status, "Error", msg, BytesIO()
-            )
+            raise HTTPError(url.full_url, self._status, "Error", msg, BytesIO())
         if self._status == 0:
             raise URLError("Connection refused")
         return BytesIO(self._body.encode("utf-8"))
@@ -73,9 +72,7 @@ class TestWebFetchToolRun:
     def test_passes_timeout_to_opener(self) -> None:
         opener = FakeUrlOpener()
         tool = WebFetchTool(urlopen=opener.open)
-        request = fetch_request(
-            '{"url": "https://example.com", "timeout": 15}'
-        )
+        request = fetch_request('{"url": "https://example.com", "timeout": 15}')
         tool.run(request)
         assert opener.last_timeout == 15
 
@@ -118,9 +115,7 @@ class TestWebFetchToolRun:
 
     def test_returns_error_for_non_int_timeout(self) -> None:
         tool = WebFetchTool()
-        request = fetch_request(
-            '{"url": "https://example.com", "timeout": "slow"}'
-        )
+        request = fetch_request('{"url": "https://example.com", "timeout": "slow"}')
         result = tool.run(request)
         assert result.succeeded is False
         assert "timeout" in result.output.value.lower()
@@ -143,17 +138,12 @@ class TestWebFetchToolRun:
     def test_returns_raw_html_when_format_is_html(self) -> None:
         opener = FakeUrlOpener(body="<h1>Title</h1>")
         tool = WebFetchTool(urlopen=opener.open)
-        request = fetch_request(
-            '{"url": "https://example.com", "format": "html"}'
-        )
+        request = fetch_request('{"url": "https://example.com", "format": "html"}')
         result = tool.run(request)
         assert result.output.value == "<h1>Title</h1>"
 
 
 def test_build_returns_web_fetch_tool() -> None:
-    from little_harness_web_fetch.provider import build
-    from little_harness_web_fetch.web_fetch_tool import WebFetchTool
-
-    tool = build()
+    tool = build_web_fetch_tool()
     assert isinstance(tool, WebFetchTool)
     assert tool.spec.name == ToolName("web_fetch")

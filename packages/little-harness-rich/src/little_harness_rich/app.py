@@ -142,7 +142,7 @@ class HarnessTuiApp(App[str]):
             return True
 
         try:
-            command.execute(self)
+            command.execute(self)  # type: ignore[arg-type]
         except ExitReplError:
             self.exit("")
         return True
@@ -175,6 +175,11 @@ class HarnessTuiApp(App[str]):
     def registry(self) -> CommandRegistry:
         """Get the command registry."""
         return self._command_registry
+
+    @property
+    def command_args(self) -> str:
+        """Return the arg string after the command name; always empty in the TUI."""
+        return ""
 
     def prompt_permission(self, call: ToolCall) -> bool:
         """Prompt the user for tool execution permission (Thread-safe).
@@ -234,15 +239,17 @@ class HarnessTuiApp(App[str]):
 
     async def _run_agent_turn(self, text: str) -> None:
         active_app.set(self)
-        history = self._get_or_build_history()
-
-        # Start thinking spinner if thinking is enabled in the model policy
+        chat_input = self.query_one(ChatInputWidget)
+        chat_input.input.disabled = True
         widget = None
-        if self._is_thinking_enabled():
-            widget = await self._start_thinking()
-            self._active_reasoning_widget = widget
-
         try:
+            history = self._get_or_build_history()
+
+            # Start thinking spinner if thinking is enabled in the model policy
+            if self._is_thinking_enabled():
+                widget = await self._start_thinking()
+                self._active_reasoning_widget = widget
+
             result, updated = await asyncio.to_thread(
                 self._app.run_turn, Prompt(text), history
             )
@@ -253,6 +260,8 @@ class HarnessTuiApp(App[str]):
             if widget is not None:
                 self._stop_thinking(widget)
             self._active_reasoning_widget = None
+            chat_input.input.disabled = False
+            chat_input.focus()
 
     def _get_policy_schema(self) -> object | None:
         """Safely retrieve the response schema from the policy."""

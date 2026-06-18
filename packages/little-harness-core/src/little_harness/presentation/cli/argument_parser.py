@@ -10,9 +10,8 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from little_harness.infrastructure.config.config_types import Config
 from little_harness.domain.values.numeric_values import (
     MaxIterations,
     MaxTokens,
@@ -22,6 +21,9 @@ from little_harness.domain.values.numeric_values import (
 )
 from little_harness.domain.values.text_values import Prompt, SessionId
 from little_harness.presentation.cli.app_config import AppConfig
+
+if TYPE_CHECKING:
+    from little_harness.infrastructure.config.config_types import Config
 
 OPTION_SEPARATOR = "="
 TOOL_SEPARATOR = ","
