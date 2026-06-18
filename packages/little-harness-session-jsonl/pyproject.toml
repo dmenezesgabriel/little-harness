@@ -72,6 +72,6 @@ dev = [
     "pytest-timeout==2.3.1",
     "radon==6.0.1",
     "ruff==0.15.14",
-    "semgrep==1.163.0",
+    "semgrep==1.166.0",
     "vulture==2.16",
 ]
