@@ -79,7 +79,7 @@ forbidden_modules = [
 dev = [
     "bandit==1.9.4",
     "deptry==0.25.1",
-    "import-linter==2.11",
+    "import-linter==2.12",
     "mutmut==3.5.0",
     "pyright==1.1.409",
     "pytest==9.0.3",
