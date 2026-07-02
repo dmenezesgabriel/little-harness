@@ -79,7 +79,7 @@ dev = [
     "deptry==0.25.1",
     "import-linter==2.11",
     "mutmut==3.5.0",
-    "pyright==1.1.409",
+    "pyright==1.1.411",
     "pytest==9.0.3",
     "pytest-bdd==8.1.0",
     "pytest-cov==7.1.0",
